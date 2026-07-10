@@ -4,6 +4,8 @@ import type { Env } from '../types'
 import { getAdmin } from '../supabase'
 import { createToken } from '../auth'
 import { requireAuth, requireRole } from '../middleware'
+import { getConfig, sessionCookieOptions } from '../config'
+import { validateIncomingArquivo } from '../uploads'
 
 const app = new Hono<{ Bindings: Env }>()
 
@@ -132,6 +134,8 @@ app.post('/correcoes', async (c) => {
   if (!turma_id) {
     return c.json({ error: 'Escolha uma turma antes de enviar a redação.' }, 400)
   }
+  const upload = validateIncomingArquivo(c.env, arquivo_url)
+  if (!upload.ok) return c.json({ error: upload.error }, 400)
 
   const sb = getAdmin(c.env)
 
@@ -188,7 +192,7 @@ app.post('/correcoes', async (c) => {
     aluno_id: user.sub,
     site_id: profile.site_id,
     arquivo_url: arquivo_url || '',
-    tipo_arq: tipo_arq || 'PDF',
+    tipo_arq: tipo_arq || upload.tipoArq || 'PDF',
     status: 'AGUARDANDO'
   }).select().single()
 
@@ -264,8 +268,10 @@ app.patch('/correcoes/:id', async (c) => {
     patch.turma_id = body.turma_id
   }
   if (typeof body.arquivo_url === 'string' && body.arquivo_url) {
+    const upload = validateIncomingArquivo(c.env, body.arquivo_url)
+    if (!upload.ok) return c.json({ error: upload.error }, 400)
     patch.arquivo_url = body.arquivo_url
-    patch.tipo_arq = body.tipo_arq || (body.arquivo_url.startsWith('data:application/pdf') ? 'PDF' : 'IMAGEM')
+    patch.tipo_arq = body.tipo_arq || upload.tipoArq
   }
 
   if (!Object.keys(patch).length) return c.json({ error: 'Nada para atualizar.' }, 400)
@@ -375,6 +381,10 @@ app.get('/turmas-disponiveis', async (c) => {
 })
 
 app.post('/matriculas/pagar', async (c) => {
+  if (!getConfig(c.env).flags.payments) {
+    return c.json({ error: 'Pagamentos temporariamente indisponíveis.' }, 503)
+  }
+
   const user = c.get('user')
   if (user.role === 'ALUNO' && user.ativo === false) {
     // Pagamento simulado libera o aluno automaticamente para as turmas pagas.
@@ -458,15 +468,9 @@ app.post('/matriculas/pagar', async (c) => {
       nome: user.nome,
       ativo: true
     },
-    c.env.SESSION_SECRET
+    getConfig(c.env).sessionSecret
   )
-  setCookie(c, 'auth_token', token, {
-    httpOnly: true,
-    secure: true,
-    sameSite: 'Lax',
-    maxAge: 60 * 60 * 24 * 7,
-    path: '/'
-  })
+  setCookie(c, 'auth_token', token, sessionCookieOptions(c.env))
 
   return c.json({
     ok: true,

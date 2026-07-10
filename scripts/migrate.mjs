@@ -9,47 +9,18 @@ import { fileURLToPath } from 'url'
 const { Client } = pg
 const __dirname = path.dirname(fileURLToPath(import.meta.url))
 
-// URL-encode caracteres especiais da senha: [ → %5B, ] → %5D, @ → %40
-const DB_URL = null // não usado diretamente
-
 async function migrate() {
   console.log('📦 Executando migration no Supabase...')
 
-  const configs = [
-    {
-      host: 'aws-0-sa-east-1.pooler.supabase.com',
-      port: 5432,
-      database: 'postgres',
-      user: 'postgres.qizhulhyodpxoowxmqct',
-      password: '[MinhaS3nha@2024]',
-      ssl: { rejectUnauthorized: false }
-    },
-    {
-      host: 'db.qizhulhyodpxoowxmqct.supabase.co',
-      port: 5432,
-      database: 'postgres',
-      user: 'postgres',
-      password: '[MinhaS3nha@2024]',
-      ssl: { rejectUnauthorized: false }
-    }
-  ]
+  const dbUrl = process.env.SUPABASE_DB_URL
+  if (!dbUrl) throw new Error('SUPABASE_DB_URL é obrigatória para executar migrations.')
 
-  let client = null
-  let lastErr = null
-  for (const config of configs) {
-    const attempt = new Client(config)
-    try {
-      await attempt.connect()
-      client = attempt
-      console.log(`✅ Conectado ao banco de dados via ${config.host}`)
-      break
-    } catch (err) {
-      lastErr = err
-      console.log(`⚠ Falha ao conectar via ${config.host}: ${err.message}`)
-      await attempt.end().catch(() => {})
-    }
-  }
-  if (!client) throw lastErr
+  const client = new Client({
+    connectionString: dbUrl,
+    ssl: { rejectUnauthorized: false }
+  })
+  await client.connect()
+  console.log('✅ Conectado ao banco de dados')
 
   try {
     const migrationsDir = path.join(__dirname, '..', 'migrations')
@@ -92,4 +63,7 @@ async function migrate() {
   }
 }
 
-migrate()
+migrate().catch((err) => {
+  console.error(`❌ ${err.message || 'Erro ao executar migrations.'}`)
+  process.exit(1)
+})

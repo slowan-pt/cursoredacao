@@ -1,6 +1,7 @@
 import { Hono } from 'hono'
 import type { Env } from '../types'
 import { getAdmin } from '../supabase'
+import { getConfig } from '../config'
 
 const app = new Hono<{ Bindings: Env }>()
 
@@ -2085,6 +2086,10 @@ app.get('/api/site/:slug', async (c) => {
 })
 
 app.post('/api/site/:slug/checkout', async (c) => {
+  if (!getConfig(c.env).flags.publicCheckoutSimulated) {
+    return c.json({ error: 'Checkout temporariamente indisponível.' }, 503)
+  }
+
   let body: { turma_id?: string; email?: string; nome?: string }
   try {
     body = await c.req.json()

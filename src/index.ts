@@ -6,12 +6,24 @@ import { superadminRoutes } from './routes/superadmin'
 import { adminRoutes } from './routes/admin'
 import { alunoRoutes } from './routes/aluno'
 import { siteRoutes } from './routes/site'
+import { getConfig } from './config'
 
 const app = new Hono<{ Bindings: Env }>()
+
+app.use('*', async (c, next) => {
+  getConfig(c.env)
+  await next()
+})
 
 app.use('*', secureHeaders({
   xFrameOptions: 'DENY',
   xContentTypeOptions: 'nosniff'
+}))
+
+app.get('/health', (c) => c.json({
+  ok: true,
+  service: 'redacao',
+  version: getConfig(c.env).appVersion
 }))
 
 app.route('/api/auth', authRoutes)

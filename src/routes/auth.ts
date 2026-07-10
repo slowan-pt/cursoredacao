@@ -4,6 +4,7 @@ import type { Env } from '../types'
 import { getAdmin, getClient } from '../supabase'
 import { createToken } from '../auth'
 import { requireAuth } from '../middleware'
+import { expiredSessionCookieOptions, getConfig, sessionCookieOptions } from '../config'
 
 const auth = new Hono<{ Bindings: Env }>()
 const CMS_PREFIX = 'CMS:'
@@ -155,16 +156,10 @@ auth.post('/login', async (c) => {
       nome: profile.nome,
       ativo: profile.ativo !== false
     },
-    c.env.SESSION_SECRET
+    getConfig(c.env).sessionSecret
   )
 
-  setCookie(c, 'auth_token', token, {
-    httpOnly: true,
-    secure: true,
-    sameSite: 'Lax',
-    maxAge: 60 * 60 * 24 * 7,
-    path: '/'
-  })
+  setCookie(c, 'auth_token', token, sessionCookieOptions(c.env))
 
   return c.json({
     ok: true,
@@ -219,6 +214,10 @@ auth.post('/register', async (c) => {
 })
 
 auth.post('/oauth-session', async (c) => {
+  if (!getConfig(c.env).flags.oauth) {
+    return c.json({ error: 'OAuth temporariamente indisponível.' }, 503)
+  }
+
   let body: { access_token: string; site_slug?: string; site_id?: string }
   try {
     body = await c.req.json()
@@ -295,16 +294,10 @@ auth.post('/oauth-session', async (c) => {
       nome: profile.nome,
       ativo: profile.ativo !== false
     },
-    c.env.SESSION_SECRET
+    getConfig(c.env).sessionSecret
   )
 
-  setCookie(c, 'auth_token', token, {
-    httpOnly: true,
-    secure: true,
-    sameSite: 'Lax',
-    maxAge: 60 * 60 * 24 * 7,
-    path: '/'
-  })
+  setCookie(c, 'auth_token', token, sessionCookieOptions(c.env))
 
   return c.json({
     ok: true,
@@ -317,6 +310,10 @@ auth.post('/oauth-session', async (c) => {
 })
 
 auth.post('/forgot-password', async (c) => {
+  if (!getConfig(c.env).flags.emails) {
+    return c.json({ error: 'Recuperação de senha por e-mail temporariamente indisponível.' }, 503)
+  }
+
   let body: { email: string }
   try {
     body = await c.req.json()
@@ -338,7 +335,7 @@ auth.post('/forgot-password', async (c) => {
 })
 
 auth.post('/logout', (c) => {
-  deleteCookie(c, 'auth_token', { path: '/' })
+  deleteCookie(c, 'auth_token', expiredSessionCookieOptions(c.env))
   return c.json({ ok: true })
 })
 
