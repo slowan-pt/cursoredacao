@@ -1,0 +1,347 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Entrar — CursosRedação</title>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800&display=swap" rel="stylesheet">
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --brand:#1A3A2A;--brand2:#2D5C42;--brand3:#3D7A58;--brand-light:#EAF2EC;
+  --brand-text:#FFFFFF;--brand-text-soft:rgba(255,255,255,.55);
+  --accent:#C5F135;--accent-dark:#9ABF1A;--accent-text:#1A2A00;
+  --ink:#0F0F0F;--ink2:#3A3A3A;--ink3:#787878;
+  --surface:#F8F7F4;--card:#FFFFFF;--border:#E8E5E0;--border2:#D0CCC4;
+  --danger:#C84040;--danger-light:#FEF0F0;--r:8px;--r2:12px;
+  --success:#2D7A4D;--success-light:#EEF8F1;
+}
+body{font-family:'Inter',system-ui,sans-serif;background:var(--brand);min-height:100vh;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:20px;-webkit-font-smoothing:antialiased}
+
+/* BACK PATTERN */
+body::before{content:'';position:fixed;inset:0;background:radial-gradient(ellipse at 20% 50%,rgba(61,122,88,.4) 0,transparent 60%),radial-gradient(ellipse at 80% 20%,rgba(197,241,53,.08) 0,transparent 50%);pointer-events:none}
+
+.login-wrap{width:100%;max-width:420px;position:relative;z-index:1}
+body.tenant-login .login-wrap{max-width:860px}
+
+/* LOGO */
+.logo{text-align:center;margin-bottom:32px}
+.logo-mark{display:inline-block;background:var(--accent);color:var(--accent-text);font-size:10px;font-weight:900;padding:3px 10px;border-radius:5px;letter-spacing:.06em;text-transform:uppercase;margin-bottom:8px}
+.logo h1{font-size:22px;font-weight:800;color:var(--brand-text);letter-spacing:-.5px}
+.logo p{font-size:13px;color:var(--brand-text-soft);margin-top:4px}
+
+/* CARD */
+.login-card{background:var(--card);border-radius:16px;padding:32px;box-shadow:0 24px 64px rgba(0,0,0,.35)}
+body.tenant-login .login-card{padding:24px}
+.auth-panels{display:block}
+body.tenant-login .auth-panels{display:grid;grid-template-columns:1fr 1fr;gap:22px;align-items:start}
+.auth-panel{min-width:0}
+body.tenant-login .auth-panel{border:1px solid var(--border);border-radius:14px;padding:22px;background:rgba(255,255,255,.74)}
+
+/* FORM */
+.form-title{font-size:16px;font-weight:700;margin-bottom:4px}
+.form-sub{font-size:12px;color:var(--ink3);margin-bottom:24px}
+.form-group{display:flex;flex-direction:column;gap:6px;margin-bottom:16px}
+label{font-size:12px;font-weight:600;color:var(--ink2)}
+input{width:100%;padding:11px 14px;border:1.5px solid var(--border2);border-radius:var(--r);font-family:inherit;font-size:14px;color:var(--ink);background:var(--card);transition:border-color .2s;outline:none}
+input:focus{border-color:var(--brand3);box-shadow:0 0 0 3px rgba(61,122,88,.1)}
+.hint{font-size:11px;color:var(--ink3)}
+.btn{width:100%;padding:13px;border:none;border-radius:var(--r);font-family:inherit;font-size:14px;font-weight:700;cursor:pointer;transition:all .2s;margin-top:8px}
+.btn-accent{background:var(--accent);color:var(--accent-text)}
+.btn-accent:hover{background:var(--accent-dark)}
+.btn-accent:disabled{opacity:.55;cursor:not-allowed}
+.forgot-link{display:inline-block;margin-top:14px;font-size:12px;font-weight:600;color:var(--brand2);text-decoration:none}
+.forgot-link:hover{text-decoration:underline}
+.divider{display:flex;align-items:center;gap:12px;margin:20px 0;color:var(--ink3);font-size:11px;font-weight:700;text-transform:uppercase}
+.divider::before,.divider::after{content:'';height:1px;background:var(--border);flex:1}
+.sso-btn{width:100%;padding:12px;border:1px solid var(--border2);border-radius:var(--r);background:#fff;color:var(--ink2);font-family:inherit;font-size:13px;font-weight:800;cursor:pointer}
+.signup-box{margin-top:20px;padding-top:20px;border-top:1px solid var(--border);display:none}
+.signup-box.open{display:block}
+body.tenant-login .signup-box{display:block;margin-top:0;padding-top:0;border-top:0}
+.mini-link{margin-top:14px;text-align:center;font-size:12px;color:var(--ink3)}
+.mini-link a{color:var(--brand2);font-weight:800;text-decoration:none}
+
+/* ERROR */
+.alert-err{background:var(--danger-light);color:var(--danger);border:1px solid #f5c6c6;border-radius:var(--r);padding:11px 14px;font-size:13px;margin-bottom:16px;display:none}
+.alert-ok{background:var(--success-light);color:var(--success);border:1px solid #bfebcc;border-radius:var(--r);padding:11px 14px;font-size:13px;margin-bottom:16px;display:none}
+
+/* BACK */
+.back-link{text-align:center;margin-top:20px}
+.back-link a{font-size:13px;color:var(--brand-text-soft);transition:color .2s}
+.back-link a:hover{color:var(--brand-text)}
+
+/* LOADING */
+.spinner{display:inline-block;width:16px;height:16px;border:2px solid rgba(26,42,0,.3);border-top-color:var(--accent-text);border-radius:50%;animation:spin .6s linear infinite;vertical-align:middle;margin-right:6px}
+@keyframes spin{to{transform:rotate(360deg)}}
+
+@media(max-width:400px){
+  .login-card{padding:24px 20px}
+}
+@media(max-width:780px){
+  body.tenant-login .login-wrap{max-width:420px}
+  body.tenant-login .auth-panels{grid-template-columns:1fr}
+}
+</style>
+</head>
+<body>
+
+<div class="login-wrap">
+  <div class="logo">
+    <div><span class="logo-mark">CURSOS</span></div>
+    <h1>Redação</h1>
+    <p>Acesse sua conta</p>
+  </div>
+
+  <div class="login-card">
+    <div id="form-title" class="form-title">Acesso à plataforma</div>
+    <div id="form-sub" class="form-sub">Entre com seu email e senha. O sistema identifica seu perfil automaticamente.</div>
+
+    <div id="alert-err" class="alert-err"></div>
+    <div id="alert-ok" class="alert-ok"></div>
+
+    <div class="auth-panels">
+      <section class="auth-panel">
+        <form id="login-form" onsubmit="doLogin(event)">
+          <div class="form-title">Fazer login</div>
+          <div class="form-sub">Entre se você já tem cadastro neste site.</div>
+          <div class="form-group">
+            <label for="email">Email</label>
+            <input type="email" id="email" placeholder="seu@email.com" required autocomplete="email">
+          </div>
+          <div class="form-group">
+            <label for="password">Senha</label>
+            <input type="password" id="password" placeholder="••••••••" required autocomplete="current-password">
+          </div>
+          <button type="submit" class="btn btn-accent" id="btn-submit">Entrar</button>
+          <a href="#" class="forgot-link" onclick="forgotPassword(event)">Esqueci minha senha</a>
+        </form>
+      </section>
+
+      <section class="auth-panel signup-box" id="signup-box">
+        <div class="form-title">Criar cadastro</div>
+        <div class="form-sub">Use o mesmo e-mail informado no pagamento para liberar sua turma.</div>
+        <form onsubmit="registerStudent(event)">
+          <div class="form-group">
+            <label for="signup-name">Nome</label>
+            <input id="signup-name" placeholder="Seu nome completo" required autocomplete="name">
+          </div>
+          <div class="form-group">
+            <label for="signup-email">Email</label>
+            <input type="email" id="signup-email" placeholder="seu@email.com" required autocomplete="email">
+          </div>
+          <div class="form-group">
+            <label for="signup-password">Senha</label>
+            <input type="password" id="signup-password" placeholder="Mínimo 8 caracteres" minlength="8" required autocomplete="new-password">
+          </div>
+          <button type="submit" class="btn btn-accent" id="btn-signup">Criar cadastro</button>
+        </form>
+      </section>
+    </div>
+  </div>
+
+  <div class="back-link"><a href="/">← Voltar à página inicial</a></div>
+</div>
+
+<script>
+const params = new URLSearchParams(location.search)
+const pathMatch = location.pathname.match(/^\/redacao\/([^/]+)\/login\/?$/)
+const siteSlug = params.get('site') || (pathMatch ? decodeURIComponent(pathMatch[1]) : '')
+const siteBase = siteSlug ? `/redacao/${encodeURIComponent(siteSlug)}` : ''
+if (siteSlug && params.get('signup') === '1' && params.get('turma') && params.get('paid') !== '1') {
+  location.replace(`${siteBase}/checkout/${encodeURIComponent(params.get('turma'))}`)
+}
+if (siteSlug) {
+  document.body.classList.add('tenant-login')
+  document.getElementById('form-sub').textContent = 'Entre com seu email e senha. Seu perfil sera identificado automaticamente.'
+  document.querySelector('.back-link a').href = siteBase
+  applyTenantTheme()
+}
+if (params.get('signup') === '1') document.getElementById('signup-box').classList.add('open')
+if (params.get('email')) {
+  document.getElementById('email').value = params.get('email')
+  document.getElementById('signup-email').value = params.get('email')
+}
+if (params.get('pendente') === '1') showOk('Seu acesso de professor ainda está aguardando aprovação do admin geral.')
+
+function contrastText(hex) {
+  const clean = String(hex || '#1A3A2A').replace('#', '')
+  const r = parseInt(clean.slice(0, 2), 16)
+  const g = parseInt(clean.slice(2, 4), 16)
+  const b = parseInt(clean.slice(4, 6), 16)
+  const lum = (0.2126 * r + 0.7152 * g + 0.0722 * b) / 255
+  return lum > .62 ? '#111111' : '#FFFFFF'
+}
+
+function applyThemeVars(theme, fallbackSite = {}) {
+  const brand = theme?.primary || fallbackSite.cor_primaria || '#1A3A2A'
+  const accent = theme?.accent || fallbackSite.cor_accent || '#C5F135'
+  document.documentElement.style.setProperty('--brand', brand)
+  document.documentElement.style.setProperty('--brand-text', theme?.primaryText || contrastText(brand))
+  document.documentElement.style.setProperty('--brand-text-soft', theme?.primaryText === '#111111' || contrastText(brand) === '#111111' ? 'rgba(17,17,17,.62)' : 'rgba(255,255,255,.62)')
+  document.documentElement.style.setProperty('--brand2', brand)
+  document.documentElement.style.setProperty('--brand3', brand)
+  document.documentElement.style.setProperty('--accent', accent)
+  document.documentElement.style.setProperty('--accent-dark', accent)
+  document.documentElement.style.setProperty('--accent-text', theme?.accentText || contrastText(accent))
+  document.documentElement.style.setProperty('--surface', theme?.background || '#F8F7F4')
+  document.documentElement.style.setProperty('--card', theme?.card || '#FFFFFF')
+  document.documentElement.style.setProperty('--border', theme?.border || '#E8E5E0')
+  document.documentElement.style.setProperty('--border2', theme?.borderStrong || '#D0CCC4')
+  document.documentElement.style.setProperty('--ink', theme?.text || '#0F0F0F')
+  document.documentElement.style.setProperty('--ink2', theme?.textSoft || '#3A3A3A')
+  document.documentElement.style.setProperty('--ink3', theme?.textMuted || '#787878')
+  document.documentElement.style.setProperty('--danger', theme?.danger || '#C84040')
+  document.documentElement.style.setProperty('--success', theme?.success || '#2D7A4D')
+}
+
+async function applyTenantTheme() {
+  try {
+    const res = await fetch(`/api/site/${encodeURIComponent(siteSlug)}`)
+    if (!res.ok) return
+    const data = await res.json()
+    const site = data.site || {}
+    applyThemeVars(data.cms?.theme, site)
+    document.querySelector('.logo h1').textContent = site.nome_prof || 'Redação'
+    document.querySelector('.logo p').textContent = 'Acesse sua conta neste site'
+  } catch {}
+}
+
+function showErr(msg) {
+  const el = document.getElementById('alert-err')
+  el.textContent = msg
+  el.style.display = 'block'
+}
+function showOk(msg) {
+  const el = document.getElementById('alert-ok')
+  el.textContent = msg
+  el.style.display = 'block'
+}
+function hideErr() { document.getElementById('alert-err').style.display = 'none' }
+function hideOk() { document.getElementById('alert-ok').style.display = 'none' }
+function hideAlerts() {
+  hideErr()
+  hideOk()
+}
+
+function toggleSignup(e) {
+  e.preventDefault()
+  hideAlerts()
+  document.getElementById('signup-box').classList.toggle('open')
+}
+
+async function doLogin(e) {
+  e.preventDefault()
+  hideAlerts()
+  const btn = document.getElementById('btn-submit')
+  btn.disabled = true
+  btn.innerHTML = '<span class="spinner"></span>Entrando...'
+
+  const email = document.getElementById('email').value.trim()
+  const password = document.getElementById('password').value
+
+  try {
+    const res = await fetch('/api/auth/login', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ email, password, site_slug: siteSlug || undefined })
+    })
+    const data = await res.json()
+
+    if (!res.ok) {
+      showErr(data.error || 'Erro ao fazer login')
+      return
+    }
+    if ((data.role === 'CORRETOR' || data.role === 'ADMIN') && data.ativo === false) {
+      showOk('Seu acesso de professor está aguardando aprovação do admin geral.')
+      return
+    }
+
+    // Redirect based on role
+    const redirects = siteSlug
+      ? { SUPERADMIN: '/superadmin/', ADMIN: `${siteBase}/app`, ALUNO: `${siteBase}/aluno`, CORRETOR: `${siteBase}/app` }
+      : { SUPERADMIN: '/superadmin/', ADMIN: '/professor/', ALUNO: '/aluno/', CORRETOR: '/professor/' }
+    window.location.href = redirects[data.role] || '/'
+  } catch {
+    showErr('Erro de conexão. Tente novamente.')
+  } finally {
+    btn.disabled = false
+    btn.innerHTML = 'Entrar'
+  }
+}
+
+async function registerStudent(e) {
+  e.preventDefault()
+  hideAlerts()
+  if (!siteSlug) {
+    showErr('Abra o cadastro pelo site do professor.')
+    return
+  }
+
+  const btn = document.getElementById('btn-signup')
+  btn.disabled = true
+  btn.innerHTML = '<span class="spinner"></span>Criando...'
+
+  const body = {
+    nome: document.getElementById('signup-name').value.trim(),
+    email: document.getElementById('signup-email').value.trim(),
+    password: document.getElementById('signup-password').value,
+    site_slug: siteSlug
+  }
+
+  try {
+    const res = await fetch('/api/auth/register', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(body)
+    })
+    const data = await res.json()
+    if (!res.ok) {
+      showErr(data.error || 'Não foi possível criar seu acesso.')
+      return
+    }
+    showOk(data.status === 'ATIVO_POR_PAGAMENTO'
+      ? 'Cadastro criado e matrícula liberada pelo pagamento. Agora entre com email e senha.'
+      : 'Cadastro criado. Agora entre com email e senha. O professor precisa aprovar para liberar o envio de redações.')
+    document.getElementById('email').value = body.email
+    document.getElementById('signup-box').classList.remove('open')
+  } catch {
+    showErr('Erro de conexão. Tente novamente.')
+  } finally {
+    btn.disabled = false
+    btn.innerHTML = 'Criar cadastro'
+  }
+}
+
+async function forgotPassword(e) {
+  e.preventDefault()
+  hideAlerts()
+
+  const email = document.getElementById('email').value.trim()
+  if (!email) {
+    showErr('Informe seu email para recuperar a senha.')
+    document.getElementById('email').focus()
+    return
+  }
+
+  try {
+    const res = await fetch('/api/auth/forgot-password', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ email })
+    })
+    const data = await res.json()
+
+    if (!res.ok) {
+      showErr(data.error || 'Não foi possível enviar a recuperação de senha.')
+      return
+    }
+
+    showOk('Enviamos as instruções de recuperação para o seu email.')
+  } catch {
+    showErr('Erro de conexão. Tente novamente.')
+  }
+}
+
+</script>
+</body>
+</html>

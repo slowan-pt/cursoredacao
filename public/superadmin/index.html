@@ -1,0 +1,746 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Admin Geral — CursosRedação</title>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="/css/style.css">
+</head>
+<body>
+
+<div class="layout">
+  <!-- Sidebar -->
+  <aside class="sidebar" id="sidebar">
+    <div class="sb-logo">
+      <div class="sb-mark">CURSOS</div>
+      <div class="sb-sub">Admin Geral</div>
+    </div>
+    <nav class="sb-nav">
+      <div class="sb-grp">Painel</div>
+      <a class="sb-item on" href="/superadmin/" onclick="showPage('dashboard',this)">⬛ Dashboard</a>
+      <div class="sb-grp">Plataforma</div>
+      <a class="sb-item" href="#" onclick="showPage('sites',this)">🏫 Sites / Tenants</a>
+      <a class="sb-item" href="#" onclick="showPage('users',this)">👥 Usuários</a>
+      <div class="sb-grp">Ações</div>
+      <a class="sb-item" href="#" onclick="openSiteModal()">➕ Novo Site</a>
+      <a class="sb-item" href="#" onclick="openModal('modal-user')">➕ Novo Usuário</a>
+    </nav>
+    <div class="sb-user">
+      <div class="sb-av" id="sb-av">SL</div>
+      <div class="sb-uinfo">
+        <div class="sb-uname" id="sb-uname">Carregando...</div>
+      </div>
+      <span class="sb-logout" onclick="logout()" title="Sair">⏻</span>
+    </div>
+  </aside>
+  <div class="sb-overlay" id="overlay" onclick="closeSidebar()"></div>
+
+  <!-- Main -->
+  <main class="main">
+    <div class="topbar">
+      <button class="hamburger" onclick="toggleSidebar()">
+        <span></span><span></span><span></span>
+      </button>
+      <div>
+        <div class="topbar-title" id="topbar-title">Dashboard</div>
+        <div class="topbar-sub">Visão geral da plataforma</div>
+      </div>
+      <div style="display:flex;gap:8px">
+        <button class="btn btn-accent btn-sm" onclick="openSiteModal()">+ Site</button>
+        <button class="btn btn-brand btn-sm" onclick="openModal('modal-user')">+ Usuário</button>
+      </div>
+    </div>
+
+    <!-- DASHBOARD PAGE -->
+    <div class="page" id="page-dashboard">
+      <div class="page-grid grid-3" style="margin-bottom:24px">
+        <div class="kpi-card">
+          <div class="kpi-label">Sites Ativos</div>
+          <div class="kpi-value" id="kpi-sites">—</div>
+          <div class="kpi-sub">tenants na plataforma</div>
+        </div>
+        <div class="kpi-card">
+          <div class="kpi-label">Total de Usuários</div>
+          <div class="kpi-value" id="kpi-users">—</div>
+          <div class="kpi-sub">entre todos os sites</div>
+        </div>
+        <div class="kpi-card">
+          <div class="kpi-label">Sua Sessão</div>
+          <div class="kpi-value" style="font-size:16px;margin-top:4px" id="kpi-email">—</div>
+          <div class="kpi-sub">SUPERADMIN</div>
+        </div>
+      </div>
+      <div class="card">
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px">
+          <strong>Sites cadastrados</strong>
+          <button class="btn btn-accent btn-sm" onclick="openSiteModal()">+ Novo site</button>
+        </div>
+        <div id="sites-preview"></div>
+      </div>
+    </div>
+
+    <!-- SITES PAGE -->
+    <div class="page" id="page-sites" style="display:none">
+      <div class="card">
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:20px">
+          <strong style="font-size:15px">Todos os Sites</strong>
+          <button class="btn btn-accent btn-sm" onclick="openSiteModal()">+ Novo site</button>
+        </div>
+        <div id="sites-list"></div>
+      </div>
+    </div>
+
+    <!-- USERS PAGE -->
+    <div class="page" id="page-users" style="display:none">
+      <div class="card">
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:20px">
+          <strong style="font-size:15px">Todos os Usuários</strong>
+          <button class="btn btn-brand btn-sm" onclick="openModal('modal-user')">+ Novo usuário</button>
+        </div>
+        <div id="users-list"></div>
+      </div>
+    </div>
+  </main>
+</div>
+
+<!-- MODAL: Site -->
+<div class="modal-bg" id="modal-site">
+  <div class="modal modal-site-designer">
+    <button class="modal-close" onclick="closeModal('modal-site')">×</button>
+    <div class="modal-title" id="site-modal-title">Novo Site / Tenant</div>
+    <div id="alert-site" class="alert alert-err"></div>
+    <form onsubmit="saveSite(event)">
+      <input type="hidden" id="s-id">
+      <div class="form-group">
+        <label>Nome do Professor(a)</label>
+        <input id="s-nome" placeholder="Ex: Prof. Maria Silva" required oninput="updateSitePreview()">
+      </div>
+      <div class="form-group">
+        <label>Slug do site</label>
+        <input id="s-slug" placeholder="Ex: maria" pattern="[a-z0-9-]+" required oninput="updateSitePreview()">
+      </div>
+      <div class="form-group">
+        <label>Bio / descrição do site</label>
+        <textarea id="s-bio" placeholder="Texto curto que aparece no site do professor" oninput="updateSitePreview()"></textarea>
+      </div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
+        <div class="form-group" style="flex:1">
+          <label>Cor Primária</label>
+          <div class="color-field">
+            <input type="color" id="s-cor" value="#1A3A2A" oninput="syncColor('s-cor','s-cor-code');updateSitePreview()">
+            <input id="s-cor-code" value="#1A3A2A" placeholder="#1A3A2A ou rgb(26,58,42)" oninput="syncCode('s-cor-code','s-cor');updateSitePreview()">
+          </div>
+          <div class="color-presets" id="primary-presets"></div>
+        </div>
+        <div class="form-group" style="flex:1">
+          <label>Cor Accent</label>
+          <div class="color-field">
+            <input type="color" id="s-accent" value="#C5F135" oninput="syncColor('s-accent','s-accent-code');updateSitePreview()">
+            <input id="s-accent-code" value="#C5F135" placeholder="#C5F135 ou rgb(197,241,53)" oninput="syncCode('s-accent-code','s-accent');updateSitePreview()">
+          </div>
+          <div class="color-presets" id="accent-presets"></div>
+        </div>
+      </div>
+      <div class="contrast-hint" id="site-contrast-hint"></div>
+      <div class="site-preview-card" id="site-preview-card">
+        <div class="site-preview-nav">
+          <div><span class="site-preview-pill">Redação</span> <strong id="pv-brand-name">Professor(a)</strong></div>
+          <button type="button" id="pv-enter">Entrar</button>
+        </div>
+        <div class="site-preview-hero">
+          <div>
+            <span class="site-preview-eyebrow">Site independente</span>
+            <h3>Redação com acompanhamento direto.</h3>
+            <p id="pv-bio">Turmas, materiais e correções organizadas em uma área própria para alunos.</p>
+            <button type="button" id="pv-cta">Criar acesso de aluno</button>
+          </div>
+          <div class="site-preview-prof">
+            <div id="pv-avatar">PR</div>
+            <strong id="pv-prof-name">Professor(a)</strong>
+            <p>Área do professor com alunos e turmas separados.</p>
+          </div>
+        </div>
+        <div class="dashboard-preview">
+          <aside>
+            <span>PROF</span>
+            <div class="dash-menu-on">Dashboard</div>
+            <div>Turmas</div>
+            <div>Correções</div>
+          </aside>
+          <main>
+            <strong>Prévia do dashboard</strong>
+            <div class="dash-preview-grid">
+              <div><small>Pendentes</small><b>12</b></div>
+              <div><small>Alunos</small><b>48</b></div>
+            </div>
+            <button type="button" id="pv-dash-action">Nova turma</button>
+          </main>
+        </div>
+      </div>
+      <button type="submit" class="btn btn-accent btn-full" id="site-submit">Criar Site</button>
+    </form>
+  </div>
+</div>
+
+<!-- MODAL: Novo Usuário -->
+<div class="modal-bg" id="modal-user">
+  <div class="modal">
+    <button class="modal-close" onclick="closeModal('modal-user')">×</button>
+    <div class="modal-title">Novo Usuário</div>
+    <div id="alert-user" class="alert alert-err"></div>
+    <form onsubmit="createUser(event)">
+      <div class="form-group">
+        <label>Nome completo</label>
+        <input id="u-nome" placeholder="Nome" required>
+      </div>
+      <div class="form-group">
+        <label>Email</label>
+        <input type="email" id="u-email" placeholder="email@exemplo.com" required>
+      </div>
+      <div class="form-group">
+        <label>Senha inicial</label>
+        <input type="password" id="u-senha" placeholder="Mínimo 8 caracteres" minlength="8" required>
+      </div>
+      <div class="form-group">
+        <label>Papel</label>
+        <select id="u-role">
+          <option value="ALUNO">Aluno</option>
+          <option value="CORRETOR">Professor</option>
+          <option value="SUPERADMIN">Superadmin</option>
+        </select>
+      </div>
+      <div class="form-group">
+        <label>Site (deixe vazio para SUPERADMIN)</label>
+        <select id="u-site"><option value="">— Nenhum —</option></select>
+      </div>
+      <button type="submit" class="btn btn-brand btn-full">Criar Usuário</button>
+    </form>
+  </div>
+</div>
+
+<!-- MODAL: Editar Usuário -->
+<div class="modal-bg" id="modal-edit-user">
+  <div class="modal">
+    <button class="modal-close" onclick="closeModal('modal-edit-user')">×</button>
+    <div class="modal-title">Editar Usuário</div>
+    <div id="alert-edit-user" class="alert alert-err"></div>
+    <form onsubmit="saveEditedUser(event)">
+      <input type="hidden" id="eu-id">
+      <div class="form-group">
+        <label>Nome completo</label>
+        <input id="eu-nome" placeholder="Nome" required>
+      </div>
+      <div class="form-group">
+        <label>Email</label>
+        <input type="email" id="eu-email" placeholder="email@exemplo.com" required>
+      </div>
+      <div class="form-group">
+        <label>Nova senha (opcional)</label>
+        <input type="password" id="eu-senha" placeholder="Deixe vazio para manter a senha atual" minlength="6">
+      </div>
+      <div class="form-group">
+        <label>Papel</label>
+        <select id="eu-role" onchange="syncEditUserRole()">
+          <option value="ALUNO">Aluno</option>
+          <option value="CORRETOR">Professor</option>
+          <option value="ADMIN">Professor admin do site</option>
+          <option value="SUPERADMIN">Superadmin</option>
+        </select>
+      </div>
+      <div class="form-group">
+        <label>Site</label>
+        <select id="eu-site"><option value="">— Nenhum —</option></select>
+      </div>
+      <div class="form-group">
+        <label>Status</label>
+        <select id="eu-ativo">
+          <option value="true">Ativo</option>
+          <option value="false">Inativo / pendente</option>
+        </select>
+      </div>
+      <button type="submit" class="btn btn-brand btn-full">Salvar usuário</button>
+    </form>
+  </div>
+</div>
+<div class="toast" id="toast"></div>
+
+<script>
+let sites = []
+let users = []
+let usersTreeOpen = {}
+const primaryColors = ['#1A3A2A', '#123C69', '#4B2E83', '#7A1F2B', '#2B2D42', '#004D40']
+const accentColors = ['#C5F135', '#FFD166', '#06D6A0', '#4CC9F0', '#F72585', '#FFFFFF']
+
+// Auth check
+async function init() {
+  const res = await fetch('/api/auth/me')
+  if (!res.ok) { location.href = '/login.html'; return }
+  const user = await res.json()
+  if (user.role !== 'SUPERADMIN') { location.href = '/login.html'; return }
+  document.getElementById('sb-uname').textContent = user.nome || user.email
+  document.getElementById('sb-av').textContent = (user.nome || user.email).substring(0,2).toUpperCase()
+  document.getElementById('kpi-email').textContent = user.email
+  loadStats()
+  loadSites()
+  renderColorPresets()
+}
+
+async function loadStats() {
+  const res = await fetch('/api/superadmin/stats')
+  if (!res.ok) return
+  const d = await res.json()
+  document.getElementById('kpi-sites').textContent = d.sites
+  document.getElementById('kpi-users').textContent = d.users
+}
+
+async function loadSites() {
+  const res = await fetch('/api/superadmin/sites')
+  if (!res.ok) return
+  const d = await res.json()
+  sites = d.data || []
+  renderSites(sites, 'sites-preview')
+  renderSites(sites, 'sites-list')
+  populateSiteSelect('u-site')
+  populateSiteSelect('eu-site')
+}
+
+function populateSiteSelect(id, selected = '') {
+  const sel = document.getElementById(id)
+  if (!sel) return
+  sel.innerHTML = '<option value="">— Nenhum —</option>'
+  sites.forEach(s => sel.innerHTML += `<option value="${s.id}" ${s.id === selected ? 'selected' : ''}>${esc(s.nome_prof)} (${esc(s.slug)})</option>`)
+}
+
+function renderSites(list, containerId) {
+  const el = document.getElementById(containerId)
+  if (!list.length) { el.innerHTML = '<div class="empty"><div class="empty-icon">🏫</div><p>Nenhum site criado ainda.</p></div>'; return }
+  el.innerHTML = `<div class="table-wrap"><table style="width:100%;border-collapse:collapse">
+    <thead><tr style="border-bottom:1px solid var(--border)">
+      <th style="text-align:left;padding:8px 12px;font-size:11px;color:var(--ink3)">NOME</th>
+      <th style="text-align:left;padding:8px 12px;font-size:11px;color:var(--ink3)">SLUG</th>
+      <th style="text-align:left;padding:8px 12px;font-size:11px;color:var(--ink3)">STATUS</th>
+      <th style="text-align:left;padding:8px 12px;font-size:11px;color:var(--ink3)">CRIADO EM</th>
+      <th style="text-align:right;padding:8px 12px;font-size:11px;color:var(--ink3)">AÇÕES</th>
+    </tr></thead>
+    <tbody>${list.map(s => `<tr style="border-bottom:1px solid var(--border)">
+      <td style="padding:12px;font-weight:600">${esc(s.nome_prof)}</td>
+      <td style="padding:12px"><a class="site-link" href="${siteUrl(s)}" target="_blank" rel="noopener">${esc(s.slug)}</a></td>
+      <td style="padding:12px"><span class="tag ${s.ativo ? 'tag-done' : 'tag-pend'}">${s.ativo ? 'Ativo' : 'Inativo'}</span></td>
+      <td style="padding:12px;color:var(--ink3);font-size:12px">${fmtDate(s.created_at)}</td>
+      <td style="padding:12px">
+        <div class="site-actions">
+          <a class="btn btn-sec btn-sm" href="${siteUrl(s)}" target="_blank" rel="noopener">Ver</a>
+          <button class="btn btn-sec btn-sm" onclick="copySiteLink('${s.id}')">Copiar link</button>
+          <button class="btn btn-accent btn-sm" onclick="openSiteModal('${s.id}')">Editar</button>
+          <button class="btn ${s.ativo ? 'btn-danger' : 'btn-brand'} btn-sm" onclick="toggleSite('${s.id}', ${!s.ativo})">${s.ativo ? 'Inativar' : 'Ativar'}</button>
+        </div>
+      </td>
+    </tr>`).join('')}</tbody>
+  </table></div>`
+}
+
+async function loadUsers() {
+  const res = await fetch('/api/superadmin/users')
+  if (!res.ok) return
+  const d = await res.json()
+  const list = d.data || []
+  users = list
+  const el = document.getElementById('users-list')
+  if (!list.length) { el.innerHTML = '<div class="empty"><div class="empty-icon">👥</div><p>Nenhum usuário encontrado.</p></div>'; return }
+  el.innerHTML = renderUsersTree(list)
+}
+
+function renderUsersTree(list) {
+  const professores = list
+    .filter(u => u.role === 'ADMIN' || u.role === 'CORRETOR')
+    .sort((a, b) => String(a.nome || '').localeCompare(String(b.nome || '')))
+  const alunos = list
+    .filter(u => u.role === 'ALUNO')
+    .sort((a, b) => String(a.nome || '').localeCompare(String(b.nome || '')))
+  const alunosPorSite = alunos.reduce((acc, aluno) => {
+    const key = aluno.site_id || 'sem-site'
+    acc[key] = acc[key] || []
+    acc[key].push(aluno)
+    return acc
+  }, {})
+  const semProfessor = alunosPorSite['sem-site'] || []
+  const adminsGerais = list.filter(u => u.role === 'SUPERADMIN')
+
+  return `
+    ${adminsGerais.length ? `<div class="user-tree-section">
+      <div class="user-tree-section-title">Admin geral</div>
+      ${adminsGerais.map(u => renderStandaloneUser(u)).join('')}
+    </div>` : ''}
+    <div class="user-tree-section">
+      <div class="user-tree-section-title">Professores e alunos vinculados</div>
+      ${professores.length ? professores.map(prof => renderProfessorNode(prof, prof.site_id ? (alunosPorSite[prof.site_id] || []) : [])).join('') : '<div class="empty"><p>Nenhum professor cadastrado.</p></div>'}
+    </div>
+    ${semProfessor.length ? `<div class="user-tree-section">
+      <div class="user-tree-section-title">Alunos sem professor/site vinculado</div>
+      ${renderAlunoList('sem-site', semProfessor, true)}
+    </div>` : ''}
+  `
+}
+
+function renderProfessorNode(prof, alunos) {
+  const key = `prof-${prof.id}`
+  const open = usersTreeOpen[key] !== false
+  const ativos = alunos.filter(a => a.ativo !== false).length
+  const inativos = alunos.filter(a => a.ativo === false).length
+  const siteLabel = prof.sites?.slug
+    ? `<a class="site-link" href="${siteUrl(prof.sites)}" target="_blank" rel="noopener">${esc(prof.sites.nome_prof || prof.sites.slug)}</a>`
+    : '<span>Sem site</span>'
+  return `<div class="user-tree-node">
+    <div class="user-tree-prof">
+      <button type="button" class="tree-toggle ${open ? 'open' : ''}" onclick="toggleUserTree('${key}')" title="${open ? 'Ocultar alunos' : 'Mostrar alunos'}">›</button>
+      <div class="tree-avatar">${esc((prof.nome || 'PR').slice(0, 2).toUpperCase())}</div>
+      <div class="tree-main">
+        <div class="tree-title">${esc(prof.nome || 'Professor')}</div>
+        <div class="tree-sub">${siteLabel} · criado em ${fmtDate(prof.created_at)}</div>
+      </div>
+      <div class="tree-counts">
+        <span class="tree-count active">${ativos} ativos</span>
+        <span class="tree-count inactive">${inativos} inativos</span>
+      </div>
+      <span class="tag ${prof.ativo === false ? 'tag-pend' : 'tag-done'}">${prof.ativo === false ? 'Pendente' : 'Ativo'}</span>
+      <div class="site-actions">${userActions(prof)}</div>
+    </div>
+    ${open ? renderAlunoList(key, alunos) : ''}
+  </div>`
+}
+
+function renderAlunoList(key, alunos, forceOpen = false) {
+  if (!alunos.length) return '<div class="user-tree-children"><div class="tree-empty">Nenhum aluno vinculado a este professor.</div></div>'
+  return `<div class="user-tree-children ${forceOpen ? 'force-open' : ''}">
+    ${alunos.map(aluno => `<div class="user-tree-aluno">
+      <div class="tree-branch"></div>
+      <div class="tree-avatar aluno">${esc((aluno.nome || 'AL').slice(0, 2).toUpperCase())}</div>
+      <div class="tree-main">
+        <div class="tree-title">${esc(aluno.nome || 'Aluno')}</div>
+        <div class="tree-sub">${aluno.sites?.slug ? esc(aluno.sites.nome_prof || aluno.sites.slug) : 'Sem site'} · criado em ${fmtDate(aluno.created_at)}</div>
+      </div>
+      <span class="tag ${aluno.ativo === false ? 'tag-pend' : 'tag-done'}">${aluno.ativo === false ? 'Inativo' : 'Ativo'}</span>
+      <div class="site-actions">${userActions(aluno)}</div>
+    </div>`).join('')}
+  </div>`
+}
+
+function renderStandaloneUser(u) {
+  return `<div class="user-tree-node">
+    <div class="user-tree-prof standalone">
+      <div class="tree-avatar">${esc((u.nome || 'AD').slice(0, 2).toUpperCase())}</div>
+      <div class="tree-main">
+        <div class="tree-title">${esc(u.nome || 'Admin geral')}</div>
+        <div class="tree-sub">${roleLabel(u.role)} · criado em ${fmtDate(u.created_at)}</div>
+      </div>
+      <span class="tag tag-done">Ativo</span>
+      <div class="site-actions">${userActions(u)}</div>
+    </div>
+  </div>`
+}
+
+function toggleUserTree(key) {
+  usersTreeOpen[key] = usersTreeOpen[key] === false
+  loadUsers()
+}
+
+function userActions(u) {
+  const actions = []
+  actions.push(`<button class="btn btn-sec btn-sm" onclick="openEditUserModal('${u.id}')">Editar</button>`)
+  if ((u.role === 'CORRETOR' || u.role === 'ADMIN') && u.ativo === false) {
+    actions.push(`<button class="btn btn-accent btn-sm" onclick="approveProfessor('${u.id}')">Aprovar professor</button>`)
+  }
+  if (u.role !== 'SUPERADMIN') {
+    actions.push(`<button class="btn ${u.ativo === false ? 'btn-brand' : 'btn-danger'} btn-sm" onclick="toggleUserActive('${u.id}', ${u.ativo === false})">${u.ativo === false ? 'Ativar' : 'Inativar'}</button>`)
+  }
+  return actions.join('') || '<span style="font-size:12px;color:var(--ink3)">—</span>'
+}
+
+function showPage(name, link) {
+  document.querySelectorAll('[id^="page-"]').forEach(p => p.style.display = 'none')
+  document.getElementById('page-' + name).style.display = 'block'
+  document.querySelectorAll('.sb-item').forEach(i => i.classList.remove('on'))
+  if (link) link.classList.add('on')
+  const titles = { dashboard: 'Dashboard', sites: 'Sites / Tenants', users: 'Usuários' }
+  document.getElementById('topbar-title').textContent = titles[name] || name
+  if (name === 'users') loadUsers()
+  if (name === 'sites') loadSites()
+  closeSidebar()
+  return false
+}
+
+function openSiteModal(id) {
+  clearSiteForm()
+  if (id) {
+    const site = sites.find(s => s.id === id)
+    if (!site) return
+    document.getElementById('site-modal-title').textContent = 'Editar Site'
+    document.getElementById('site-submit').textContent = 'Salvar alterações'
+    document.getElementById('s-id').value = site.id
+    document.getElementById('s-nome').value = site.nome_prof || ''
+    document.getElementById('s-slug').value = site.slug || ''
+    document.getElementById('s-bio').value = site.bio_prof || ''
+    setColor('s-cor', 's-cor-code', site.cor_primaria || '#1A3A2A')
+    setColor('s-accent', 's-accent-code', site.cor_accent || '#C5F135')
+  }
+  openModal('modal-site')
+  updateSitePreview()
+}
+
+function clearSiteForm() {
+  document.getElementById('site-modal-title').textContent = 'Novo Site / Tenant'
+  document.getElementById('site-submit').textContent = 'Criar Site'
+  document.getElementById('alert-site').style.display = 'none'
+  document.getElementById('s-id').value = ''
+  document.getElementById('s-nome').value = ''
+  document.getElementById('s-slug').value = ''
+  document.getElementById('s-bio').value = ''
+  setColor('s-cor', 's-cor-code', '#1A3A2A')
+  setColor('s-accent', 's-accent-code', '#C5F135')
+  updateSitePreview()
+}
+
+async function saveSite(e) {
+  e.preventDefault()
+  const id = document.getElementById('s-id').value
+  const body = {
+    slug: document.getElementById('s-slug').value.trim(),
+    nome_prof: document.getElementById('s-nome').value.trim(),
+    bio_prof: document.getElementById('s-bio').value.trim(),
+    cor_primaria: document.getElementById('s-cor').value,
+    cor_accent: document.getElementById('s-accent').value
+  }
+  if (!id) body.ativo = true
+
+  const res = await fetch(id ? `/api/superadmin/sites/${id}` : '/api/superadmin/sites', {
+    method: id ? 'PATCH' : 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(body)
+  })
+  const d = await res.json()
+  if (!res.ok) { showAlert('alert-site', d.error); return }
+  closeModal('modal-site')
+  showToast(id ? 'Site atualizado.' : 'Site criado.')
+  loadSites()
+  loadStats()
+}
+
+async function toggleSite(id, ativo) {
+  const site = sites.find(s => s.id === id)
+  if (!site) return
+  const res = await fetch(`/api/superadmin/sites/${id}`, {
+    method: 'PATCH',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ ativo })
+  })
+  const d = await res.json()
+  if (!res.ok) { showToast(d.error || 'Nao foi possivel atualizar o site.'); return }
+  showToast(`${site.nome_prof} ${ativo ? 'ativado' : 'inativado'}.`)
+  loadSites()
+  loadStats()
+}
+
+async function copySiteLink(id) {
+  const site = sites.find(s => s.id === id)
+  if (!site) return
+  const url = siteUrl(site)
+  try {
+    await navigator.clipboard.writeText(url)
+    showToast('Link copiado.')
+  } catch {
+    const input = document.createElement('input')
+    input.value = url
+    document.body.appendChild(input)
+    input.select()
+    document.execCommand('copy')
+    input.remove()
+    showToast('Link copiado.')
+  }
+}
+
+async function createUser(e) {
+  e.preventDefault()
+  const body = { email: document.getElementById('u-email').value, password: document.getElementById('u-senha').value, nome: document.getElementById('u-nome').value, role: document.getElementById('u-role').value, site_id: document.getElementById('u-site').value || null }
+  const res = await fetch('/api/superadmin/users', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) })
+  const d = await res.json()
+  if (!res.ok) { showAlert('alert-user', d.error); return }
+  closeModal('modal-user')
+  showToast('Usuário criado.')
+  loadStats()
+  loadUsers()
+}
+
+function openEditUserModal(id) {
+  const user = users.find(u => u.id === id)
+  if (!user) return
+  document.getElementById('alert-edit-user').style.display = 'none'
+  document.getElementById('eu-id').value = user.id
+  document.getElementById('eu-nome').value = user.nome || ''
+  document.getElementById('eu-email').value = user.email || ''
+  document.getElementById('eu-senha').value = ''
+  document.getElementById('eu-role').value = user.role || 'ALUNO'
+  populateSiteSelect('eu-site', user.site_id || '')
+  document.getElementById('eu-ativo').value = user.ativo === false ? 'false' : 'true'
+  syncEditUserRole()
+  openModal('modal-edit-user')
+}
+
+function syncEditUserRole() {
+  const role = document.getElementById('eu-role')?.value
+  const site = document.getElementById('eu-site')
+  if (!site) return
+  site.disabled = role === 'SUPERADMIN'
+  if (role === 'SUPERADMIN') site.value = ''
+}
+
+async function saveEditedUser(event) {
+  event.preventDefault()
+  const id = document.getElementById('eu-id').value
+  const role = document.getElementById('eu-role').value
+  const password = document.getElementById('eu-senha').value.trim()
+  const body = {
+    nome: document.getElementById('eu-nome').value.trim(),
+    email: document.getElementById('eu-email').value.trim(),
+    role,
+    site_id: role === 'SUPERADMIN' ? null : (document.getElementById('eu-site').value || null),
+    ativo: document.getElementById('eu-ativo').value === 'true'
+  }
+  if (password) body.password = password
+  const res = await fetch(`/api/superadmin/users/${id}`, {
+    method: 'PATCH',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(body)
+  })
+  const d = await res.json()
+  if (!res.ok) { showAlert('alert-edit-user', d.error || 'Não foi possível salvar o usuário.'); return }
+  closeModal('modal-edit-user')
+  showToast('Usuário atualizado.')
+  loadUsers()
+  loadStats()
+}
+
+async function approveProfessor(id) {
+  const res = await fetch(`/api/superadmin/users/${id}/approve-professor`, { method: 'POST' })
+  const d = await res.json()
+  if (!res.ok) { showToast(d.error || 'Não foi possível aprovar o professor.'); return }
+  showToast('Professor aprovado e site habilitado.')
+  loadUsers()
+  loadSites()
+  loadStats()
+}
+
+async function toggleUserActive(id, ativo) {
+  const res = await fetch(`/api/superadmin/users/${id}`, {
+    method: 'PATCH',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ ativo })
+  })
+  const d = await res.json()
+  if (!res.ok) { showToast(d.error || 'Não foi possível atualizar o usuário.'); return }
+  showToast(ativo ? 'Usuário ativado.' : 'Usuário inativado.')
+  loadUsers()
+}
+
+function renderColorPresets() {
+  document.getElementById('primary-presets').innerHTML = primaryColors.map(c => `<button type="button" class="color-swatch" style="background:${c}" title="${c}" onclick="setColor('s-cor','s-cor-code','${c}');updateSitePreview()"></button>`).join('')
+  document.getElementById('accent-presets').innerHTML = accentColors.map(c => `<button type="button" class="color-swatch" style="background:${c}" title="${c}" onclick="setColor('s-accent','s-accent-code','${c}');updateSitePreview()"></button>`).join('')
+}
+
+function setColor(colorId, codeId, value) {
+  const hex = normalizeColor(value)
+  if (!hex) return
+  document.getElementById(colorId).value = hex
+  document.getElementById(codeId).value = hex
+}
+
+function syncColor(colorId, codeId) {
+  document.getElementById(codeId).value = document.getElementById(colorId).value
+}
+
+function syncCode(codeId, colorId) {
+  const input = document.getElementById(codeId)
+  const hex = normalizeColor(input.value)
+  if (hex) document.getElementById(colorId).value = hex
+}
+
+function contrastText(hex) {
+  hex = normalizeColor(hex) || '#1A3A2A'
+  const rgb = [hex.slice(1,3), hex.slice(3,5), hex.slice(5,7)].map(v => parseInt(v, 16) / 255)
+  const linear = rgb.map(c => c <= 0.03928 ? c / 12.92 : Math.pow((c + 0.055) / 1.055, 2.4))
+  const luminance = 0.2126 * linear[0] + 0.7152 * linear[1] + 0.0722 * linear[2]
+  return luminance > 0.52 ? '#111111' : '#FFFFFF'
+}
+
+function alphaColor(hex, alpha) {
+  hex = normalizeColor(hex) || '#FFFFFF'
+  const r = parseInt(hex.slice(1,3), 16)
+  const g = parseInt(hex.slice(3,5), 16)
+  const b = parseInt(hex.slice(5,7), 16)
+  return `rgba(${r},${g},${b},${alpha})`
+}
+
+function updateSitePreview() {
+  const brand = normalizeColor(document.getElementById('s-cor-code').value) || document.getElementById('s-cor').value || '#1A3A2A'
+  const accent = normalizeColor(document.getElementById('s-accent-code').value) || document.getElementById('s-accent').value || '#C5F135'
+  const brandText = contrastText(brand)
+  const accentText = contrastText(accent)
+  const nome = document.getElementById('s-nome').value.trim() || 'Professor(a)'
+  const bio = document.getElementById('s-bio').value.trim() || 'Turmas, materiais e correções organizadas em uma área própria para alunos.'
+  const preview = document.getElementById('site-preview-card')
+  if (!preview) return
+  preview.style.setProperty('--pv-brand', brand)
+  preview.style.setProperty('--pv-brand-text', brandText)
+  preview.style.setProperty('--pv-brand-soft', alphaColor(brandText, 0.74))
+  preview.style.setProperty('--pv-brand-border', alphaColor(brandText, 0.16))
+  preview.style.setProperty('--pv-brand-tint', alphaColor(brandText, 0.1))
+  preview.style.setProperty('--pv-accent', accent)
+  preview.style.setProperty('--pv-accent-text', accentText)
+  document.getElementById('pv-brand-name').textContent = nome
+  document.getElementById('pv-prof-name').textContent = nome
+  document.getElementById('pv-avatar').textContent = nome.slice(0, 2).toUpperCase()
+  document.getElementById('pv-bio').textContent = bio
+  document.getElementById('site-contrast-hint').textContent = `Sugestão automática: cor primária usa texto ${brandText === '#111111' ? 'escuro' : 'claro'}; botões de destaque usam texto ${accentText === '#111111' ? 'escuro' : 'claro'}.`
+}
+
+function normalizeColor(value) {
+  const raw = String(value || '').trim()
+  const hex = raw.match(/^#?([0-9a-f]{6})$/i)
+  if (hex) return `#${hex[1].toUpperCase()}`
+  const rgb = raw.match(/^rgb\(\s*(\d{1,3})\s*,\s*(\d{1,3})\s*,\s*(\d{1,3})\s*\)$/i)
+  if (!rgb) return null
+  const parts = rgb.slice(1).map(n => Math.max(0, Math.min(255, Number(n))))
+  return `#${parts.map(n => n.toString(16).padStart(2, '0')).join('').toUpperCase()}`
+}
+
+function siteUrl(site) {
+  if (site.domain_custom) return `https://${site.domain_custom}`
+  return `${location.origin}/redacao/${site.slug}`
+}
+
+function esc(value) {
+  return String(value ?? '').replace(/[&<>"']/g, ch => ({ '&':'&amp;', '<':'&lt;', '>':'&gt;', '"':'&quot;', "'":'&#39;' })[ch])
+}
+
+function showAlert(id, msg) { const el = document.getElementById(id); el.textContent = msg; el.style.display = 'block' }
+function showToast(msg) {
+  const el = document.getElementById('toast')
+  el.textContent = msg
+  el.style.display = 'block'
+  clearTimeout(window.__toastTimer)
+  window.__toastTimer = setTimeout(() => { el.style.display = 'none' }, 2200)
+}
+function roleLabel(role) {
+  return ({ SUPERADMIN: 'Admin geral', CORRETOR: 'Professor', ADMIN: 'Professor', ALUNO: 'Aluno' })[role] || role || '—'
+}
+function openModal(id) { document.getElementById(id).classList.add('open') }
+function closeModal(id) { document.getElementById(id).classList.remove('open') }
+function toggleSidebar() { document.getElementById('sidebar').classList.toggle('open'); document.getElementById('overlay').classList.toggle('open') }
+function closeSidebar() { document.getElementById('sidebar').classList.remove('open'); document.getElementById('overlay').classList.remove('open') }
+async function logout() { await fetch('/api/auth/logout', { method: 'POST' }); location.href = '/login.html' }
+function fmtDate(s) { if (!s) return '—'; return new Date(s).toLocaleDateString('pt-BR') }
+
+init()
+</script>
+</body>
+</html>

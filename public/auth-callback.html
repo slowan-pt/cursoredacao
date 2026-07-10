@@ -1,0 +1,63 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Conectando — CursosRedação</title>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<style>
+body{font-family:system-ui,-apple-system,sans-serif;background:#1A3A2A;color:#fff;min-height:100vh;display:flex;align-items:center;justify-content:center;margin:0;padding:24px}
+.box{max-width:360px;text-align:center}
+.mark{display:inline-block;background:#C5F135;color:#1A2A00;font-size:10px;font-weight:900;padding:4px 10px;border-radius:5px;text-transform:uppercase;margin-bottom:18px}
+h1{font-size:22px;margin:0 0 8px}
+p{color:rgba(255,255,255,.65);font-size:14px;line-height:1.6}
+</style>
+</head>
+<body>
+<div class="box">
+  <div class="mark">CursosRedação</div>
+  <h1>Conectando sua conta...</h1>
+  <p id="msg">Aguarde enquanto finalizamos o login seguro.</p>
+</div>
+<script>
+const params = new URLSearchParams(location.search)
+const siteSlug = params.get('site') || ''
+
+async function finishOAuth() {
+  const msg = document.getElementById('msg')
+  try {
+    const cfgRes = await fetch('/api/public/config')
+    const cfg = await cfgRes.json()
+    const client = supabase.createClient(cfg.supabaseUrl, cfg.supabaseAnonKey)
+    const { data, error } = await client.auth.getSession()
+    if (error || !data.session?.access_token) throw error || new Error('Sessao SSO nao encontrada')
+
+    const res = await fetch('/api/auth/oauth-session', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ access_token: data.session.access_token, site_slug: siteSlug })
+    })
+    const profile = await res.json()
+    if (!res.ok) throw new Error(profile.error || 'Nao foi possivel concluir o SSO')
+
+    if ((profile.role === 'CORRETOR' || profile.role === 'ADMIN') && profile.ativo === false) {
+      document.querySelector('h1').textContent = 'Solicitação enviada'
+      msg.textContent = 'Seu acesso de professor foi registrado. Aguarde a aprovação do admin geral para entrar na plataforma.'
+      return
+    }
+
+    const resolvedSlug = siteSlug || profile.site_slug || ''
+    const siteBase = resolvedSlug ? `/redacao/${encodeURIComponent(resolvedSlug)}` : ''
+    const redirects = resolvedSlug
+      ? { SUPERADMIN: '/superadmin/', ADMIN: `${siteBase}/app`, ALUNO: `${siteBase}/aluno`, CORRETOR: `${siteBase}/app` }
+      : { SUPERADMIN: '/superadmin/', ADMIN: '/professor/', ALUNO: '/aluno/', CORRETOR: '/professor/' }
+    location.href = redirects[profile.role] || '/'
+  } catch (err) {
+    msg.textContent = err?.message || 'Nao foi possivel concluir o login. Volte e tente novamente.'
+  }
+}
+
+finishOAuth()
+</script>
+</body>
+</html>

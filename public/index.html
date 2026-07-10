@@ -1,0 +1,336 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>CursosRedação — Preparatório de Redação para Concursos</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --brand:#1A3A2A;--brand2:#2D5C42;--brand3:#3D7A58;--brand-light:#EAF2EC;
+  --accent:#C5F135;--accent-dark:#9ABF1A;--accent-text:#1A2A00;
+  --ink:#0F0F0F;--ink2:#3A3A3A;--ink3:#787878;
+  --surface:#F8F7F4;--card:#FFFFFF;--border:#E8E5E0;
+  --gold:#E8A020;--gold-light:#FEF5E4;
+  --r:8px;--r2:12px;--r3:20px;
+}
+body{font-family:'Inter',system-ui,sans-serif;background:var(--surface);color:var(--ink);-webkit-font-smoothing:antialiased}
+a{text-decoration:none;color:inherit}
+
+/* ── NAV ─────────────────────────────────────────────────── */
+nav{background:var(--brand);padding:0 6%;display:flex;align-items:center;justify-content:space-between;height:62px;position:sticky;top:0;z-index:100}
+.logo{display:flex;align-items:center;gap:10px}
+.logo-mark{background:var(--accent);color:var(--accent-text);font-size:9px;font-weight:900;padding:3px 9px;border-radius:5px;letter-spacing:.06em;text-transform:uppercase}
+.logo-name{font-size:15px;font-weight:700;color:#fff;letter-spacing:-.3px}
+.nav-links{display:flex;align-items:center;gap:6px}
+.nav-link{font-size:13px;color:rgba(255,255,255,.6);padding:7px 14px;border-radius:var(--r);transition:all .2s}
+.nav-link:hover{color:#fff;background:rgba(255,255,255,.1)}
+.btn-nav{background:var(--accent);color:var(--accent-text);font-size:13px;font-weight:700;padding:8px 20px;border-radius:var(--r);border:none;cursor:pointer;transition:all .2s}
+.btn-nav:hover{background:var(--accent-dark)}
+
+/* ── HERO ────────────────────────────────────────────────── */
+.hero{background:var(--brand);padding:80px 6%;display:flex;align-items:center;gap:60px;min-height:480px}
+.hero-left{flex:1;max-width:520px}
+.hero-tag{display:inline-flex;align-items:center;gap:7px;background:rgba(255,255,255,.08);border:1px solid rgba(255,255,255,.15);color:rgba(255,255,255,.75);font-size:11px;font-weight:700;padding:5px 14px;border-radius:100px;margin-bottom:28px;letter-spacing:.04em;text-transform:uppercase}
+.hero-tag::before{content:'';width:7px;height:7px;background:var(--accent);border-radius:50%;display:inline-block}
+.hero h1{font-size:clamp(36px,4.5vw,56px);font-weight:900;color:#fff;line-height:1.08;letter-spacing:-1.5px;margin-bottom:20px}
+.hero h1 em{color:var(--accent);font-style:normal;display:block}
+.hero-sub{font-size:15px;color:rgba(255,255,255,.6);line-height:1.7;max-width:400px;margin-bottom:36px}
+.hero-btns{display:flex;gap:12px;flex-wrap:wrap}
+.btn-accent{background:var(--accent);color:var(--accent-text);font-size:13px;font-weight:700;padding:12px 24px;border-radius:var(--r);border:none;cursor:pointer;transition:all .2s}
+.btn-accent:hover{background:var(--accent-dark)}
+.btn-ghost{background:rgba(255,255,255,.1);color:#fff;font-size:13px;font-weight:600;padding:12px 24px;border-radius:var(--r);border:1px solid rgba(255,255,255,.2);cursor:pointer;transition:all .2s}
+.btn-ghost:hover{background:rgba(255,255,255,.18)}
+
+/* STATS CARD */
+.hero-right{flex:0 0 320px}
+.stats-card{background:rgba(255,255,255,.07);border:1px solid rgba(255,255,255,.12);border-radius:16px;padding:32px 28px;display:flex;flex-direction:column;gap:0}
+.stat-row{padding:18px 0;border-bottom:1px solid rgba(255,255,255,.08)}
+.stat-row:last-child{border-bottom:none}
+.stat-num{font-size:32px;font-weight:900;color:var(--accent);letter-spacing:-1px;line-height:1}
+.stat-label{font-size:13px;font-weight:600;color:#fff;margin-top:3px}
+.stat-sub{font-size:11px;color:rgba(255,255,255,.45);margin-top:2px}
+
+/* ── TURMAS ──────────────────────────────────────────────── */
+.turmas{padding:80px 6%;background:var(--surface)}
+.section-tag{font-size:11px;font-weight:700;color:var(--brand3);text-transform:uppercase;letter-spacing:.08em;margin-bottom:12px}
+.section-title{font-size:clamp(24px,3vw,36px);font-weight:900;letter-spacing:-.5px;margin-bottom:8px}
+.section-sub{font-size:14px;color:var(--ink3);margin-bottom:44px;line-height:1.6}
+.turmas-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:20px}
+.turma-card{background:var(--card);border:1.5px solid var(--border);border-radius:var(--r2);padding:28px;display:flex;flex-direction:column;gap:0;transition:all .2s}
+.turma-card:hover{box-shadow:0 8px 32px rgba(0,0,0,.08);transform:translateY(-2px)}
+.turma-card.featured{border-color:var(--brand3);box-shadow:0 0 0 1px var(--brand-light)}
+.turma-icon{width:48px;height:48px;border-radius:var(--r);background:var(--brand-light);display:flex;align-items:center;justify-content:center;font-size:24px;margin-bottom:16px}
+.turma-nome{font-size:16px;font-weight:800;margin-bottom:4px;letter-spacing:-.2px}
+.turma-desc{font-size:12px;color:var(--ink3);margin-bottom:14px}
+.badge{display:inline-flex;align-items:center;gap:5px;font-size:11px;font-weight:700;padding:3px 10px;border-radius:100px;margin-bottom:20px}
+.badge-open{background:var(--brand-light);color:var(--brand2)}
+.badge-open::before{content:'•';font-size:14px;color:var(--brand3)}
+.badge-soon{background:var(--gold-light);color:var(--gold)}
+.badge-soon::before{content:'⏳';font-size:10px}
+.turma-items{list-style:none;display:flex;flex-direction:column;gap:8px;margin-bottom:28px;flex:1}
+.turma-items li{font-size:13px;color:var(--ink2);display:flex;align-items:flex-start;gap:8px}
+.turma-items li::before{content:'•';color:var(--brand3);font-size:16px;line-height:1;flex-shrink:0}
+.turma-footer{display:flex;align-items:center;justify-content:space-between;margin-top:auto;padding-top:20px;border-top:1px solid var(--border)}
+.turma-preco{font-size:15px;font-weight:800;color:var(--ink)}
+.turma-preco span{font-size:11px;font-weight:500;color:var(--ink3)}
+.btn-matricular{font-size:12px;font-weight:700;padding:9px 18px;border-radius:var(--r);border:none;cursor:pointer;transition:all .2s}
+.btn-matricular.accent{background:var(--accent);color:var(--accent-text)}
+.btn-matricular.accent:hover{background:var(--accent-dark)}
+.btn-matricular.brand{background:var(--brand);color:#fff}
+.btn-matricular.brand:hover{background:var(--brand2)}
+.btn-matricular.disabled{background:var(--border);color:var(--ink3);cursor:not-allowed}
+
+/* ── DEPOIMENTOS ─────────────────────────────────────────── */
+.depoimentos{padding:80px 6%;background:var(--brand)}
+.depoimentos .section-tag{color:var(--accent)}
+.depoimentos .section-title{color:#fff}
+.dep-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:16px;margin-top:44px}
+.dep-card{background:rgba(255,255,255,.07);border:1px solid rgba(255,255,255,.1);border-radius:var(--r2);padding:24px}
+.dep-stars{color:var(--accent);font-size:16px;letter-spacing:2px;margin-bottom:16px}
+.dep-text{font-size:13px;color:rgba(255,255,255,.8);line-height:1.7;margin-bottom:20px;font-style:italic}
+.dep-author{display:flex;align-items:center;gap:12px}
+.dep-av{width:36px;height:36px;border-radius:50%;background:var(--brand3);color:#fff;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:800;flex-shrink:0}
+.dep-name{font-size:13px;font-weight:700;color:#fff}
+.dep-detail{font-size:11px;color:rgba(255,255,255,.45);margin-top:2px}
+
+/* ── ACESSO ──────────────────────────────────────────────── */
+.acesso{padding:72px 6%;background:var(--surface);text-align:center}
+.acesso .section-title{margin-bottom:8px}
+.acesso p{font-size:14px;color:var(--ink3);margin-bottom:24px}
+.acesso-actions{display:flex;gap:12px;justify-content:center;flex-wrap:wrap}
+.acesso-actions a{min-width:170px;justify-content:center}
+.btn-login{display:inline-flex;align-items:center;justify-content:center;background:var(--brand);color:#fff;font-size:13px;font-weight:800;padding:12px 24px;border-radius:var(--r);transition:all .2s}
+.btn-login:hover{background:var(--brand2)}
+.whatsapp-float{position:fixed;right:22px;bottom:22px;width:58px;height:58px;border-radius:50%;background:#25D366;color:#fff;display:flex;align-items:center;justify-content:center;box-shadow:0 12px 28px rgba(0,0,0,.22);z-index:200;transition:transform .2s,box-shadow .2s,background .2s;border:3px solid #fff}
+.whatsapp-float:hover{background:#1fbd5b;transform:translateY(-2px);box-shadow:0 16px 34px rgba(0,0,0,.28)}
+.whatsapp-float svg{width:32px;height:32px;display:block}
+
+/* ── FOOTER ──────────────────────────────────────────────── */
+footer{background:var(--ink);padding:40px 6%;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:16px}
+.foot-logo{display:flex;align-items:center;gap:10px}
+.foot-p{font-size:12px;color:rgba(255,255,255,.3)}
+
+/* ── RESPONSIVE ──────────────────────────────────────────── */
+@media(max-width:900px){
+  .hero{flex-direction:column;padding:56px 6%;gap:40px}
+  .hero-right{flex:none;width:100%}
+  .stats-card{flex-direction:row;gap:0}
+  .stat-row{flex:1;padding:16px;border-bottom:none;border-right:1px solid rgba(255,255,255,.08);text-align:center}
+  .stat-row:last-child{border-right:none}
+  .turmas-grid,.dep-grid{grid-template-columns:1fr}
+  .nav-links .nav-link{display:none}
+}
+@media(max-width:600px){
+  .stats-card{flex-direction:column}
+  .stat-row{border-right:none;border-bottom:1px solid rgba(255,255,255,.08)}
+}
+</style>
+</head>
+<body>
+
+<!-- NAV -->
+<nav>
+  <div class="logo">
+    <span class="logo-mark">CURSOS</span>
+    <span class="logo-name">Redação</span>
+  </div>
+  <div class="nav-links">
+    <a href="#turmas" class="nav-link">Turmas</a>
+    <a href="#depoimentos" class="nav-link">Resultados</a>
+    <a href="#acesso" class="nav-link">Entrar</a>
+    <a href="/login.html" class="btn-nav">Acessar plataforma</a>
+  </div>
+</nav>
+
+<!-- HERO -->
+<section class="hero">
+  <div class="hero-left">
+    <div class="hero-tag">Preparatório de Redação para Concursos</div>
+    <h1>Escreva bem.<em>Passe na prova.</em></h1>
+    <p class="hero-sub">Método direto, correção individualizada e mais de 250 temas comentados. Para quem quer aprovação de verdade.</p>
+    <div class="hero-btns">
+      <a href="#turmas"><button class="btn-accent">Ver turmas abertas</button></a>
+      <a href="#como-funciona"><button class="btn-ghost">Como funciona</button></a>
+    </div>
+  </div>
+  <div class="hero-right">
+    <div class="stats-card">
+      <div class="stat-row">
+        <div class="stat-num">1.2k</div>
+        <div class="stat-label">Alunos aprovados</div>
+        <div class="stat-sub">desde 2020</div>
+      </div>
+      <div class="stat-row">
+        <div class="stat-num">9.4</div>
+        <div class="stat-label">Nota média</div>
+        <div class="stat-sub">nas provas da EEAR</div>
+      </div>
+      <div class="stat-row">
+        <div class="stat-num">250+</div>
+        <div class="stat-label">Temas</div>
+        <div class="stat-sub">catalogados e comentados</div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- TURMAS -->
+<section class="turmas" id="turmas">
+  <div class="section-tag">Turmas</div>
+  <h2 class="section-title">Escolha seu concurso</h2>
+  <p class="section-sub">Cada turma é focada nos critérios específicos da banca</p>
+
+  <div class="turmas-grid">
+    <!-- ESA -->
+    <div class="turma-card featured">
+      <div class="turma-icon">🌿</div>
+      <div class="turma-nome">ESA / EsPCEx</div>
+      <div class="turma-desc">Redação dissertativa para o Exército</div>
+      <span class="badge badge-open">Vagas abertas</span>
+      <ul class="turma-items">
+        <li>40 aulas em vídeo sob demanda</li>
+        <li>Correções ilimitadas com feedback</li>
+        <li>Acesso direto no WhatsApp</li>
+        <li>Material em PDF + banco de temas</li>
+      </ul>
+      <div class="turma-footer">
+        <div class="turma-preco">R$ 297<span>/turma</span></div>
+        <a href="/login.html"><button class="btn-matricular accent">Matricular</button></a>
+      </div>
+    </div>
+
+    <!-- Marinha -->
+    <div class="turma-card">
+      <div class="turma-icon">✈️</div>
+      <div class="turma-nome">Marinha / Aeronáutica</div>
+      <div class="turma-desc">CN-EAOF, EEAR, CAP</div>
+      <span class="badge badge-open">Vagas abertas</span>
+      <ul class="turma-items">
+        <li>Dissertação expositiva e argumentativa</li>
+        <li>Correção pelo modelo oficial</li>
+        <li>Simulados cronometrados</li>
+      </ul>
+      <div class="turma-footer">
+        <div class="turma-preco">R$ 277<span>/turma</span></div>
+        <a href="/login.html"><button class="btn-matricular brand">Matricular</button></a>
+      </div>
+    </div>
+
+    <!-- Civis -->
+    <div class="turma-card">
+      <div class="turma-icon">⚖️</div>
+      <div class="turma-nome">Concursos Civis</div>
+      <div class="turma-desc">FGV, CESPE, FCC e demais bancas</div>
+      <span class="badge badge-soon">Em breve</span>
+      <ul class="turma-items">
+        <li>Foco nos critérios por banca</li>
+        <li>15 redações corrigidas</li>
+        <li>Glossário jurídico e técnico</li>
+      </ul>
+      <div class="turma-footer">
+        <div class="turma-preco">R$ 247<span>/turma</span></div>
+        <button class="btn-matricular disabled" disabled>Em breve</button>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- DEPOIMENTOS -->
+<section class="depoimentos" id="depoimentos">
+  <div class="section-tag">Resultados</div>
+  <h2 class="section-title">Quem passou pelo método</h2>
+
+  <div class="dep-grid">
+    <div class="dep-card">
+      <div class="dep-stars">★★★★★</div>
+      <p class="dep-text">"Tirei nota máxima na redação da Câmara. O professor aponta vícios que nunca perceberia sozinho."</p>
+      <div class="dep-author">
+        <div class="dep-av">ML</div>
+        <div>
+          <div class="dep-name">Marcos Lins</div>
+          <div class="dep-detail">Câmara SP — Nota máxima</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="dep-card">
+      <div class="dep-stars">★★★★★</div>
+      <p class="dep-text">"Em 2 meses tirei 19,1 de 20 no DNIT. Não sabia nem começar uma redação antes do curso."</p>
+      <div class="dep-author">
+        <div class="dep-av">CA</div>
+        <div>
+          <div class="dep-name">Carla Azevedo</div>
+          <div class="dep-detail">DNIT — 19,1 de 20</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="dep-card">
+      <div class="dep-stars">★★★★★</div>
+      <p class="dep-text">"A nota da redação me colocou dentro das vagas. Tenho eterna gratidão ao curso."</p>
+      <div class="dep-author">
+        <div class="dep-av">JS</div>
+        <div>
+          <div class="dep-name">Juliana Santos</div>
+          <div class="dep-detail">ESA — Aprovada</div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- COMO FUNCIONA -->
+<section style="padding:72px 6%;background:var(--card)" id="como-funciona">
+  <div style="max-width:860px;margin:0 auto">
+    <div class="section-tag">Como funciona</div>
+    <h2 class="section-title">Simples e direto ao ponto</h2>
+    <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:32px;margin-top:44px">
+      <div style="text-align:center">
+        <div style="width:48px;height:48px;border-radius:50%;background:var(--accent);color:var(--accent-text);display:flex;align-items:center;justify-content:center;font-size:18px;font-weight:900;margin:0 auto 16px">1</div>
+        <h3 style="font-size:15px;font-weight:700;margin-bottom:8px">Você envia a redação</h3>
+        <p style="font-size:13px;color:var(--ink3);line-height:1.6">Upload do PDF ou foto pelo painel do aluno. Rápido e seguro.</p>
+      </div>
+      <div style="text-align:center">
+        <div style="width:48px;height:48px;border-radius:50%;background:var(--accent);color:var(--accent-text);display:flex;align-items:center;justify-content:center;font-size:18px;font-weight:900;margin:0 auto 16px">2</div>
+        <h3 style="font-size:15px;font-weight:700;margin-bottom:8px">O professor corrige</h3>
+        <p style="font-size:13px;color:var(--ink3);line-height:1.6">Marcações diretas no texto, comentários por categoria e nota detalhada.</p>
+      </div>
+      <div style="text-align:center">
+        <div style="width:48px;height:48px;border-radius:50%;background:var(--accent);color:var(--accent-text);display:flex;align-items:center;justify-content:center;font-size:18px;font-weight:900;margin:0 auto 16px">3</div>
+        <h3 style="font-size:15px;font-weight:700;margin-bottom:8px">Você recebe o feedback</h3>
+        <p style="font-size:13px;color:var(--ink3);line-height:1.6">Correção completa disponível no painel com todas as anotações e nota.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ACESSO -->
+<section class="acesso" id="acesso">
+  <div class="section-tag" style="text-align:center">Plataforma</div>
+  <h2 class="section-title">Acesse sua conta</h2>
+  <p>Entre com suas credenciais para acessar o painel.</p>
+  <div class="acesso-actions">
+    <a href="/login.html" class="btn-login">Entrar na plataforma</a>
+  </div>
+</section>
+
+<!-- FOOTER -->
+<footer>
+  <div class="foot-logo logo">
+    <span class="logo-mark" style="background:rgba(255,255,255,.15);color:#fff">CURSOS</span>
+    <span class="logo-name" style="color:rgba(255,255,255,.4)">Redação</span>
+  </div>
+  <p class="foot-p">© 2026 CursosRedação</p>
+</footer>
+
+<a class="whatsapp-float" href="http://api.whatsapp.com/send?phone=5521971214042" target="_blank" rel="noopener" aria-label="Falar no WhatsApp">
+  <svg viewBox="0 0 32 32" aria-hidden="true">
+    <path fill="currentColor" d="M16.02 3.2A12.73 12.73 0 0 0 5.11 22.5L3.2 29l6.68-1.78A12.72 12.72 0 1 0 16.02 3.2Zm0 23.18c-2.05 0-3.96-.6-5.57-1.65l-.4-.25-3.96 1.05 1.06-3.84-.26-.4a10.34 10.34 0 1 1 9.13 5.09Zm5.67-7.75c-.31-.16-1.84-.91-2.13-1.01-.29-.11-.5-.16-.71.15-.21.31-.82 1.01-1 1.22-.18.21-.37.24-.68.08-.31-.16-1.31-.48-2.5-1.54-.92-.82-1.55-1.84-1.73-2.15-.18-.31-.02-.48.14-.64.14-.14.31-.37.47-.55.16-.18.21-.31.31-.52.11-.21.05-.39-.03-.55-.08-.16-.71-1.71-.97-2.34-.25-.61-.51-.52-.71-.53h-.6c-.21 0-.55.08-.84.39-.29.31-1.1 1.08-1.1 2.63s1.13 3.05 1.29 3.26c.16.21 2.23 3.4 5.39 4.76.75.32 1.34.52 1.8.66.76.24 1.45.21 1.99.13.61-.09 1.84-.75 2.1-1.47.26-.72.26-1.34.18-1.47-.08-.13-.29-.21-.6-.37Z"/>
+  </svg>
+</a>
+
+</body>
+</html>

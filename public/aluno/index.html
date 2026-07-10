@@ -1,0 +1,1008 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Painel do Aluno — CursosRedação</title>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="/css/style.css">
+<script src="https://cdn.jsdelivr.net/npm/jspdf@2.5.1/dist/jspdf.umd.min.js"></script>
+<script type="module">
+  import * as pdfjsLib from 'https://cdn.jsdelivr.net/npm/pdfjs-dist@4.10.38/build/pdf.min.mjs'
+  window.pdfjsLib = pdfjsLib
+</script>
+</head>
+<body>
+
+<div class="layout">
+  <aside class="sidebar" id="sidebar">
+    <div class="sb-logo">
+      <div class="sb-mark">CURSOS</div>
+      <div class="sb-sub">Painel do Aluno</div>
+    </div>
+    <nav class="sb-nav">
+      <div class="sb-grp">Painel</div>
+      <a class="sb-item on" href="#" onclick="showPage('dashboard',this)">⬛ Início</a>
+      <div class="sb-grp">Redações</div>
+      <a class="sb-item" href="#" onclick="showPage('minhas',this)">📋 Minhas Redações</a>
+      <a class="sb-item" href="#" onclick="showPage('enviar',this)">✏️ Enviar Redação</a>
+      <div class="sb-grp">Turmas</div>
+      <a class="sb-item" href="#" onclick="showPage('turmas',this)">🏫 Minhas Turmas</a>
+    </nav>
+    <div class="sb-user">
+      <div class="sb-av" id="sb-av">AL</div>
+      <div class="sb-uinfo">
+        <div class="sb-uname" id="sb-uname">Carregando...</div>
+      </div>
+      <span class="sb-logout" onclick="logout()" title="Sair">⏻</span>
+    </div>
+  </aside>
+  <div class="sb-overlay" id="overlay" onclick="closeSidebar()"></div>
+
+  <main class="main">
+    <div class="topbar">
+      <button class="hamburger" onclick="toggleSidebar()"><span></span><span></span><span></span></button>
+      <div>
+        <div class="topbar-title" id="topbar-title">Início</div>
+        <div class="topbar-sub">Acompanhe suas redações</div>
+      </div>
+      <button class="btn btn-accent btn-sm" onclick="showPage('enviar',null)">+ Enviar Redação</button>
+    </div>
+
+    <!-- DASHBOARD -->
+    <div class="page" id="page-dashboard">
+      <div style="margin-bottom:20px">
+        <div style="font-size:18px;font-weight:800;letter-spacing:-.3px">Olá, <span id="greeting-name">aluno</span>! 👋</div>
+        <div style="font-size:13px;color:var(--ink3);margin-top:4px">Acompanhe o status das suas redações.</div>
+      </div>
+      <div class="page-grid grid-3" style="margin-bottom:24px">
+        <div class="kpi-card">
+          <div class="kpi-label">Enviadas</div>
+          <div class="kpi-value" id="kpi-enviadas">—</div>
+          <div class="kpi-sub">total de redações</div>
+        </div>
+        <div class="kpi-card">
+          <div class="kpi-label">Corrigidas</div>
+          <div class="kpi-value" id="kpi-corrigidas" style="color:#2e7d32">—</div>
+          <div class="kpi-sub">com feedback do professor</div>
+        </div>
+        <div class="kpi-card">
+          <div class="kpi-label">Média</div>
+          <div class="kpi-value" id="kpi-media" style="color:var(--brand)">—</div>
+          <div class="kpi-sub">nota média geral</div>
+        </div>
+        <div class="kpi-card">
+          <div class="kpi-label">Créditos</div>
+          <div class="kpi-value" id="kpi-creditos" style="color:var(--brand)">—</div>
+          <div class="kpi-sub" id="kpi-creditos-sub">envios disponíveis</div>
+        </div>
+      </div>
+      <div class="card">
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px">
+          <strong>Redações Recentes</strong>
+          <a href="#" onclick="showPage('minhas',null)" style="font-size:12px;color:var(--brand3)">Ver todas →</a>
+        </div>
+        <div id="corr-recentes"></div>
+      </div>
+    </div>
+
+    <!-- MINHAS REDAÇÕES -->
+    <div class="page" id="page-minhas" style="display:none">
+      <div class="card">
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px">
+          <strong style="font-size:15px">Minhas Redações</strong>
+          <button class="btn btn-accent btn-sm" onclick="showPage('enviar',null)">+ Enviar</button>
+        </div>
+        <div id="corr-lista"></div>
+      </div>
+    </div>
+
+    <!-- ENVIAR REDAÇÃO -->
+    <div class="page" id="page-enviar" style="display:none">
+      <div class="card" style="max-width:540px">
+        <strong style="font-size:15px;display:block;margin-bottom:20px">Nova Redação</strong>
+        <div id="alert-send" class="alert alert-err"></div>
+        <div id="alert-ok" class="alert alert-ok"></div>
+        <form onsubmit="enviarRedacao(event)">
+          <input type="hidden" id="r-edit-id">
+          <div class="form-group">
+            <label>Título / Tema da Redação</label>
+            <input id="r-titulo" placeholder="Ex: Desafios da educação no Brasil" required>
+          </div>
+          <div class="form-group">
+            <label>Turma</label>
+            <select id="r-turma" required onchange="updateTemaOptions()"><option value="">— Escolha uma turma —</option></select>
+          </div>
+          <div class="form-group">
+            <label>Tema disponível</label>
+            <select id="r-tema" onchange="applyTemaSelection()"><option value="">Tema livre / não selecionado</option></select>
+            <div class="hint" id="r-tema-hint">Escolha a turma para ver os temas disponíveis.</div>
+          </div>
+          <div style="border:2px dashed var(--border2);border-radius:var(--r2);padding:28px;text-align:center;margin-bottom:16px" id="drop-zone">
+            <div style="font-size:32px;margin-bottom:8px">📎</div>
+            <div style="font-size:13px;font-weight:600;color:var(--ink2)">Anexe sua redação</div>
+            <div style="font-size:11px;color:var(--ink3);margin-top:4px">PDF ou imagem (JPG, PNG) · Máx. 10 MB</div>
+            <div style="display:flex;gap:10px;justify-content:center;flex-wrap:wrap;margin-top:14px">
+              <button type="button" class="btn btn-accent btn-sm" onclick="document.getElementById('r-camera').click()">Abrir câmera</button>
+              <button type="button" class="btn btn-sm" onclick="document.getElementById('r-file').click()">Galeria/documentos</button>
+            </div>
+            <div id="file-name" style="font-size:12px;color:var(--brand3);margin-top:8px;font-weight:600"></div>
+          </div>
+          <input type="file" id="r-camera" accept="image/*" capture="environment" style="display:none" onchange="onFileSelect(this)">
+          <input type="file" id="r-file" accept=".pdf,.jpg,.jpeg,.png,image/*,application/pdf" style="display:none" onchange="onFileSelect(this)">
+          <div style="display:flex;gap:10px;flex-wrap:wrap">
+            <button type="submit" class="btn btn-accent" id="btn-enviar" style="flex:1">Enviar Redação</button>
+            <button type="button" class="btn btn-sec" id="btn-cancel-edit" onclick="cancelEditEnvio()" style="display:none">Cancelar edição</button>
+          </div>
+        </form>
+      </div>
+    </div>
+
+    <!-- TURMAS -->
+    <div class="page" id="page-turmas" style="display:none">
+      <div class="card">
+        <div style="margin-bottom:16px">
+          <strong style="font-size:15px">Minhas Turmas</strong>
+          <p style="font-size:12px;color:var(--ink3);margin-top:4px">Você só pode enviar redações nas turmas em que está matriculado.</p>
+        </div>
+        <div id="turmas-lista"></div>
+      </div>
+      <div class="card" style="margin-top:18px">
+        <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:12px;flex-wrap:wrap;margin-bottom:16px">
+          <div>
+            <strong style="font-size:15px">Inscrever-se em novas turmas</strong>
+            <p style="font-size:12px;color:var(--ink3);margin-top:4px">Selecione uma ou mais turmas e simule o pagamento para entrar automaticamente.</p>
+          </div>
+          <div style="text-align:right">
+            <div style="font-size:12px;color:var(--ink3);font-weight:700">Total</div>
+            <div style="font-size:20px;font-weight:900;color:var(--brand)" id="matricula-total">R$ 0,00</div>
+          </div>
+        </div>
+        <div id="alert-matricula" class="alert alert-err"></div>
+        <div id="alert-matricula-ok" class="alert alert-ok"></div>
+        <div id="turmas-disponiveis"></div>
+        <button type="button" class="btn btn-accent btn-full" id="btn-pagar-turmas" onclick="pagarTurmasSelecionadas()" style="margin-top:14px">Simular pagamento e matricular</button>
+      </div>
+    </div>
+
+    <!-- VER CORREÇÃO -->
+    <div class="page page-aluno-correcao" id="page-correcao" style="display:none">
+      <div class="correcao-header">
+        <button type="button" class="btn btn-sec btn-sm" onclick="fecharCorrecaoAluno()">Voltar</button>
+        <div>
+          <div style="font-size:18px;font-weight:900" id="av-titulo">Redação</div>
+          <div class="av-nota" id="av-nota"></div>
+        </div>
+      </div>
+      <div class="correcao-editor aluno-correcao-editor">
+        <section class="doc-pane aluno-doc-pane">
+          <div class="doc-controls">
+            <span style="font-size:12px;font-weight:900;color:var(--ink2)">Correção do professor</span>
+          </div>
+          <div class="doc-view aluno-doc-view" id="av-doc"></div>
+        </section>
+        <section class="review-pane aluno-review-pane">
+          <div class="av-feedback" id="av-feedback" style="display:none">
+            <div class="av-side-title">Feedback do professor</div>
+            <p></p>
+          </div>
+          <div class="av-feedback" id="av-evaluation" style="display:none">
+            <div class="av-side-title">Avaliação por critérios</div>
+            <div id="av-evaluation-body"></div>
+          </div>
+          <div class="av-side-title">Comentários</div>
+          <div class="av-comments" id="av-comments"></div>
+          <div class="av-download">
+            <label class="export-layout">Comentários no download
+              <select id="av-layout" onchange="setCommentLayout(this.value)">
+                <option value="rodape">No rodapé (no fim da página)</option>
+                <option value="lado">Ao lado das linhas (na margem)</option>
+              </select>
+            </label>
+            <button type="button" class="btn btn-sec btn-full" onclick="downloadViewImage()">⬇ Baixar imagem corrigida</button>
+            <button type="button" class="btn btn-accent btn-full" onclick="downloadViewPdf()">⬇ Baixar PDF corrigido</button>
+            <div class="export-status" id="av-dl-status"></div>
+          </div>
+        </section>
+      </div>
+    </div>
+  </main>
+</div>
+
+<script>
+let turmasData = []
+let turmasDisponiveisData = []
+let alunoAprovado = true
+let selectedArquivo = null
+let editingEnvioId = null
+let redirectAfterSendTimer = null
+const tenantMatch = location.pathname.match(/^\/redacao\/([^/]+)\/aluno\/?$/)
+const tenantSlug = new URLSearchParams(location.search).get('site') || (tenantMatch ? decodeURIComponent(tenantMatch[1]) : '')
+const tenantBase = tenantSlug ? `/redacao/${encodeURIComponent(tenantSlug)}` : ''
+const loginPath = tenantSlug ? `${tenantBase}/login` : '/login.html'
+
+async function init() {
+  const res = await fetch('/api/auth/me')
+  if (!res.ok) { location.href = loginPath; return }
+  const user = await res.json()
+  if (!['ALUNO','ADMIN','SUPERADMIN'].includes(user.role)) { location.href = loginPath; return }
+  if (tenantSlug && user.role !== 'SUPERADMIN') {
+    const siteRes = await fetch(`/api/site/${encodeURIComponent(tenantSlug)}`)
+    const siteData = siteRes.ok ? await siteRes.json() : null
+    if (!siteData?.site?.id || siteData.site.id !== user.site_id) {
+      await fetch('/api/auth/logout', { method: 'POST' })
+      location.href = loginPath + '?erro=site'
+      return
+    }
+    applyTenantTheme(siteData.cms?.theme, siteData.site)
+  }
+  const nome = user.nome || user.email.split('@')[0]
+  alunoAprovado = user.ativo !== false
+  document.getElementById('sb-uname').textContent = user.nome || user.email
+  document.getElementById('sb-av').textContent = nome.substring(0,2).toUpperCase()
+  document.getElementById('greeting-name').textContent = nome.split(' ')[0]
+  renderApprovalNotice()
+  loadStats()
+  loadCorrecoes('recentes')
+  loadTurmas()
+}
+
+function applyTenantTheme(theme, site = {}) {
+  const brand = theme?.primary || site.cor_primaria || '#1A3A2A'
+  const accent = theme?.accent || site.cor_accent || '#C5F135'
+  document.documentElement.style.setProperty('--brand', brand)
+  document.documentElement.style.setProperty('--brand2', brand)
+  document.documentElement.style.setProperty('--brand3', brand)
+  document.documentElement.style.setProperty('--brand-light', alphaColor(brand, 0.12))
+  document.documentElement.style.setProperty('--brand-text', theme?.primaryText || contrastText(brand))
+  document.documentElement.style.setProperty('--brand-text-soft', alphaColor(theme?.primaryText || contrastText(brand), 0.72))
+  document.documentElement.style.setProperty('--brand-text-muted', alphaColor(theme?.primaryText || contrastText(brand), 0.28))
+  document.documentElement.style.setProperty('--brand-text-border', alphaColor(theme?.primaryText || contrastText(brand), 0.12))
+  document.documentElement.style.setProperty('--accent', accent)
+  document.documentElement.style.setProperty('--accent-dark', accent)
+  document.documentElement.style.setProperty('--accent-text', theme?.accentText || contrastText(accent))
+  document.documentElement.style.setProperty('--surface', theme?.background || '#F8F7F4')
+  document.documentElement.style.setProperty('--card', theme?.card || '#FFFFFF')
+  document.documentElement.style.setProperty('--border', theme?.border || '#E8E5E0')
+  document.documentElement.style.setProperty('--border2', theme?.borderStrong || '#D0CCC4')
+  document.documentElement.style.setProperty('--ink', theme?.text || '#0F0F0F')
+  document.documentElement.style.setProperty('--ink2', theme?.textSoft || '#3A3A3A')
+  document.documentElement.style.setProperty('--ink3', theme?.textMuted || '#787878')
+  document.documentElement.style.setProperty('--danger', theme?.danger || '#C84040')
+  document.documentElement.style.setProperty('--gold', theme?.warning || '#E8A020')
+}
+
+function contrastText(hex) {
+  const clean = String(hex || '#1A3A2A').replace('#', '')
+  const r = parseInt(clean.slice(0, 2), 16)
+  const g = parseInt(clean.slice(2, 4), 16)
+  const b = parseInt(clean.slice(4, 6), 16)
+  const lum = (0.2126 * r + 0.7152 * g + 0.0722 * b) / 255
+  return lum > .62 ? '#111111' : '#FFFFFF'
+}
+
+function alphaColor(hex, alpha) {
+  const clean = String(hex || '#FFFFFF').replace('#', '')
+  const r = parseInt(clean.slice(0, 2), 16)
+  const g = parseInt(clean.slice(2, 4), 16)
+  const b = parseInt(clean.slice(4, 6), 16)
+  return `rgba(${r},${g},${b},${alpha})`
+}
+
+function renderApprovalNotice() {
+  if (alunoAprovado) return
+  const dashboard = document.getElementById('page-dashboard')
+  dashboard.insertAdjacentHTML('afterbegin', `
+    <div class="alert" style="display:block;background:var(--gold-light);color:var(--gold);border:1px solid #f3d69a">
+      Seu cadastro esta aguardando aprovacao do professor. Voce pode conhecer a plataforma, mas o envio de redacoes fica bloqueado ate a liberacao.
+    </div>
+  `)
+  document.getElementById('btn-enviar').disabled = true
+  document.getElementById('btn-enviar').textContent = 'Aguardando aprovacao'
+}
+
+async function loadStats() {
+  const res = await fetch('/api/aluno/stats')
+  if (!res.ok) return
+  const d = await res.json()
+  alunoAprovado = d.aprovado !== false
+  document.getElementById('kpi-enviadas').textContent = d.enviadas
+  document.getElementById('kpi-corrigidas').textContent = d.corrigidas
+  document.getElementById('kpi-media').textContent = d.media ?? '—'
+  const creditos = d.creditos_info || {}
+  document.getElementById('kpi-creditos').textContent = creditos.creditos ?? 0
+  document.getElementById('kpi-creditos-sub').textContent = creditos.vence_em
+    ? `${creditos.expirado ? 'vencidos em' : 'válidos até'} ${fmtDate(creditos.vence_em)}`
+    : 'sem vencimento definido'
+}
+
+async function loadCorrecoes(target) {
+  const res = await fetch('/api/aluno/correcoes')
+  if (!res.ok) return
+  const { data } = await res.json()
+  const list = target === 'recentes' ? data.slice(0,5) : data
+  const elId = target === 'recentes' ? 'corr-recentes' : 'corr-lista'
+  const el = document.getElementById(elId)
+  if (!list.length) { el.innerHTML = '<div class="empty"><div class="empty-icon">✏️</div><p>Nenhuma redação enviada ainda.</p><br><button class="btn btn-accent btn-sm" onclick="showPage(\'enviar\',null)">Enviar minha primeira redação</button></div>'; return }
+  el.innerHTML = list.map(c => `
+    <div class="corr-card" style="margin-bottom:10px;cursor:${c.status === 'FINALIZADA' ? 'pointer' : 'default'}"${c.status === 'FINALIZADA' ? ` onclick="abrirCorrecaoAluno('${c.id}')"` : ''}>
+      <div class="corr-thumb">${c.status === 'FINALIZADA' ? '✅' : '📄'}</div>
+      <div class="corr-info">
+        <div class="corr-aluno">${c.titulo}</div>
+        <div class="corr-meta">
+          <span class="tag ${statusCls(c.status)}">${statusLabel(c.status)}</span>
+          ${c.nota != null ? `<span style="font-size:12px;font-weight:800;color:var(--brand)">Nota: ${c.nota}/${c.nota_max ?? 10}</span>` : ''}
+          <span class="corr-date">${fmtDate(c.created_at)}</span>
+        </div>
+      </div>
+      ${c.status === 'FINALIZADA' ? `<button type="button" class="btn btn-sec btn-sm" onclick="event.stopPropagation();abrirCorrecaoAluno('${c.id}')">Ver correção →</button>` : ''}
+      ${c.status === 'AGUARDANDO' ? `<button type="button" class="btn btn-sec btn-sm" onclick="event.stopPropagation();editarEnvio('${c.id}')">Editar envio</button>` : ''}
+      ${c.status === 'EXCLUIDA_PELO_PROFESSOR' ? '<span style="font-size:12px;color:var(--danger);font-weight:700">Atividade excluída pelo professor</span>' : ''}
+    </div>`).join('')
+}
+
+async function loadTurmas() {
+  const [res, disponiveisRes] = await Promise.all([
+    fetch('/api/aluno/turmas'),
+    fetch('/api/aluno/turmas-disponiveis')
+  ])
+  if (!res.ok) return
+  const { data } = await res.json()
+  const disponiveisPayload = disponiveisRes.ok ? await disponiveisRes.json() : { data: [] }
+  turmasData = data || []
+  turmasDisponiveisData = disponiveisPayload.data || []
+  const sel = document.getElementById('r-turma')
+  sel.innerHTML = '<option value="">— Escolha uma turma —</option>'
+  turmasData.forEach(t => sel.innerHTML += `<option value="${t.id}" ${t.envios_abertos === false ? 'disabled' : ''}>${t.nome} — ${t.concurso}${t.envios_abertos === false ? ' · envio fechado' : ''}</option>`)
+  updateTemaOptions()
+  const el = document.getElementById('turmas-lista')
+  if (!data.length) {
+    el.innerHTML = '<div class="empty"><div class="empty-icon">🏫</div><p>Você ainda não está matriculado em nenhuma turma.</p></div>'
+    renderTurmasDisponiveis()
+    return
+  }
+  el.innerHTML = data.map(t => `
+    <div class="card card-sm" style="margin-bottom:10px">
+      <div style="font-weight:700;font-size:14px">${t.nome}</div>
+      <div style="font-size:12px;color:var(--ink3);margin-top:2px">${t.concurso}</div>
+      ${t.descricao ? `<div style="font-size:12px;color:var(--ink2);margin-top:8px">${t.descricao}</div>` : ''}
+      <div style="margin-top:10px;display:flex;align-items:center;justify-content:space-between">
+        <span style="font-size:13px;font-weight:700;color:var(--brand)">${t.preco > 0 ? 'R$ ' + t.preco.toFixed(2) : 'Gratuito'}</span>
+        <span class="tag ${t.envios_abertos === false ? 'tag-pend' : 'tag-done'}">${t.envios_abertos === false ? 'Envio fechado' : t.status}</span>
+      </div>
+    </div>`).join('')
+  renderTurmasDisponiveis()
+}
+
+function renderTurmasDisponiveis() {
+  const el = document.getElementById('turmas-disponiveis')
+  if (!el) return
+  const list = turmasDisponiveisData || []
+  if (!list.length) {
+    el.innerHTML = '<div class="empty"><div class="empty-icon">🏫</div><p>Nenhuma turma aberta para matrícula no momento.</p></div>'
+    updateMatriculaTotal()
+    return
+  }
+  el.innerHTML = list.map(t => {
+    const disabled = t.matriculado || t.matriculas_abertas === false
+    const price = Number(t.preco || 0)
+    return `
+      <label class="turma-pay-row ${disabled ? 'is-disabled' : ''}">
+        <input type="checkbox" class="turma-pay-check" value="${escAl(t.id)}" data-price="${price}" ${disabled ? 'disabled' : ''} onchange="updateMatriculaTotal()">
+        <div style="flex:1;min-width:0">
+          <div style="font-weight:900">${escAl(t.nome)}</div>
+          <div style="font-size:12px;color:var(--ink3)">${escAl(t.concurso || '')}</div>
+          ${t.descricao ? `<div style="font-size:12px;color:var(--ink2);margin-top:6px">${escAl(t.descricao)}</div>` : ''}
+        </div>
+        <div style="text-align:right">
+          <div style="font-weight:900;color:var(--brand)">${price > 0 ? 'R$ ' + price.toFixed(2).replace('.', ',') : 'Grátis'}</div>
+          <span class="tag ${t.matriculado ? 'tag-done' : disabled ? 'tag-pend' : 'tag-prog'}">${t.matriculado ? 'Matriculado' : t.matriculas_abertas === false ? 'Fechada' : 'Aberta'}</span>
+        </div>
+      </label>
+    `
+  }).join('')
+  updateMatriculaTotal()
+}
+
+function selectedTurmasPagamento() {
+  return Array.from(document.querySelectorAll('.turma-pay-check:checked')).map(ch => ch.value)
+}
+
+function updateMatriculaTotal() {
+  const total = Array.from(document.querySelectorAll('.turma-pay-check:checked'))
+    .reduce((sum, ch) => sum + Number(ch.dataset.price || 0), 0)
+  const el = document.getElementById('matricula-total')
+  if (el) el.textContent = 'R$ ' + total.toFixed(2).replace('.', ',')
+}
+
+async function pagarTurmasSelecionadas() {
+  const ids = selectedTurmasPagamento()
+  const err = document.getElementById('alert-matricula')
+  const ok = document.getElementById('alert-matricula-ok')
+  err.style.display = 'none'
+  ok.style.display = 'none'
+  if (!ids.length) {
+    err.textContent = 'Selecione ao menos uma turma para matricular.'
+    err.style.display = 'block'
+    return
+  }
+  const btn = document.getElementById('btn-pagar-turmas')
+  btn.disabled = true
+  btn.textContent = 'Processando pagamento simulado...'
+  const res = await fetch('/api/aluno/matriculas/pagar', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ turma_ids: ids })
+  })
+  const d = await res.json().catch(() => ({}))
+  btn.disabled = false
+  btn.textContent = 'Simular pagamento e matricular'
+  if (!res.ok) {
+    err.textContent = d.error || 'Não foi possível simular o pagamento.'
+    err.style.display = 'block'
+    return
+  }
+  alunoAprovado = true
+  ok.textContent = `Pagamento aprovado em simulação. Matrícula liberada e ${d.creditos_adicionados || 0} créditos adicionados.`
+  ok.style.display = 'block'
+  await loadStats()
+  await loadTurmas()
+}
+
+function updateTemaOptions() {
+  const turmaId = document.getElementById('r-turma')?.value || ''
+  const temaSel = document.getElementById('r-tema')
+  const hint = document.getElementById('r-tema-hint')
+  if (!temaSel) return
+  const turma = turmasData.find(t => t.id === turmaId)
+  const temas = turma?.temas || []
+  temaSel.innerHTML = '<option value="">Tema livre / não selecionado</option>' + temas.map(t => `<option value="${t.id}">${t.titulo}</option>`).join('')
+  if (hint) {
+    hint.textContent = !turmaId
+      ? 'Escolha a turma para ver os temas disponíveis.'
+      : temas.length
+        ? `${temas.length} tema(s) disponível(is) para esta turma.`
+        : 'Nenhum tema específico disponível para esta turma.'
+  }
+}
+
+function applyTemaSelection() {
+  const turma = turmasData.find(t => t.id === document.getElementById('r-turma')?.value)
+  const tema = (turma?.temas || []).find(t => t.id === document.getElementById('r-tema')?.value)
+  if (!tema) return
+  document.getElementById('r-titulo').value = tema.titulo || ''
+}
+
+function onFileSelect(input) {
+  const f = input.files[0]
+  if (!f) return
+  selectedArquivo = f
+  const otherInputId = input.id === 'r-camera' ? 'r-file' : 'r-camera'
+  document.getElementById(otherInputId).value = ''
+  document.getElementById('file-name').textContent = `📎 ${f.name} (${(f.size/1024/1024).toFixed(2)} MB)`
+}
+
+async function enviarRedacao(e) {
+  e.preventDefault()
+  if (!alunoAprovado) {
+    showErr('alert-send', 'Seu acesso ainda precisa ser aprovado pelo professor antes de enviar redacoes.')
+    return
+  }
+  const titulo = document.getElementById('r-titulo').value.trim()
+  const turma_id = document.getElementById('r-turma').value
+  const arquivo = selectedArquivo
+  if (!turma_id) {
+    showErr('alert-send', 'Escolha uma turma antes de enviar a redação.')
+    return
+  }
+  if (!arquivo && !editingEnvioId) {
+    showErr('alert-send', 'Selecione o arquivo da redação antes de enviar.')
+    return
+  }
+  if (arquivo && arquivo.size > 10 * 1024 * 1024) {
+    showErr('alert-send', 'O arquivo deve ter no máximo 10 MB.')
+    return
+  }
+  hideAlerts()
+  const btn = document.getElementById('btn-enviar')
+  btn.disabled = true; btn.textContent = 'Enviando...'
+  try {
+    const payload = { titulo, turma_id }
+    if (arquivo) {
+      payload.arquivo_url = await readFileAsDataUrl(arquivo)
+      payload.tipo_arq = arquivo.type.includes('pdf') ? 'PDF' : 'IMAGEM'
+    }
+    const res = await fetch(editingEnvioId ? `/api/aluno/correcoes/${editingEnvioId}` : '/api/aluno/correcoes', {
+      method: editingEnvioId ? 'PATCH' : 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload)
+    })
+    const d = await res.json()
+    if (!res.ok) { showErr('alert-send', d.error || 'Erro ao salvar'); return }
+    showOk('alert-ok', editingEnvioId ? '✅ Envio atualizado!' : '✅ Redação enviada! O professor será notificado.')
+    resetEnvioForm()
+    await loadStats()
+    await loadCorrecoes('lista')
+    await loadCorrecoes('recentes')
+    showPage('minhas', document.querySelector('.sb-item[onclick*="minhas"]'))
+  } finally {
+    btn.disabled = false
+    btn.textContent = editingEnvioId ? 'Salvar alterações' : 'Enviar Redação'
+  }
+}
+
+function resetEnvioForm() {
+  editingEnvioId = null
+  document.getElementById('r-edit-id').value = ''
+  document.getElementById('r-titulo').value = ''
+  document.getElementById('r-turma').value = ''
+  document.getElementById('r-tema').value = ''
+  updateTemaOptions()
+  document.getElementById('r-camera').value = ''
+  document.getElementById('r-file').value = ''
+  selectedArquivo = null
+  document.getElementById('file-name').textContent = ''
+  document.getElementById('btn-enviar').textContent = 'Enviar Redação'
+  document.getElementById('btn-cancel-edit').style.display = 'none'
+}
+
+function cancelEditEnvio() {
+  resetEnvioForm()
+  hideAlerts()
+}
+
+async function editarEnvio(id) {
+  hideAlerts()
+  const res = await fetch(`/api/aluno/correcoes/${id}`)
+  if (!res.ok) {
+    let msg = 'Não foi possível abrir o envio para edição.'
+    try { const d = await res.json(); if (d.error) msg = d.error } catch {}
+    alert(msg)
+    return
+  }
+  const c = await res.json()
+  if (c.status !== 'AGUARDANDO') {
+    alert('Só é possível editar redações que ainda estão aguardando correção.')
+    return
+  }
+  editingEnvioId = id
+  document.getElementById('r-edit-id').value = id
+  document.getElementById('r-titulo').value = c.titulo || ''
+  document.getElementById('r-turma').value = c.turma_id || ''
+  updateTemaOptions()
+  document.getElementById('file-name').textContent = c.arquivo_url ? 'Arquivo atual mantido. Escolha outro arquivo apenas se quiser substituir.' : ''
+  selectedArquivo = null
+  document.getElementById('r-camera').value = ''
+  document.getElementById('r-file').value = ''
+  document.getElementById('btn-enviar').textContent = 'Salvar alterações'
+  document.getElementById('btn-cancel-edit').style.display = 'inline-flex'
+  showPage('enviar', document.querySelector('.sb-item[onclick*="enviar"]'))
+}
+
+function readFileAsDataUrl(file) {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader()
+    reader.onload = () => resolve(reader.result)
+    reader.onerror = reject
+    reader.readAsDataURL(file)
+  })
+}
+
+function showErr(id, msg) { const el = document.getElementById(id); el.textContent = msg; el.style.display = 'block' }
+function showOk(id, msg) { const el = document.getElementById(id); el.textContent = msg; el.style.display = 'block' }
+function hideAlerts() { ['alert-send','alert-ok'].forEach(id => { const el = document.getElementById(id); if(el) el.style.display='none' }) }
+function statusCls(s) { return s==='AGUARDANDO'?'tag-pend':s==='FINALIZADA'?'tag-done':s==='EXCLUIDA_PELO_PROFESSOR'?'tag-pend':'tag-prog' }
+function statusLabel(s) { return s==='AGUARDANDO'?'Aguardando correção':s==='FINALIZADA'?'Corrigida ✓':s==='EXCLUIDA_PELO_PROFESSOR'?'Excluída pelo professor':'Em andamento' }
+function fmtDate(s) { if (!s) return '—'; return new Date(s).toLocaleDateString('pt-BR') }
+function showPage(name, link) {
+  document.querySelectorAll('[id^="page-"]').forEach(p => p.style.display = 'none')
+  document.getElementById('page-' + name).style.display = 'block'
+  document.querySelectorAll('.sb-item').forEach(i => i.classList.remove('on'))
+  if (link) link.classList.add('on')
+  const titles = { dashboard:'Início', minhas:'Minhas Redações', enviar: editingEnvioId ? 'Editar Redação' : 'Enviar Redação', turmas:'Turmas', correcao:'Correção da Redação' }
+  document.getElementById('topbar-title').textContent = titles[name] || name
+  if (name === 'minhas') loadCorrecoes('lista')
+  if (name === 'turmas') loadTurmas()
+  closeSidebar(); return false
+}
+function toggleSidebar() { document.getElementById('sidebar').classList.toggle('open'); document.getElementById('overlay').classList.toggle('open') }
+function closeSidebar() { document.getElementById('sidebar').classList.remove('open'); document.getElementById('overlay').classList.remove('open') }
+async function logout() { await fetch('/api/auth/logout', { method: 'POST' }); location.href = loginPath }
+
+// ── Ver correção (visualizador read-only do aluno) ──────────────
+let currentView = null
+
+function escAl(s) {
+  return String(s == null ? '' : s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]))
+}
+function numPt(n) { return Number(n || 0).toLocaleString('pt-BR', { maximumFractionDigits: 2 }) }
+function hexToRgba(hex, alpha) {
+  const clean = String(hex || '#EF4444').replace('#', '')
+  const value = clean.length === 3 ? clean.split('').map(x => x + x).join('') : clean
+  const num = parseInt(value, 16)
+  return `rgba(${(num >> 16) & 255}, ${(num >> 8) & 255}, ${num & 255}, ${alpha})`
+}
+
+function parseFeedbackPayload(value) {
+  const raw = String(value || '').trim()
+  if (!raw) return { feedback: '', evaluation: null }
+  try {
+    const data = JSON.parse(raw)
+    if (data && data.__cursos_redacao_feedback === 1) {
+      return { feedback: data.feedback || '', evaluation: data.evaluation || null }
+    }
+  } catch {}
+  return { feedback: raw, evaluation: null }
+}
+
+async function abrirCorrecaoAluno(id) {
+  const res = await fetch(`/api/aluno/correcoes/${id}`)
+  if (!res.ok) {
+    let msg = 'Não foi possível abrir a correção.'
+    try { const d = await res.json(); if (d.error) msg = d.error } catch {}
+    alert(msg)
+    return
+  }
+  currentView = await res.json()
+  renderCorrecaoView(currentView)
+  showPage('correcao', null)
+  window.scrollTo({ top: 0, behavior: 'smooth' })
+}
+function fecharCorrecaoAluno() { showPage('minhas', document.querySelector('.sb-item[onclick*="minhas"]')) }
+
+function renderCorrecaoView(c) {
+  document.getElementById('av-titulo').textContent = c.titulo || 'Redação'
+  document.getElementById('av-nota').textContent = c.nota != null ? `Nota: ${numPt(c.nota)} / ${c.nota_max ?? 10}` : 'Sem nota'
+  const payload = parseFeedbackPayload(c.texto_ocr)
+  const fb = document.getElementById('av-feedback')
+  const feedbackTxt = (payload.feedback || '').trim()
+  fb.style.display = feedbackTxt ? 'block' : 'none'
+  fb.querySelector('p').textContent = feedbackTxt
+  renderEvaluationView(payload.evaluation)
+  renderViewComments(c.anotacoes || [])
+  document.getElementById('av-layout').value = getCommentLayout()
+  document.getElementById('av-dl-status').textContent = ''
+  renderViewDoc(c)
+}
+
+function renderEvaluationView(evaluation) {
+  const box = document.getElementById('av-evaluation')
+  const body = document.getElementById('av-evaluation-body')
+  if (!box || !body) return
+  const campos = evaluation?.campos || []
+  if (!evaluation || !campos.length) {
+    box.style.display = 'none'
+    body.innerHTML = ''
+    return
+  }
+  box.style.display = 'block'
+  body.innerHTML = `
+    <div class="av-criteria-head">
+      <strong>${escAl(evaluation.modo_nome || 'Modo de avaliação')}</strong>
+      ${evaluation.formula ? `<span>${escAl(evaluation.formula)}</span>` : ''}
+    </div>
+    <div class="av-criteria-list">
+      ${campos.map(c => `
+        <div class="av-criteria-row" style="border-left-color:${c.cor || '#3B82F6'}">
+          <div>
+            <strong>${escAl(c.variavel || '')}</strong>
+            <span>${escAl(c.descricao || '')}</span>
+          </div>
+          <b>${c.valor == null ? '-' : numPt(c.valor)} / ${numPt(c.maximo ?? 0)}</b>
+        </div>
+      `).join('')}
+    </div>
+  `
+}
+
+function renderViewComments(anots) {
+  const el = document.getElementById('av-comments')
+  const items = (anots || []).filter(a => (a.comentario || '').trim() || Number(a.pontos))
+  if (!items.length) { el.innerHTML = '<div class="av-empty-sm">Sem comentários nas marcações.</div>'; return }
+  el.innerHTML = items.map(a => `
+    <div class="av-comment" style="border-left:4px solid ${a.cor || '#EF4444'}">
+      <div class="av-comment-h">
+        <span class="av-dot" style="background:${a.cor || '#EF4444'}">${a.numero || ''}</span>
+        ${Number(a.pontos) ? `<strong style="color:var(--danger)">−${numPt(a.pontos)} pts</strong>` : ''}
+      </div>
+      <div>${escAl(a.comentario || '')}</div>
+    </div>`).join('')
+}
+
+function renderViewDoc(c) {
+  const stage = document.getElementById('av-doc')
+  if (!c.arquivo_url) { stage.innerHTML = '<div class="av-empty">Arquivo da redação indisponível.</div>'; return }
+  if (c.arquivo_url.startsWith('data:image')) {
+    stage.innerHTML = `<div class="av-stage"><img id="av-image" src="${c.arquivo_url}" alt="Redação"><div class="av-layer" id="av-layer"></div></div>`
+    const img = document.getElementById('av-image')
+    img.onload = () => renderViewMarks(c.anotacoes || [])
+    if (img.complete && img.naturalWidth) renderViewMarks(c.anotacoes || [])
+  } else if (c.arquivo_url.startsWith('data:application/pdf') || c.tipo_arq === 'PDF') {
+    stage.innerHTML = `<div class="av-stage"><div class="av-empty" id="av-pdf-status">Renderizando PDF…</div><img id="av-image" style="display:none" alt="Redação"><div class="av-layer" id="av-layer"></div></div>`
+    renderViewPdf(c.arquivo_url, c.anotacoes || [])
+  } else {
+    stage.innerHTML = `<div class="av-empty"><a class="btn btn-brand btn-sm" href="${c.arquivo_url}" target="_blank" rel="noopener">Abrir arquivo enviado</a></div>`
+  }
+}
+
+function renderViewMarks(anots) {
+  const layer = document.getElementById('av-layer')
+  if (!layer) return
+  layer.innerHTML = ''
+  ;(anots || []).forEach(a => {
+    if (!a.x_fim && !a.y_fim) return
+    const tipo = a.tipo || 'GRIFO'
+    const box = document.createElement('div')
+    box.className = 'av-box'
+    box.style.left = `${a.x_inicio}%`
+    box.style.top = `${a.y_inicio}%`
+    box.style.width = `${Math.max((a.x_fim || 0) - (a.x_inicio || 0), 1)}%`
+    box.style.height = `${Math.max((a.y_fim || 0) - (a.y_inicio || 0), tipo === 'SUBLINHADO' ? 1 : 2)}%`
+    if (tipo === 'SUBLINHADO') {
+      box.style.borderBottom = `${Number(a.opacidade || 4)}px solid ${a.cor || '#EF4444'}`
+    } else {
+      box.style.border = `${Number(a.opacidade || 3)}px solid ${a.cor || '#EF4444'}`
+      box.style.background = hexToRgba(a.cor || '#EF4444', 0.28)
+    }
+    box.title = a.comentario || ''
+    layer.appendChild(box)
+    if ((a.comentario || '').trim() || Number(a.pontos)) {
+      const n = document.createElement('span')
+      n.className = 'av-num'
+      n.style.background = a.cor || '#EF4444'
+      n.style.left = `${a.x_inicio}%`
+      n.style.top = `${a.y_inicio}%`
+      n.textContent = a.numero || ''
+      layer.appendChild(n)
+    }
+  })
+}
+
+async function renderViewPdf(pdfUrl, anots) {
+  try {
+    const pdfjs = await waitForPdfJs()
+    const pdf = await pdfjs.getDocument({ data: dataUrlToBytes(pdfUrl) }).promise
+    const pages = []
+    let totalW = 0, totalH = 0
+    for (let i = 1; i <= Math.min(pdf.numPages, 20); i++) {
+      const page = await pdf.getPage(i)
+      const vp = page.getViewport({ scale: 2 })
+      const cv = document.createElement('canvas')
+      cv.width = Math.round(vp.width); cv.height = Math.round(vp.height)
+      const cx = cv.getContext('2d', { alpha: false })
+      cx.fillStyle = '#fff'; cx.fillRect(0, 0, cv.width, cv.height)
+      await page.render({ canvasContext: cx, viewport: vp }).promise
+      pages.push(cv); totalW = Math.max(totalW, cv.width); totalH += cv.height + 12
+    }
+    const combined = document.createElement('canvas')
+    combined.width = totalW; combined.height = totalH
+    const ctx = combined.getContext('2d')
+    ctx.fillStyle = '#fff'; ctx.fillRect(0, 0, totalW, totalH)
+    let y = 0
+    pages.forEach(p => { ctx.drawImage(p, 0, y); y += p.height + 12 })
+    const img = document.getElementById('av-image')
+    const st = document.getElementById('av-pdf-status')
+    img.onload = () => renderViewMarks(anots)
+    img.src = combined.toDataURL('image/jpeg', 0.92)
+    img.style.display = 'block'
+    if (st) st.style.display = 'none'
+  } catch (e) {
+    const st = document.getElementById('av-pdf-status')
+    if (st) st.textContent = 'Erro ao renderizar o PDF.'
+  }
+}
+
+// ── Download (mesma lógica do professor: rodapé / margem) ───────
+function getCommentLayout() { return localStorage.getItem('comment_layout') === 'lado' ? 'lado' : 'rodape' }
+function setCommentLayout(v) { localStorage.setItem('comment_layout', v === 'lado' ? 'lado' : 'rodape') }
+function footerFont(W) { return Math.min(34, Math.max(16, Math.round(W / 48))) }
+function makeWrap(fontSize, family) {
+  const ctx = document.createElement('canvas').getContext('2d')
+  ctx.font = `${fontSize}px ${family || 'Arial, sans-serif'}`
+  return (text, maxW) => {
+    const words = String(text == null ? '' : text).split(/\s+/).filter(Boolean)
+    const out = []; let cur = ''
+    for (const wd of words) { const t = cur ? cur + ' ' + wd : wd; if (ctx.measureText(t).width > maxW && cur) { out.push(cur); cur = wd } else cur = t }
+    if (cur) out.push(cur)
+    return out.length ? out : ['']
+  }
+}
+function roundRect(ctx, x, y, w, h, r) {
+  r = Math.min(r, h / 2, w / 2)
+  ctx.beginPath(); ctx.moveTo(x + r, y)
+  ctx.arcTo(x + w, y, x + w, y + h, r); ctx.arcTo(x + w, y + h, x, y + h, r)
+  ctx.arcTo(x, y + h, x, y, r); ctx.arcTo(x, y, x + w, y, r); ctx.closePath()
+}
+function getCommentsData() {
+  const anots = (currentView && currentView.anotacoes) || []
+  const comentados = []; let seq = 0
+  anots.forEach(a => { const txt = (a.comentario || '').trim(); const pts = Number(a.pontos) || 0; if (!txt && !pts) return; seq++; comentados.push({ n: a.numero || seq, cor: a.cor, txt, pts }) })
+  const feedbackGeral = parseFeedbackPayload(currentView && currentView.texto_ocr).feedback.trim()
+  const nota = currentView && currentView.nota
+  return { comentados, feedbackGeral, nota, temNota: nota != null && nota !== '' }
+}
+function commentsFooterHeight(W, data) {
+  const { comentados, feedbackGeral, temNota } = data
+  if (!comentados.length && !feedbackGeral && !temNota) return 0
+  const fontSize = footerFont(W), lineH = Math.round(fontSize * 1.4), pad = Math.round(fontSize * 1.4)
+  const indent = pad + Math.round(fontSize * 1.9), textW = W - indent - pad
+  const wrap = makeWrap(fontSize)
+  let h = pad + Math.round(lineH * 1.2)
+  if (temNota) h += lineH
+  h += Math.round(lineH * 0.4)
+  comentados.forEach(c => { const head = c.pts ? `(−${numPt(c.pts)} pts) ` : ''; h += wrap(head + c.txt, textW).length * lineH + Math.round(lineH * 0.35) })
+  if (feedbackGeral) { h += Math.round(lineH * 0.6) + lineH; h += wrap(feedbackGeral, W - pad * 2).length * lineH }
+  return h + pad
+}
+function paintCommentsFooter(ctx, W, startY, data) {
+  const { comentados, feedbackGeral, nota, temNota } = data
+  if (!comentados.length && !feedbackGeral && !temNota) return
+  const fontSize = footerFont(W), lineH = Math.round(fontSize * 1.4), pad = Math.round(fontSize * 1.4)
+  const indent = pad + Math.round(fontSize * 1.9), textW = W - indent - pad
+  const wrap = makeWrap(fontSize)
+  ctx.strokeStyle = '#CBD5E1'; ctx.lineWidth = 2
+  ctx.beginPath(); ctx.moveTo(pad, startY + 1); ctx.lineTo(W - pad, startY + 1); ctx.stroke()
+  let cy = startY + pad + fontSize
+  ctx.fillStyle = '#0F172A'; ctx.font = `bold ${Math.round(fontSize * 1.08)}px Arial, sans-serif`
+  ctx.fillText('Comentários do professor', pad, cy)
+  cy += Math.round(lineH * 1.2)
+  if (temNota) { ctx.fillStyle = '#B91C1C'; ctx.font = `bold ${fontSize}px Arial, sans-serif`; ctx.fillText('Nota: ' + numPt(nota), pad, cy); cy += lineH }
+  cy += Math.round(lineH * 0.4)
+  comentados.forEach(c => {
+    const r = Math.round(fontSize * 0.6), cyDot = cy - Math.round(fontSize * 0.35)
+    ctx.beginPath(); ctx.arc(pad + r, cyDot, r, 0, Math.PI * 2); ctx.fillStyle = c.cor || '#EF4444'; ctx.fill()
+    ctx.fillStyle = '#FFFFFF'; ctx.font = `bold ${Math.round(r * 1.2)}px Arial, sans-serif`; ctx.textAlign = 'center'; ctx.textBaseline = 'middle'
+    ctx.fillText(String(c.n), pad + r, cyDot); ctx.textAlign = 'left'; ctx.textBaseline = 'alphabetic'
+    const head = c.pts ? `(−${numPt(c.pts)} pts) ` : ''
+    const lines = wrap(head + c.txt, textW)
+    ctx.fillStyle = '#1E293B'; ctx.font = `${fontSize}px Arial, sans-serif`
+    lines.forEach((ln, i) => ctx.fillText(ln, indent, cy + i * lineH))
+    cy += lines.length * lineH + Math.round(lineH * 0.35)
+  })
+  if (feedbackGeral) {
+    cy += Math.round(lineH * 0.6)
+    ctx.fillStyle = '#475569'; ctx.font = `bold ${fontSize}px Arial, sans-serif`
+    ctx.fillText('Comentário geral:', pad, cy); cy += lineH
+    ctx.fillStyle = '#1E293B'; ctx.font = `${fontSize}px Arial, sans-serif`
+    wrap(feedbackGeral, W - pad * 2).forEach((ln, i) => ctx.fillText(ln, pad, cy + i * lineH))
+  }
+}
+function drawMarksOnImage(ctx, W, H) {
+  const anots = (currentView && currentView.anotacoes) || []
+  const fontSize = footerFont(W)
+  let badgeSeq = 0
+  anots.forEach(a => {
+    const tipo = a.tipo || 'GRIFO'
+    const numbered = !!((a.comentario || '').trim() || Number(a.pontos))
+    if (numbered) badgeSeq++
+    if (!a.x_fim && !a.y_fim) return
+    const x = (a.x_inicio / 100) * W, y = (a.y_inicio / 100) * H
+    const w = ((a.x_fim - a.x_inicio) / 100) * W, h = ((a.y_fim - a.y_inicio) / 100) * H
+    ctx.strokeStyle = a.cor || '#FACC15'; ctx.lineWidth = Number(a.opacidade || 4)
+    if (tipo === 'SUBLINHADO') { ctx.beginPath(); ctx.moveTo(x, y + h); ctx.lineTo(x + w, y + h); ctx.stroke() }
+    else { ctx.fillStyle = hexToRgba(a.cor || '#FACC15', 0.28); ctx.fillRect(x, y, w, h); ctx.strokeRect(x, y, w, h) }
+    if (numbered) {
+      const n = a.numero || badgeSeq, r = Math.max(11, Math.round(fontSize * 0.7))
+      ctx.beginPath(); ctx.arc(x, y, r, 0, Math.PI * 2); ctx.fillStyle = a.cor || '#EF4444'; ctx.fill()
+      ctx.lineWidth = 2; ctx.strokeStyle = '#FFFFFF'; ctx.stroke()
+      ctx.fillStyle = '#FFFFFF'; ctx.font = `bold ${Math.round(r * 1.1)}px Arial, sans-serif`; ctx.textAlign = 'center'; ctx.textBaseline = 'middle'
+      ctx.fillText(String(n), x, y + 1); ctx.textAlign = 'left'; ctx.textBaseline = 'alphabetic'
+    }
+  })
+}
+function imageMarginNotes(H) {
+  const notes = []; let seq = 0
+  ;((currentView && currentView.anotacoes) || []).forEach(a => {
+    const txt = (a.comentario || '').trim(); const pts = Number(a.pontos) || 0
+    if (!txt && !pts) return; seq++
+    notes.push({ desiredTop: ((Math.min(a.y_inicio, a.y_fim) || 0) / 100) * H, cor: a.cor || '#EF4444', n: a.numero || seq, text: txt, pts })
+  })
+  return notes
+}
+function layoutMarginNotes(marginW, notes, mf) {
+  const lineH = Math.round(mf * 1.45), padIn = Math.round(mf * 0.7), badge = Math.round(mf * 0.8)
+  const wrap = makeWrap(mf)
+  const textWrapW = Math.max(40, marginW - 2 * padIn - badge * 2 - 10)
+  const sorted = [...notes].sort((a, b) => a.desiredTop - b.desiredTop)
+  const blocks = []; let prevBottom = 0
+  sorted.forEach(note => {
+    const head = note.pts ? `(−${numPt(note.pts)} pts) ` : ''
+    const lines = wrap(head + note.text, textWrapW)
+    const blockH = lines.length * lineH + padIn * 1.6
+    const top = Math.max(note.desiredTop, prevBottom + 10)
+    blocks.push({ note, lines, top, blockH }); prevBottom = top + blockH
+  })
+  return { blocks, bottom: prevBottom, marginW, lineH, padIn, badge, mf }
+}
+function drawMarginNotes(ctx, marginX, lay) {
+  const { lineH, padIn, badge, marginW, mf } = lay
+  lay.blocks.forEach(b => {
+    const { note, lines, top, blockH } = b
+    ctx.fillStyle = hexToRgba(note.cor, 0.12); roundRect(ctx, marginX, top, marginW, blockH, 8); ctx.fill()
+    ctx.fillStyle = note.cor; roundRect(ctx, marginX, top, 4, blockH, 2); ctx.fill()
+    const bx = marginX + padIn + badge, by = top + padIn + mf * 0.55
+    ctx.beginPath(); ctx.arc(bx, by, badge, 0, Math.PI * 2); ctx.fillStyle = note.cor; ctx.fill()
+    ctx.fillStyle = '#FFFFFF'; ctx.font = `bold ${Math.round(badge * 1.05)}px Arial, sans-serif`; ctx.textAlign = 'center'; ctx.textBaseline = 'middle'
+    ctx.fillText(String(note.n), bx, by); ctx.textAlign = 'left'; ctx.textBaseline = 'alphabetic'
+    ctx.fillStyle = '#1E293B'; ctx.font = `${mf}px Arial, sans-serif`
+    lines.forEach((ln, i) => ctx.fillText(ln, marginX + padIn + badge * 2 + 10, top + padIn + mf + i * lineH))
+  })
+}
+function buildImagePart() {
+  const img = document.getElementById('av-image')
+  if (!img || !img.naturalWidth) return null
+  const W = img.naturalWidth, H = img.naturalHeight
+  if (getCommentLayout() !== 'lado') {
+    const c = document.createElement('canvas'); c.width = W; c.height = H
+    const x = c.getContext('2d'); x.fillStyle = '#FFFFFF'; x.fillRect(0, 0, W, H)
+    x.drawImage(img, 0, 0, W, H); drawMarksOnImage(x, W, H)
+    return c
+  }
+  const mf = Math.max(15, Math.round(W / 60)), gap = Math.round(W * 0.03), marginW = Math.min(760, Math.max(320, Math.round(W * 0.46)))
+  const lay = layoutMarginNotes(marginW, imageMarginNotes(H), mf)
+  const totalW = W + gap + marginW, totalH = Math.max(H, lay.bottom + 20)
+  const c = document.createElement('canvas'); c.width = totalW; c.height = totalH
+  const x = c.getContext('2d'); x.fillStyle = '#FFFFFF'; x.fillRect(0, 0, totalW, totalH)
+  x.drawImage(img, 0, 0, W, H); drawMarksOnImage(x, W, H); drawMarginNotes(x, W + gap, lay)
+  return c
+}
+function buildAnnotatedCanvas() {
+  const part = buildImagePart()
+  if (!part) return null
+  const data = getCommentsData()
+  const footerData = getCommentLayout() === 'lado' ? { ...data, comentados: [] } : data
+  const footerH = commentsFooterHeight(part.width, footerData)
+  if (!footerH) return part
+  const canvas = document.createElement('canvas')
+  canvas.width = part.width; canvas.height = part.height + footerH
+  const ctx = canvas.getContext('2d')
+  ctx.fillStyle = '#FFFFFF'; ctx.fillRect(0, 0, canvas.width, canvas.height)
+  ctx.drawImage(part, 0, 0)
+  paintCommentsFooter(ctx, part.width, part.height, footerData)
+  return canvas
+}
+function downloadViewImage() {
+  const canvas = buildAnnotatedCanvas()
+  if (!canvas) { document.getElementById('av-dl-status').textContent = 'A redação ainda está carregando.'; return }
+  const link = document.createElement('a')
+  link.download = `redacao-corrigida-${currentView.id}.png`
+  link.href = canvas.toDataURL('image/png'); link.click()
+}
+async function downloadViewPdf() {
+  const st = document.getElementById('av-dl-status')
+  const canvas = buildAnnotatedCanvas()
+  if (!canvas) { st.textContent = 'A redação ainda está carregando.'; return }
+  st.textContent = 'Gerando PDF…'
+  try {
+    const jspdf = await waitForGlobal('jspdf', 'Gerador de PDF')
+    const { jsPDF } = jspdf
+    const pdfWidth = Math.min(595.28, canvas.width)
+    const pdfHeight = canvas.height * (pdfWidth / canvas.width)
+    const pdf = new jsPDF({ unit: 'pt', format: [pdfWidth, pdfHeight], orientation: pdfWidth > pdfHeight ? 'l' : 'p', compress: true })
+    pdf.addImage(canvas.toDataURL('image/jpeg', 0.95), 'JPEG', 0, 0, pdfWidth, pdfHeight)
+    pdf.save(`redacao-corrigida-${currentView.id}.pdf`)
+    st.textContent = 'PDF gerado.'
+  } catch (e) { st.textContent = e?.message || 'Não foi possível gerar o PDF.' }
+}
+function dataUrlToBytes(dataUrl) {
+  const base64 = dataUrl.split(',')[1] || ''
+  const raw = atob(base64), bytes = new Uint8Array(raw.length)
+  for (let i = 0; i < raw.length; i++) bytes[i] = raw.charCodeAt(i)
+  return bytes
+}
+async function waitForGlobal(name, label) {
+  for (let i = 0; i < 80; i++) { if (window[name]) return window[name]; await new Promise(r => setTimeout(r, 150)) }
+  throw new Error(`${label} não carregou. Verifique a conexão e tente novamente.`)
+}
+async function waitForPdfJs() {
+  for (let i = 0; i < 80; i++) {
+    if (window.pdfjsLib) { window.pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdn.jsdelivr.net/npm/pdfjs-dist@4.10.38/build/pdf.worker.min.mjs'; return window.pdfjsLib }
+    await new Promise(r => setTimeout(r, 150))
+  }
+  throw new Error('Leitor de PDF não carregou.')
+}
+
+init()
+</script>
+</body>
+</html>

@@ -1,0 +1,18 @@
+node_modules/
+.wrangler/
+.dev.vars
+dist/
+backups/
+
+# Arquivos temporarios gerados por comandos locais acidentais
+.doc-view\{min-width
+\{
+\{,
+\{,-
+\{,+
+\{\}),+
+1
+8)
+16)
+autoSaveCorrecao()
+pdfHeight
