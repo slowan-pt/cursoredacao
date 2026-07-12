@@ -4,9 +4,9 @@
 
 - Data da atualização: 2026-07-12.
 - Branch atual: `main`.
-- Relação com remoto: `main...origin/main [ahead 9]` antes da Sprint 1 de higiene atual.
-- Último commit local confirmado antes da Sprint 1 atual: `3f1c91f docs: update autonomous session status`.
-- Estado do working tree: sujo, com 11 arquivos rastreados modificados preexistentes.
+- Relação com remoto: `main...origin/main [ahead 22]` após a consolidação local de 2026-07-12.
+- Último commit local confirmado: `f66a1ee feat: consolidate professor management flows`.
+- Estado do working tree: limpo após consolidar os 11 arquivos rastreados modificados preexistentes.
 - Versão atual declarada: `1.0.0` em `package.json`.
 - Ambiente atual observado: Cloudflare Workers, URL pública `https://cursoreducao.slowgithub.workers.dev`.
 - Última versão do Worker informada neste ciclo: `ee1800a1-114f-4b09-8067-ada375564e3e`.
@@ -36,7 +36,9 @@
 
 ### Alterações locais não commitadas
 
-Arquivos rastreados modificados:
+Status atual: não há arquivos modificados no working tree após a consolidação local.
+
+Arquivos que estavam modificados antes da consolidação:
 
 - `.gitignore`
 - `migrations/001_schema.sql`
@@ -50,7 +52,7 @@ Arquivos rastreados modificados:
 - `src/routes/auth.ts`
 - `src/routes/site.ts`
 
-Resumo do `git diff --stat`:
+Resumo anterior do `git diff --stat`:
 
 - 11 arquivos funcionais modificados.
 - Aproximadamente 2499 inserções e 306 remoções ainda não commitadas.
@@ -61,7 +63,7 @@ Resumo do `git diff --stat`:
 
 - `migrations/001_schema.sql`: referência do projeto Supabase alterada de `qizhulhyodpxoowxmqct` para `yejchbqovozvehylobrd`.
 - `migrations/003_corretor_automatico.sql`: referência do projeto Supabase alterada de `qizhulhyodpxoowxmqct` para `yejchbqovozvehylobrd`.
-- Status: implementado localmente, aguardando revisão.
+- Status: concluído e commitado em `ae4d383`.
 - Risco: migrations alteradas não significam que o banco remoto esteja migrado ou validado.
 
 ### Autenticação
@@ -70,8 +72,8 @@ Resumo do `git diff --stat`:
   - `src/routes/auth.ts` contém fluxo de `checkout_code`.
   - `src/routes/auth.ts` contém endpoint `oauth-session`, controlado por flag OAuth.
   - `public/login.html` contém campo de código de pagamento e ajuste de fluxo login/cadastro.
-- Status: implementado localmente, aguardando revisão.
-- Commitado: não.
+- Status: concluído e commitado em `558fc09`.
+- Commitado: sim.
 - Testado: não verificado neste documento.
 - Risco: mudanças de login/cadastro precisam ser testadas com aluno pago, aluno bloqueado, professor, professor filho e superadmin.
 
@@ -116,8 +118,8 @@ Resumo do `git diff --stat`:
   - `public/css/style.css` recebeu estilos para correções por caixas, professor filho, edição do site, comentários e toolbar.
   - `public/aluno/index.html` recebeu ajustes de preço e matrícula.
   - `public/login.html` recebeu ajustes no fluxo de cadastro por pagamento.
-- Status: implementado localmente, aguardando revisão.
-- Commitado: não.
+- Status: concluído e commitado em `f66a1ee`.
+- Commitado: sim.
 - Testado: parcialmente em ciclos anteriores, mas não verificado como pacote completo neste documento.
 - Risco: alto volume de diff local aumenta risco de regressão visual e funcional.
 
@@ -307,6 +309,46 @@ Resumo do `git diff --stat`:
 | Teste de upload | não verificado |
 | Teste de correção | não verificado |
 | Teste de rollback | pendente |
+
+## Consolidação de alterações locais pendentes — 2026-07-12
+
+### Commits criados
+
+- `ae4d383 chore: update local ignore and Supabase migration comments`
+  - `.gitignore`
+  - `migrations/001_schema.sql`
+  - `migrations/003_corretor_automatico.sql`
+- `558fc09 feat: consolidate public checkout flow`
+  - `public/login.html`
+  - `src/routes/auth.ts`
+  - `src/routes/site.ts`
+- `ba59b55 feat: consolidate student enrollment access`
+  - `public/aluno/index.html`
+  - `src/routes/aluno.ts`
+- `f66a1ee feat: consolidate professor management flows`
+  - `public/professor/index.html`
+  - `src/routes/admin.ts`
+  - `public/css/style.css`
+
+### Testes executados
+
+- `npm run check:all` antes de cada commit funcional.
+- Resultado: typecheck concluído, scanner de segredos sem padrões encontrados e `git diff --check` sem erro fatal.
+- Observação: persistem apenas avisos de LF/CRLF esperados no Windows.
+
+### Migrations
+
+- `migrations/001_schema.sql`: segura para revisão; diff apenas em comentário de URL do projeto Supabase.
+- `migrations/003_corretor_automatico.sql`: segura para revisão; diff apenas em comentário de URL do projeto Supabase.
+- Nenhuma migration foi executada.
+
+### Ações não executadas
+
+- Nenhum push.
+- Nenhum deploy.
+- Nenhuma migration real.
+- Nenhuma alteração em Supabase, Cloudflare, DNS, R2, Asaas ou Resend.
+- Nenhuma limpeza de histórico Git.
 
 ## Próxima ação recomendada
 

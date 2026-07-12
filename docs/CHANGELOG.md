@@ -6,6 +6,15 @@ Todas as mudanças relevantes deste projeto devem ser registradas aqui.
 
 ### Adicionado
 
+- Consolidação local das alterações pendentes de checkout, aluno e professor/admin:
+  - checkout público simulado com código único;
+  - cadastro/login pago separados;
+  - bloqueio/inativação de aluno;
+  - exclusão lógica de redações no painel do aluno;
+  - professor filho/corretor com permissões e direcionamentos;
+  - organização de correções por turmas;
+  - ajustes de turmas, preços, prévias e títulos públicos;
+  - melhorias visuais correspondentes.
 - Scripts de validação local em `package.json`:
   - `npm run typecheck`
   - `npm run check:diff`
@@ -45,7 +54,25 @@ Todas as mudanças relevantes deste projeto devem ser registradas aqui.
 ### Observações
 
 - O branch local continua à frente de `origin/main`.
-- Existem alterações funcionais locais não commitadas que precisam ser preservadas e revisadas separadamente.
+- As alterações funcionais locais pendentes foram consolidadas em commits locais em 2026-07-12.
+- Nenhum push, deploy ou migration real foi executado durante a consolidação.
+
+### Consolidação de alterações locais pendentes — 2026-07-12
+
+- `ae4d383 chore: update local ignore and Supabase migration comments`
+- `558fc09 feat: consolidate public checkout flow`
+- `ba59b55 feat: consolidate student enrollment access`
+- `f66a1ee feat: consolidate professor management flows`
+
+Testes executados antes dos commits:
+
+- `npm run check:all`
+
+Resultado:
+
+- Typecheck concluído.
+- Scanner de segredos sem padrões encontrados na working tree rastreável.
+- `git diff --check` sem erro fatal; apenas avisos LF/CRLF do Windows.
 
 ## Sessão autônoma anterior — 2026-07-12
 

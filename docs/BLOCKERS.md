@@ -52,7 +52,8 @@
 ## Sprints de interface com working tree sujo
 
 - Prioridade: importante.
-- Impacto: as sprints de Professor, Aluno e Administrador exigem editar arquivos que já possuem alterações locais amplas não commitadas.
+- Status: resolvido localmente em 2026-07-12.
+- Impacto anterior: as sprints de Professor, Aluno e Administrador exigiam editar arquivos que já possuíam alterações locais amplas não commitadas.
 - Arquivos afetados:
   - `public/professor/index.html`
   - `public/aluno/index.html`
@@ -62,8 +63,8 @@
   - `src/routes/aluno.ts`
   - `src/routes/auth.ts`
   - `src/routes/site.ts`
-- Situação: modificar esses arquivos agora aumentaria o risco de misturar trabalho pendente com novas mudanças.
-- Solução sugerida:
-  1. Revisar os diffs locais por área funcional.
-  2. Separar commits temáticos pequenos.
-  3. Só depois continuar as sprints de UX/Professor/Aluno/Admin.
+- Situação atual: as alterações locais foram revisadas, testadas com `npm run check:all` e separadas nos commits:
+  - `558fc09 feat: consolidate public checkout flow`
+  - `ba59b55 feat: consolidate student enrollment access`
+  - `f66a1ee feat: consolidate professor management flows`
+- Próximo cuidado: novas alterações nessas áreas devem continuar em commits pequenos e testáveis.
