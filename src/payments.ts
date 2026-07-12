@@ -19,6 +19,31 @@ export type CreatePixChargeInput = {
   externalReference: string
 }
 
+export type AsaasWebhookPayload = {
+  id?: string
+  event?: string
+  payment?: {
+    id?: string
+    status?: string
+    externalReference?: string
+    value?: number
+    netValue?: number
+    billingType?: string
+    customer?: string
+  }
+}
+
+export type NormalizedPaymentWebhook = {
+  provider: 'ASAAS'
+  providerEventId: string
+  providerPaymentId: string
+  event: string
+  status: PaymentStatus
+  externalReference: string | null
+  raw: AsaasWebhookPayload
+  idempotencyKey: string
+}
+
 export type PaymentGateway = {
   createPixCharge(input: CreatePixChargeInput): Promise<unknown>
 }
@@ -64,6 +89,33 @@ export function validateAsaasWebhookToken(env: Env, request: Request) {
   if (!expected) return false
   const received = request.headers.get('asaas-access-token')
   return Boolean(received && received === expected)
+}
+
+export function buildPaymentWebhookIdempotencyKey(provider: string, providerEventId: string) {
+  const normalizedProvider = String(provider || '').trim().toUpperCase()
+  const normalizedEventId = String(providerEventId || '').trim()
+  if (!normalizedProvider || !normalizedEventId) throw new Error('Evento de pagamento sem chave de idempotência.')
+  return `${normalizedProvider}:${normalizedEventId}`
+}
+
+export function normalizeAsaasWebhookPayload(payload: unknown): NormalizedPaymentWebhook {
+  const data = (payload || {}) as AsaasWebhookPayload
+  const event = String(data.event || '').trim()
+  const providerPaymentId = String(data.payment?.id || '').trim()
+  const providerEventId = String(data.id || `${event}:${providerPaymentId}`).trim()
+  if (!event) throw new Error('Webhook Asaas sem evento.')
+  if (!providerPaymentId) throw new Error('Webhook Asaas sem pagamento.')
+
+  return {
+    provider: 'ASAAS',
+    providerEventId,
+    providerPaymentId,
+    event,
+    status: normalizeAsaasPaymentStatus(String(data.payment?.status || '')),
+    externalReference: data.payment?.externalReference || null,
+    raw: data,
+    idempotencyKey: buildPaymentWebhookIdempotencyKey('ASAAS', providerEventId)
+  }
 }
 
 class DisabledPaymentGateway implements PaymentGateway {

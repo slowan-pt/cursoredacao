@@ -14,6 +14,7 @@ Atualizado em: 2026-07-12.
 ## Arquivos Preparados
 
 - `src/payments.ts`: gateway desacoplado para Asaas.
+- `src/payments.ts`: normalização de payload de webhook e chave de idempotência.
 - `src/types.ts`: variáveis `ASAAS_ENV`, `ASAAS_API_KEY` e `ASAAS_WEBHOOK_TOKEN`.
 - `.env.example`: variáveis sem valores reais.
 - `migrations/005_payments.sql`: tabelas de pagamentos e eventos de webhook.
@@ -33,6 +34,8 @@ Referências oficiais:
 
 - Cada evento deve ser armazenado em `payment_webhook_events`.
 - A chave única planejada é `(provider, provider_event_id)`.
+- A função `buildPaymentWebhookIdempotencyKey` gera uma chave interna no formato `ASAAS:{providerEventId}`.
+- A função `normalizeAsaasWebhookPayload` extrai evento, pagamento, status normalizado e referência externa sem liberar matrícula.
 - Eventos repetidos devem retornar sucesso sem repetir matrícula.
 - A matrícula só deve ser liberada após confirmação confiável pelo webhook.
 - O retorno do navegador nunca deve liberar matrícula em produção.
@@ -79,7 +82,7 @@ ASAAS_ENV=sandbox
 
 - Criar rota de webhook.
 - Criar endpoint de checkout real.
-- Criar/reutilizar cliente Asaas.
+- Integrar `normalizeAsaasWebhookPayload` à rota de webhook futura.
 - Persistir cobrança em `payments`.
 - Liberar matrícula somente no processamento idempotente do webhook.
 - Definir política para boleto/cartão além de PIX.

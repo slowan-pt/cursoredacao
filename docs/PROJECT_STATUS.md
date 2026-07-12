@@ -485,3 +485,46 @@ Resumo do `git diff --stat`:
 ### Próximos passos
 
 - Preparar integrações de pagamento/e-mail apenas em modo desativado por flags.
+
+## Sprint 4 — Asaas preparado por flags — 2026-07-12
+
+### Tarefas concluídas
+
+- Adicionados tipos para payload de webhook Asaas.
+- Criada normalização de webhook com:
+  - evento;
+  - pagamento;
+  - status interno;
+  - referência externa;
+  - chave de idempotência.
+- Mantida a integração real desativada por `ENABLE_PAYMENTS=false`.
+- Atualizada documentação Asaas com o fluxo de idempotência.
+
+### Arquivos alterados
+
+- `src/payments.ts`
+- `docs/ASAAS.md`
+- `docs/PROJECT_STATUS.md`
+- `docs/CHANGELOG.md`
+
+### Testes executados
+
+- `npm run typecheck`
+- `npm run security:scan`
+- `npm run check:diff`
+
+### Riscos encontrados
+
+- Ainda não existe rota de webhook Asaas.
+- Ainda não há persistência real de eventos em `payment_webhook_events`.
+- Matrícula por pagamento real continua pendente e deve depender de webhook confiável.
+
+### Pendências
+
+- Criar rota de webhook somente quando o banco/migration estiver validado.
+- Implementar persistência idempotente.
+- Testar sandbox antes de qualquer produção.
+
+### Próximos passos
+
+- Preparar templates/serviço de e-mail sem envio real.

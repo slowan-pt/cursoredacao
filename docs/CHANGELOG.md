@@ -18,6 +18,7 @@ Todas as mudanças relevantes deste projeto devem ser registradas aqui.
   - `Cross-Origin-Opener-Policy`
 - Documento `docs/BLOCKERS.md` com bloqueios críticos e importantes.
 - Provider local de desenvolvimento em memória para a camada de storage privado.
+- Utilitários de webhook Asaas para normalização de payload e chave de idempotência.
 
 ### Segurança
 
@@ -27,6 +28,7 @@ Todas as mudanças relevantes deste projeto devem ser registradas aqui.
 - A CSP foi definida de forma compatível com o frontend atual, mantendo `unsafe-inline` enquanto houver scripts/estilos inline.
 - Rate limiting efetivo foi documentado como bloqueio porque não deve ser simulado com memória local em Cloudflare Workers.
 - O provider local de storage não é persistente e não deve ser usado em produção.
+- A normalização de webhook Asaas não libera matrícula; ela apenas prepara dados para uma rota futura idempotente.
 
 ### Observações
 
