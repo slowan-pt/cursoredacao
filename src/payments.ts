@@ -1,0 +1,115 @@
+import { getConfig } from './config'
+import type { Env } from './types'
+
+export type PaymentStatus =
+  | 'PENDING'
+  | 'CONFIRMED'
+  | 'RECEIVED'
+  | 'OVERDUE'
+  | 'CANCELED'
+  | 'REFUNDED'
+  | 'CHARGEBACK'
+  | 'FAILED'
+
+export type CreatePixChargeInput = {
+  customerId: string
+  value: number
+  dueDate: string
+  description: string
+  externalReference: string
+}
+
+export type PaymentGateway = {
+  createPixCharge(input: CreatePixChargeInput): Promise<unknown>
+}
+
+const ASAAS_BASE_URLS = {
+  sandbox: 'https://api-sandbox.asaas.com/v3',
+  production: 'https://api.asaas.com/v3'
+}
+
+function asaasEnv(env: Env) {
+  return env.ASAAS_ENV === 'production' ? 'production' : 'sandbox'
+}
+
+function requireAsaasApiKey(env: Env) {
+  if (!env.ASAAS_API_KEY) throw new Error('ASAAS_API_KEY ausente.')
+  return env.ASAAS_API_KEY
+}
+
+async function fetchWithTimeout(url: string, init: RequestInit, timeoutMs = 12000) {
+  const controller = new AbortController()
+  const timeout = setTimeout(() => controller.abort(), timeoutMs)
+  try {
+    return await fetch(url, { ...init, signal: controller.signal })
+  } finally {
+    clearTimeout(timeout)
+  }
+}
+
+export function normalizeAsaasPaymentStatus(status: string): PaymentStatus {
+  const value = String(status || '').toUpperCase()
+  if (['CONFIRMED'].includes(value)) return 'CONFIRMED'
+  if (['RECEIVED', 'RECEIVED_IN_CASH'].includes(value)) return 'RECEIVED'
+  if (['OVERDUE'].includes(value)) return 'OVERDUE'
+  if (['DELETED', 'CANCELED'].includes(value)) return 'CANCELED'
+  if (['REFUNDED', 'PARTIALLY_REFUNDED'].includes(value)) return 'REFUNDED'
+  if (['CHARGEBACK_REQUESTED', 'CHARGEBACK_DISPUTE', 'AWAITING_CHARGEBACK_REVERSAL'].includes(value)) return 'CHARGEBACK'
+  if (['PENDING'].includes(value)) return 'PENDING'
+  return 'FAILED'
+}
+
+export function validateAsaasWebhookToken(env: Env, request: Request) {
+  const expected = env.ASAAS_WEBHOOK_TOKEN
+  if (!expected) return false
+  const received = request.headers.get('asaas-access-token')
+  return Boolean(received && received === expected)
+}
+
+class DisabledPaymentGateway implements PaymentGateway {
+  async createPixCharge(): Promise<unknown> {
+    throw new Error('Pagamentos temporariamente indisponíveis.')
+  }
+}
+
+class AsaasGateway implements PaymentGateway {
+  constructor(private readonly env: Env) {}
+
+  private async request(path: string, init: RequestInit) {
+    const baseUrl = ASAAS_BASE_URLS[asaasEnv(this.env)]
+    const response = await fetchWithTimeout(`${baseUrl}${path}`, {
+      ...init,
+      headers: {
+        accept: 'application/json',
+        'content-type': 'application/json',
+        access_token: requireAsaasApiKey(this.env),
+        ...(init.headers || {})
+      }
+    })
+    const data = await response.json().catch(() => null)
+    if (!response.ok) {
+      throw new Error(`Asaas retornou erro ${response.status}.`)
+    }
+    return data
+  }
+
+  async createPixCharge(input: CreatePixChargeInput) {
+    return this.request('/payments', {
+      method: 'POST',
+      body: JSON.stringify({
+        customer: input.customerId,
+        billingType: 'PIX',
+        value: input.value,
+        dueDate: input.dueDate,
+        description: input.description,
+        externalReference: input.externalReference
+      })
+    })
+  }
+}
+
+export function getPaymentGateway(env: Env): PaymentGateway {
+  const config = getConfig(env)
+  if (!config.flags.payments) return new DisabledPaymentGateway()
+  return new AsaasGateway(env)
+}

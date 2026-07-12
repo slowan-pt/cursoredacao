@@ -14,6 +14,9 @@ export interface Env {
   ENABLE_PUBLIC_CHECKOUT_SIMULATED?: string
   MAX_UPLOAD_BYTES?: string
   R2_UPLOADS_BUCKET?: string
+  ASAAS_ENV?: string
+  ASAAS_API_KEY?: string
+  ASAAS_WEBHOOK_TOKEN?: string
   APP_URL?: string
   APP_ENV?: string
   APP_VERSION?: string

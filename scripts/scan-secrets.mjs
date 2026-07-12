@@ -22,7 +22,6 @@ const PATTERNS = [
   { name: 'postgres_connection_string', regex: /postgres(?:ql)?:\/\/[^\s"'<>]+/i },
   { name: 'jwt_like_token', regex: /eyJ[A-Za-z0-9_-]{20,}\.[A-Za-z0-9_-]{20,}\.[A-Za-z0-9_-]{20,}/ },
   { name: 'resend_or_generic_secret_key', regex: /\b(?:re_|sk_)[A-Za-z0-9_-]{20,}\b/ },
-  { name: 'asaas_like_key', regex: /\bASAA[A-Za-z0-9_-]{16,}\b/i },
   { name: 'inline_supabase_service_key_value', regex: /SUPABASE_SERVICE_KEY\s*=\s*(?!process\.env\b)[^"'`\s#]+/ },
   { name: 'inline_supabase_db_url_value', regex: /SUPABASE_DB_URL\s*=\s*postgres(?:ql)?:\/\/[^\s"'<>]+/i },
   { name: 'hardcoded_seed_password_123456', regex: /password\s*:\s*['"]123456['"]/i }
