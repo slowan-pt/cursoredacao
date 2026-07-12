@@ -1,7 +1,7 @@
 -- ============================================================
 -- CursosRedação — Corretor automático (tipos de erro)
 -- Execute no SQL Editor do Supabase:
--- https://supabase.com/dashboard/project/qizhulhyodpxoowxmqct/sql/new
+-- https://supabase.com/dashboard/project/yejchbqovozvehylobrd/sql/new
 -- ============================================================
 
 -- Catálogo de tipos de erro (por site, reutilizável entre todas as turmas)

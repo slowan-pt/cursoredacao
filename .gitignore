@@ -6,6 +6,7 @@ node_modules/
 !.env.example
 dist/
 backups/
+.wrangler-dev*.log
 
 # Arquivos temporarios gerados por comandos locais acidentais
 .doc-view\{min-width

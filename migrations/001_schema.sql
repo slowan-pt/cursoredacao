@@ -1,6 +1,6 @@
 -- ============================================================
 -- CursosRedação — Schema Supabase
--- Execute no SQL Editor: https://supabase.com/dashboard/project/qizhulhyodpxoowxmqct/sql/new
+-- Execute no SQL Editor: https://supabase.com/dashboard/project/yejchbqovozvehylobrd/sql/new
 -- ============================================================
 
 -- Tipo de papel do usuário
