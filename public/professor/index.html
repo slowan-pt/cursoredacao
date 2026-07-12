@@ -24,25 +24,26 @@
     <nav class="sb-nav">
       <div class="sb-grp">Painel</div>
       <a class="sb-item on" href="#" onclick="showPage('dashboard',this)">⬛ Dashboard</a>
-      <a class="sb-item" href="#" onclick="showPage('site',this)">🌐 Meu site</a>
+      <a class="sb-item owner-only" href="#" onclick="showPage('site',this)">🌐 Meu site</a>
       <div class="sb-grp">Correções</div>
       <a class="sb-item" href="#" data-page-link="pendentes" onclick="showPage('pendentes',this)">
         🕐 Pendentes <span class="sb-badge" id="badge-pend">0</span>
       </a>
       <a class="sb-item" href="#" onclick="showPage('todas',this)">📋 Todas as Correções</a>
-      <div class="sb-grp">Turmas & Alunos</div>
-      <a class="sb-item" href="#" onclick="showPage('turmas',this)">🏫 Turmas</a>
-      <a class="sb-item" href="#" onclick="showPage('alunos',this)">👥 Alunos</a>
-      <a class="sb-item" href="#" onclick="showPage('temas',this)">📚 Temas</a>
-      <a class="sb-item" href="#" onclick="showPage('relatorios',this)">📊 Relatórios</a>
-      <div class="sb-grp">Configurações</div>
-      <a class="sb-item" href="#" onclick="showPage('corretor',this)">⚙️ Corretor automático</a>
+      <div class="sb-grp owner-only">Turmas & Alunos</div>
+      <a class="sb-item owner-only" href="#" onclick="showPage('turmas',this)">🏫 Turmas</a>
+      <a class="sb-item owner-only" href="#" onclick="showPage('alunos',this)">👥 Alunos</a>
+      <a class="sb-item owner-only" href="#" onclick="showPage('professores',this)">👨‍🏫 Professores</a>
+      <a class="sb-item owner-only" href="#" onclick="showPage('temas',this)">📚 Temas</a>
+      <a class="sb-item owner-only" href="#" onclick="showPage('relatorios',this)">📊 Relatórios</a>
+      <div class="sb-grp owner-only">Configurações</div>
+      <a class="sb-item owner-only" href="#" onclick="showPage('corretor',this)">⚙️ Corretor automático</a>
     </nav>
     <div class="sb-user">
       <div class="sb-av" id="sb-av">PR</div>
       <div class="sb-uinfo">
         <div class="sb-uname" id="sb-uname">Carregando...</div>
-        <div style="font-size:11px;color:var(--brand-text-soft);font-weight:800">PROFESSOR</div>
+        <div id="sb-role-label" style="font-size:11px;color:var(--brand-text-soft);font-weight:800">PROFESSOR</div>
       </div>
       <span class="sb-logout" onclick="logout()" title="Sair">Sair</span>
     </div>
@@ -57,7 +58,7 @@
         <div class="topbar-sub" id="topbar-sub">Visão geral das correções</div>
       </div>
       <div>
-        <a class="btn btn-brand btn-sm" id="btn-site-top" href="#" target="_blank" rel="noopener" style="display:none">Abrir site</a>
+        <a class="btn btn-brand btn-sm owner-only" id="btn-site-top" href="#" target="_blank" rel="noopener" style="display:none">Abrir site</a>
         <button class="btn btn-accent btn-sm" onclick="showPage('pendentes',document.querySelector('[data-page-link=&quot;pendentes&quot;]'))">Ver pendentes</button>
         <button class="btn btn-sec btn-sm" onclick="logout()">Sair</button>
       </div>
@@ -86,7 +87,7 @@
             <input id="site-whatsapp" placeholder="Ex: 5521971214042" inputmode="numeric">
             <div class="hint">Informe país + DDD + número. Ex: 55 21 97121-4042.</div>
           </div>
-          <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
+          <div id="site-colors" style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
             <div class="form-group">
               <label>Cor primária</label>
               <div class="color-field">
@@ -102,9 +103,14 @@
               </div>
             </div>
           </div>
+          <div class="site-manager-menu">
+            <button type="button" onclick="focusSiteArea('site-colors')"><strong>Cores do site</strong><span>Paleta principal e destaque</span></button>
+            <button type="button" onclick="openLayoutModal('cabecalho')"><strong>Cabeçalho</strong><span>Título, chamada e cartão do professor</span></button>
+            <button type="button" onclick="openLayoutModal('turmas')"><strong>Turmas</strong><span>Apenas textos visuais da seção</span></button>
+            <button type="button" onclick="openPostsModal()"><strong>Conteúdos/Postagens</strong><span>Matérias, notícias e publicações</span></button>
+            <button type="button" onclick="openLayoutModal('aluno')"><strong>Área Aluno</strong><span>Bloco inferior de acesso à plataforma</span></button>
+          </div>
           <div class="site-tools-row">
-            <button type="button" class="btn btn-sec" onclick="openLayoutModal()">Personalizar layout</button>
-            <button type="button" class="btn btn-sec" onclick="openPostsModal()">Publicações e notícias</button>
             <button type="button" class="btn btn-sec" onclick="setDashboardModelDefault()">Definir modelo como padrão</button>
           </div>
           <div class="contrast-hint" id="site-contrast-hint"></div>
@@ -237,6 +243,10 @@
           </div>
         </div>
         <div class="turma-alunos-summary" id="alunos-summary"></div>
+        <div class="alunos-tabs" role="tablist" aria-label="Visualização de alunos">
+          <button class="alunos-tab active" id="alunos-tab-todos" type="button" onclick="setAlunosView('todos')">Todos</button>
+          <button class="alunos-tab" id="alunos-tab-turmas" type="button" onclick="setAlunosView('turmas')">Por turmas</button>
+        </div>
         <div class="pre-filter-row">
           <input id="aluno-search" placeholder="Buscar aluno" oninput="renderAlunos()">
           <select id="aluno-filter-status" onchange="renderAlunos()">
@@ -248,6 +258,31 @@
           </select>
         </div>
         <div id="alunos-list"></div>
+      </div>
+    </div>
+
+    <!-- PROFESSORES FILHOS / CORRETORES -->
+    <div class="page" id="page-professores" style="display:none">
+      <div class="card">
+        <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:12px;margin-bottom:18px;flex-wrap:wrap">
+          <div>
+            <strong style="font-size:15px">Professores corretores</strong>
+            <p style="font-size:12px;color:var(--ink3);margin-top:4px">Crie corretores vinculados ao seu site e direcione turmas ou alunos específicos para eles.</p>
+          </div>
+          <button class="btn btn-accent btn-sm" type="button" onclick="openProfessorFilhoModal()">+ Adicionar professor</button>
+        </div>
+        <div id="alert-professores" class="alert alert-err"></div>
+        <div class="grid-2" style="margin-bottom:16px">
+          <div class="kpi">
+            <div class="kpi-icon">👨‍🏫</div>
+            <div><div class="kpi-value" id="kpi-prof-filhos">0</div><div class="kpi-label">Corretores ativos</div></div>
+          </div>
+          <div class="kpi">
+            <div class="kpi-icon">🎯</div>
+            <div><div class="kpi-value" id="kpi-prof-rotas">0</div><div class="kpi-label">Direcionamentos</div></div>
+          </div>
+        </div>
+        <div id="professores-filhos-list"></div>
       </div>
     </div>
 
@@ -325,6 +360,10 @@
           <span>💬 Pré-comentários</span>
           <span class="corretor-accordion-hint">Crie atalhos como <strong>/coisa</strong> para inserir comentários prontos durante a correção</span>
         </summary>
+        <div class="pre-tabs">
+          <button type="button" class="on" data-pre-tab="Marcação no corpo do texto" onclick="setPreComentarioSubmenu('Marcação no corpo do texto')">Marcação no corpo do texto</button>
+          <button type="button" data-pre-tab="Comentários gerais" onclick="setPreComentarioSubmenu('Comentários gerais')">Comentários gerais</button>
+        </div>
         <div style="display:flex;align-items:flex-start;justify-content:flex-end;gap:14px;margin-bottom:14px;flex-wrap:wrap">
           <button class="btn btn-accent btn-sm" type="button" onclick="openPreComentarioModal()">+ Novo comentário</button>
         </div>
@@ -351,24 +390,15 @@
       <div class="correcao-editor correcao-editor-full">
         <section class="doc-pane">
           <div class="doc-controls">
-            <div class="ctrl-group">
+            <div class="ctrl-group ctrl-tools" title="Ferramentas de marcação">
               <button type="button" class="btn btn-sec btn-icon pointer-tool mark-tool on" data-pointer-tool="RETANGULO" data-mark-tool="GRIFO" title="Marcar com retângulo" onclick="setPointerTool('RETANGULO')">▭</button>
-              <input type="range" id="m-mark-width" min="1" max="8" value="3" class="ctrl-range" title="Espessura" oninput="updateThicknessLabels()">
-              <span class="thickness-read" id="mark-width-label" title="Espessura retângulo">3px</span>
-            </div>
-            <div class="ctrl-group">
               <button type="button" class="btn btn-sec btn-icon pointer-tool mark-tool" data-pointer-tool="LIVRE" data-mark-tool="LIVRE" title="Mão livre" onclick="setPointerTool('LIVRE')">✎</button>
-            </div>
-            <div class="ctrl-group">
-              <button type="button" class="btn btn-sec btn-icon pointer-tool" data-pointer-tool="MAO" title="Mover página" onclick="setPointerTool('MAO')">✋</button>
-            </div>
-            <div class="ctrl-group">
               <button type="button" class="btn btn-sec btn-icon pointer-tool mark-tool" data-pointer-tool="SUBLINHAR" data-mark-tool="SUBLINHADO" title="Sublinhar" onclick="setPointerTool('SUBLINHAR')">U̲</button>
-              <input type="range" id="m-underline-width" min="2" max="10" value="4" class="ctrl-range" title="Espessura" oninput="updateThicknessLabels()">
-              <span class="thickness-read" id="underline-width-label" title="Espessura sublinhado">4px</span>
+              <input type="range" id="m-mark-width" min="1" max="10" value="1" class="ctrl-range" title="Espessura das marcações" oninput="updateThicknessLabels()">
+              <span class="thickness-read" id="mark-width-label" title="Espessura das marcações">1px</span>
             </div>
             <div class="ctrl-sep"></div>
-            <div class="ctrl-group ctrl-colors">
+            <div class="ctrl-group ctrl-colors" title="Cores">
               <input type="color" id="m-cor" value="#FACC15" title="Cor personalizada" onchange="setMarkColor(this.value)" class="ctrl-color-input">
               <button type="button" class="mark-swatch" style="background:#FACC15" title="Amarelo" onclick="setMarkColor('#FACC15')"></button>
               <button type="button" class="mark-swatch" style="background:#38BDF8" title="Azul" onclick="setMarkColor('#38BDF8')"></button>
@@ -376,17 +406,19 @@
               <button type="button" class="mark-swatch" style="background:#4ADE80" title="Verde" onclick="setMarkColor('#4ADE80')"></button>
             </div>
             <div class="ctrl-sep"></div>
-            <div class="ctrl-group ctrl-zoom">
+            <div class="ctrl-group ctrl-zoom" title="Visualização e limpeza">
               <button type="button" class="btn btn-sec btn-icon" onclick="setDocZoom(docZoom - 0.1)" title="Diminuir zoom">−</button>
               <input type="range" min="50" max="220" value="100" id="doc-zoom" class="ctrl-range" oninput="setDocZoom(Number(this.value)/100)">
               <button type="button" class="btn btn-sec btn-icon" onclick="setDocZoom(docZoom + 0.1)" title="Aumentar zoom">+</button>
               <span id="doc-zoom-label" class="zoom-label">100%</span>
-            </div>
-            <div class="ctrl-group">
               <button type="button" class="btn btn-sec btn-sm" onclick="fitDocumentToView()" title="Ver página completa">Ajustar</button>
-              <button type="button" class="btn btn-sec btn-sm" onclick="cancelAnnotationDrag()" title="Remover seleção atual">Limpar</button>
+              <button type="button" class="btn btn-sec btn-sm" onclick="limparCorrecaoAtual()" title="Remover comentários desta correção">Limpar</button>
             </div>
             <div class="ctrl-sep"></div>
+            <div class="ctrl-group" title="Desfazer e refazer">
+              <button type="button" class="btn btn-sec btn-icon" id="btn-undo-annotation" onclick="undoAnnotationAction()" title="Desfazer última alteração">↶</button>
+              <button type="button" class="btn btn-sec btn-icon" id="btn-redo-annotation" onclick="redoAnnotationAction()" title="Refazer alteração">↷</button>
+            </div>
             <span id="ocr-status" class="ocr-status">Arraste um retângulo na redação para comentar</span>
           </div>
           <div class="doc-view" id="c-doc-view"></div>
@@ -398,40 +430,52 @@
           <textarea id="m-comentario" style="display:none"></textarea>
           <input type="hidden" id="c-id">
           <input type="hidden" id="c-status">
-          <div class="review-statusbar">
-            <span class="status-badge st-pend" id="c-status-badge">Aguardando</span>
-            <span class="save-indicator" id="save-indicator">Salvo automaticamente</span>
-          </div>
+          <div class="review-box review-box-eval">
+            <div class="review-statusbar">
+              <span class="status-badge st-pend" id="c-status-badge">Aguardando</span>
+              <span class="save-indicator" id="save-indicator">Salvo automaticamente</span>
+            </div>
             <div style="display:grid;grid-template-columns:1fr;gap:12px">
-            <div class="form-group">
-              <label>Modo de avaliação</label>
-              <select id="c-avaliacao-modo" onchange="onAvaliacaoModoChange()"></select>
+              <div class="form-group">
+                <label>Modo de avaliação</label>
+                <select id="c-avaliacao-modo" onchange="onAvaliacaoModoChange()"></select>
+              </div>
+              <div id="avaliacao-campos" class="avaliacao-campos"></div>
+              <div class="form-group">
+                <label>Nota <span class="nota-hint" id="c-nota-hint"></span></label>
+                <input type="number" id="c-nota" min="0" step="0.1" placeholder="8.5" oninput="scheduleAutoSave()">
+              </div>
             </div>
-            <div id="avaliacao-campos" class="avaliacao-campos"></div>
             <div class="form-group">
-              <label>Nota <span class="nota-hint" id="c-nota-hint"></span></label>
-              <input type="number" id="c-nota" min="0" step="0.1" placeholder="8.5" oninput="scheduleAutoSave()">
+              <label>Feedback geral</label>
+              <div class="pre-picker feedback-picker">
+                <label>Usar comentário geral</label>
+                <input data-role="feedback-pre-search" name="feedback_pre_comment_search" type="search" autocomplete="off" autocapitalize="off" autocorrect="off" spellcheck="false" inputmode="search" readonly onfocus="this.removeAttribute('readonly')" placeholder="Pesquisar comentário geral">
+                <div class="pre-picker-results" data-role="feedback-pre-results"></div>
+              </div>
+              <textarea id="c-comentario" placeholder="Resumo do feedback para o aluno" oninput="scheduleAutoSave()"></textarea>
             </div>
+            <button type="button" class="btn btn-accent btn-full" id="btn-finalizar" onclick="finalizarCorrecao()">✔ Finalizar correção</button>
+            <button type="button" class="btn btn-sec btn-full" id="btn-reabrir" onclick="reabrirCorrecao()" style="display:none">↩ Reabrir correção</button>
           </div>
-          <div class="form-group">
-            <label>Feedback geral</label>
-            <textarea id="c-comentario" placeholder="Resumo do feedback para o aluno" oninput="scheduleAutoSave()"></textarea>
-          </div>
-          <button type="button" class="btn btn-accent btn-full" id="btn-finalizar" onclick="finalizarCorrecao()">✔ Finalizar correção</button>
-          <button type="button" class="btn btn-sec btn-full" id="btn-reabrir" onclick="reabrirCorrecao()" style="display:none">↩ Reabrir correção</button>
-          <div class="export-actions">
-            <label class="export-layout">Comentários no download
+          <div class="review-box review-box-download">
+            <div class="review-box-title">Baixar correção</div>
+            <label class="export-layout">Posição dos comentários
               <select id="comment-layout" onchange="setCommentLayout(this.value)">
                 <option value="rodape">No rodapé (no fim da página)</option>
                 <option value="lado">Ao lado das linhas (na margem)</option>
               </select>
             </label>
-            <button type="button" class="btn btn-sec btn-full" onclick="downloadAnnotatedImage()">⬇ Baixar imagem corrigida</button>
-            <button type="button" class="btn btn-accent btn-full" id="btn-searchable-pdf" onclick="downloadAnnotatedPdf()">⬇ Baixar PDF corrigido</button>
+            <div class="download-grid">
+              <button type="button" class="btn btn-sec btn-full download-btn" onclick="downloadAnnotatedImage()"><span>🖼</span><strong>Baixar imagem corrigida</strong></button>
+              <button type="button" class="btn btn-accent btn-full download-btn" id="btn-searchable-pdf" onclick="downloadAnnotatedPdf()"><span>📄</span><strong>Baixar PDF corrigido</strong></button>
+            </div>
             <div class="export-status" id="ocr-pdf-status"></div>
           </div>
-          <div class="mark-list-title">Comentários da correção</div>
-          <div class="mark-list" id="mark-list"></div>
+          <div class="review-box review-box-comments">
+            <div class="mark-list-title">Comentários da correção</div>
+            <div class="mark-list" id="mark-list"></div>
+          </div>
         </section>
       </div>
     </div>
@@ -467,41 +511,64 @@
 
 <!-- MODAL: Turma -->
 <div class="modal-bg" id="modal-turma">
-  <div class="modal">
+  <div class="modal modal-turma-editor">
     <button class="modal-close" onclick="closeModal('modal-turma')">×</button>
     <div class="modal-title" id="turma-modal-title">Nova Turma</div>
     <div id="alert-turma" class="alert alert-err"></div>
-    <form onsubmit="saveTurma(event)">
+    <form onsubmit="saveTurma(event)" class="turma-form-grid">
       <input type="hidden" id="t-id">
-      <div class="form-group"><label>Nome da Turma</label><input id="t-nome" placeholder="Ex: Turma ENEM 2026" required></div>
-      <div class="form-group"><label>Concurso / Vestibular</label><input id="t-concurso" placeholder="Ex: ENEM, VUNESP, FUVEST..." required></div>
-      <div class="form-group"><label>Descrição (opcional)</label><textarea id="t-desc" placeholder="Informações sobre a turma..."></textarea></div>
-      <div class="form-group">
-        <label>Foto da turma</label>
-        <input id="t-imagem" placeholder="URL da imagem ou carregue uma foto" oninput="renderTurmaImagePreview()">
-        <label class="file-button" style="margin-top:8px;width:max-content">
-          Carregar imagem
-          <input type="file" accept="image/*" onchange="handleTurmaImageFile(event)">
-        </label>
-        <div class="profile-photo-preview" id="t-imagem-preview" style="margin-top:10px;min-height:100px"><span>Prévia da turma</span></div>
+      <section class="turma-form-section">
+        <div class="turma-form-row">
+          <div class="form-group"><label>Nome da Turma</label><input id="t-nome" placeholder="Ex: Turma ENEM 2026" required oninput="updateTurmaPreview()"></div>
+          <div class="form-group"><label>Concurso / Vestibular</label><input id="t-concurso" placeholder="Ex: ENEM, VUNESP, FUVEST..." required oninput="updateTurmaPreview()"></div>
+        </div>
+        <div class="form-group"><label>Descrição (opcional)</label><textarea id="t-desc" placeholder="Informações sobre a turma..." oninput="updateTurmaPreview()"></textarea></div>
+        <div class="turma-form-row turma-form-row-compact">
+          <div class="form-group"><label>Preço (R$)</label><input type="text" id="t-preco" value="0,00" inputmode="numeric" autocomplete="off" oninput="maskMoneyInput(this);updateTurmaPreview()" onblur="maskMoneyInput(this);updateTurmaPreview()"></div>
+          <div class="form-group">
+            <label>Status</label>
+            <select id="t-status" onchange="updateTurmaPreview()">
+              <option value="ABERTA">Aberta e visível no site</option>
+              <option value="FECHADA">Fechada</option>
+              <option value="RASCUNHO">Rascunho</option>
+            </select>
+          </div>
+        </div>
+        <div class="turma-switches">
+          <label><input type="checkbox" id="t-matriculas" checked> Matrículas abertas</label>
+          <label><input type="checkbox" id="t-envios" checked> Alunos podem enviar redações</label>
+        </div>
+      </section>
+      <section class="turma-form-section">
+        <div class="form-group">
+          <label>Foto da turma</label>
+          <input id="t-imagem" placeholder="URL da imagem ou carregue uma foto" oninput="renderTurmaImagePreview();updateTurmaPreview()">
+          <label class="file-button" style="margin-top:8px;width:max-content">
+            Carregar imagem
+            <input type="file" accept="image/*" onchange="handleTurmaImageFile(event)">
+          </label>
+          <div class="profile-photo-preview" id="t-imagem-preview" style="margin-top:10px;min-height:100px"><span>Prévia da turma</span></div>
+        </div>
+      </section>
+      <aside class="turma-form-preview">
+        <div class="turma-preview-label">Prévia no site</div>
+        <div id="t-live-preview"></div>
+      </aside>
+      <section class="turma-form-section turma-form-wide">
+        <div class="turma-form-row">
+          <div class="form-group"><label>Título: Para quem é</label><input id="t-titulo-publico" placeholder="Para Quem É"></div>
+          <div class="form-group"><label>Título: entregas</label><input id="t-titulo-entregas" placeholder="O Que A Turma Entrega"></div>
+          <div class="form-group"><label>Título: roteiro</label><input id="t-titulo-roteiro" placeholder="Roteiro Do Curso"></div>
+        </div>
+        <div class="turma-form-row">
+          <div class="form-group"><label>Destaque da página da turma</label><input id="t-destaque" placeholder="Ex: acompanhamento individual, correções completas e materiais exclusivos" oninput="updateTurmaPreview()"></div>
+          <div class="form-group"><label>Benefícios da turma</label><textarea id="t-beneficios" placeholder="Um benefício por linha. Ex: Correções personalizadas&#10;Aulas e materiais específicos&#10;Plantão de dúvidas" oninput="updateTurmaPreview()"></textarea></div>
+          <div class="form-group"><label>Roteiro do curso</label><textarea id="t-roteiro" placeholder="Um item por linha. Ex: Introdução à banca&#10;Tese e repertório&#10;Prática com temas"></textarea></div>
+        </div>
+      </section>
+      <div class="turma-form-actions">
+        <button type="submit" class="btn btn-accent btn-full" id="turma-submit">Criar Turma</button>
       </div>
-      <div class="form-group"><label>Destaque da página da turma</label><input id="t-destaque" placeholder="Ex: acompanhamento individual, correções completas e materiais exclusivos"></div>
-      <div class="form-group"><label>Benefícios da turma</label><textarea id="t-beneficios" placeholder="Um benefício por linha. Ex: Correções personalizadas&#10;Aulas e materiais específicos&#10;Plantão de dúvidas"></textarea></div>
-      <div class="form-group"><label>Roteiro do curso</label><textarea id="t-roteiro" placeholder="Um item por linha. Ex: Introdução à banca&#10;Tese e repertório&#10;Prática com temas"></textarea></div>
-      <div class="form-group"><label>Preço (R$)</label><input type="number" id="t-preco" value="0" min="0" step="0.01"></div>
-      <div class="form-group">
-        <label>Status</label>
-        <select id="t-status">
-          <option value="ABERTA">Aberta e visível no site</option>
-          <option value="FECHADA">Fechada</option>
-          <option value="RASCUNHO">Rascunho</option>
-        </select>
-      </div>
-      <div class="turma-switches">
-        <label><input type="checkbox" id="t-matriculas" checked> Matrículas abertas</label>
-        <label><input type="checkbox" id="t-envios" checked> Alunos podem enviar redações</label>
-      </div>
-      <button type="submit" class="btn btn-accent btn-full" id="turma-submit">Criar Turma</button>
     </form>
   </div>
 </div>
@@ -611,6 +678,46 @@
   </div>
 </div>
 
+<div class="modal-bg" id="modal-professor-filho">
+  <div class="modal modal-site-designer modal-prof-child">
+    <button class="modal-close" onclick="closeModal('modal-professor-filho')">×</button>
+    <div class="modal-title" id="pf-modal-title">Adicionar professor corretor</div>
+    <input type="hidden" id="pf-id">
+    <div id="alert-pf" class="alert alert-err"></div>
+    <div class="prof-child-form">
+      <section>
+        <div class="cms-menu-section-title">Dados de acesso</div>
+        <div class="form-grid-2">
+          <div class="form-group"><label>Nome</label><input id="pf-nome" placeholder="Nome do professor"></div>
+          <div class="form-group"><label>Email</label><input id="pf-email" type="email" placeholder="email@exemplo.com"></div>
+          <div class="form-group"><label>Telefone</label><input id="pf-telefone" placeholder="DDD + número"></div>
+          <div class="form-group"><label>Senha padrão</label><input id="pf-password" type="password" placeholder="Obrigatória ao criar"></div>
+          <div class="form-group"><label>Valor por redação corrigida</label><input id="pf-valor-correcao" inputmode="decimal" placeholder="0,00" onblur="maskMoneyInput(this)"></div>
+          <div class="form-group"><label>Valor por revisão finalizada</label><input id="pf-valor-revisao" inputmode="decimal" placeholder="0,00" onblur="maskMoneyInput(this)"></div>
+        </div>
+      </section>
+      <section>
+        <div class="cms-menu-section-title">Permissões</div>
+        <div class="prof-perm-grid" id="pf-permissions"></div>
+      </section>
+      <section>
+        <div class="cms-menu-section-title">Direcionamento das correções</div>
+        <p class="hint" style="margin-bottom:10px">Escolha turmas inteiras ou alunos específicos. O corretor só verá as redações que baterem com estas regras.</p>
+        <div class="prof-assignment-grid">
+          <div>
+            <strong>Turmas e alunos vinculados</strong>
+            <div class="prof-check-list" id="pf-turmas"></div>
+          </div>
+        </div>
+      </section>
+    </div>
+    <div style="display:flex;justify-content:flex-end;gap:8px;margin-top:16px">
+      <button type="button" class="btn btn-sec" onclick="closeModal('modal-professor-filho')">Cancelar</button>
+      <button type="button" class="btn btn-accent" onclick="saveProfessorFilho()">Salvar professor</button>
+    </div>
+  </div>
+</div>
+
 <!-- MODAL: Tipos de erro da turma -->
 <div class="modal-bg" id="modal-turma-erros">
   <div class="modal">
@@ -633,6 +740,8 @@
     <div class="modal-title">Personalizar layout</div>
     <div class="page-grid grid-2">
       <section>
+        <div class="cms-menu-section" data-layout-section="cabecalho">
+        <div class="cms-menu-section-title">Cabeçalho</div>
         <div class="form-group">
           <label>Etiqueta acima do título</label>
           <input id="cms-eyebrow" placeholder="Site independente do professor" oninput="updateSitePreview()">
@@ -661,7 +770,11 @@
                 Escolher foto
                 <input type="file" accept="image/*" onchange="handleProfilePhotoFile(event)">
               </label>
-              <label class="check-inline"><input type="checkbox" id="cms-profile-photo-bg" onchange="reprocessProfilePhoto()"> Remover fundo claro/uniforme</label>
+              <input type="checkbox" id="cms-profile-photo-bg" hidden onchange="reprocessProfilePhoto()">
+              <div class="photo-bg-toggle">
+                <button type="button" id="photo-bg-original" class="on" onclick="setProfilePhotoBgMode(false)">Original</button>
+                <button type="button" id="photo-bg-remove" onclick="setProfilePhotoBgMode(true)">Remover fundo</button>
+              </div>
               <button type="button" class="btn-secondary" onclick="clearProfilePhoto()">Remover foto</button>
             </div>
             <input type="hidden" id="cms-profile-photo">
@@ -671,6 +784,9 @@
             </div>
           </div>
         </div>
+        </div>
+        <div class="cms-menu-section" data-layout-section="turmas">
+        <div class="cms-menu-section-title">Turmas no site</div>
         <div class="form-group">
           <label>Título da seção de turmas</label>
           <input id="cms-turmas-title" placeholder="Escolha sua turma" oninput="updateSitePreview()">
@@ -679,6 +795,9 @@
           <label>Subtítulo da seção de turmas</label>
           <input id="cms-turmas-subtitle" placeholder="Ao criar acesso por aqui..." oninput="updateSitePreview()">
         </div>
+        </div>
+        <div class="cms-menu-section" data-layout-section="conteudos">
+        <div class="cms-menu-section-title">Conteúdos/Postagens no site</div>
         <div class="form-group">
           <label>Título dos conteúdos</label>
           <input id="cms-posts-title" placeholder="Dicas e materiais" oninput="updateSitePreview()">
@@ -686,6 +805,22 @@
         <div class="form-group">
           <label>Introdução dos conteúdos</label>
           <input id="cms-posts-intro" placeholder="Publicações, notícias e matérias do professor." oninput="updateSitePreview()">
+        </div>
+        </div>
+        <div class="cms-menu-section" data-layout-section="aluno">
+        <div class="cms-menu-section-title">Área Aluno</div>
+        <div class="form-group">
+          <label>Título da Área Aluno</label>
+          <input id="cms-aluno-title" placeholder="Acesse a plataforma" oninput="updateSitePreview()">
+        </div>
+        <div class="form-group">
+          <label>Texto da Área Aluno</label>
+          <input id="cms-aluno-text" placeholder="Entre para acompanhar turmas, envios de redação e correções." oninput="updateSitePreview()">
+        </div>
+        <div class="form-group">
+          <label>Texto do botão da Área Aluno</label>
+          <input id="cms-aluno-cta" placeholder="Entrar na área do aluno" oninput="updateSitePreview()">
+        </div>
         </div>
       </section>
       <section>
@@ -877,17 +1012,25 @@
 
 <script>
 let currentSite = null
+let currentUser = null
+let currentChildTeacher = null
 let cmsPosts = []
 let preComentarios = []
 let cmsTemas = []
 let turmasCache = []
 let alunosCache = []
+let professoresFilhosCache = []
+let professoresFilhosTurmas = []
+let professoresFilhosAlunos = []
+let professoresFilhosMatriculas = []
 let themeUndoStack = []
 let themeRedoStack = []
 let themeFocusKey = ''
 let relatorioCache = null
 let turmaAlunosCache = []
 let turmaAlunosOptionsCache = []
+let alunosView = 'todos'
+let alunosPorTurmaCache = []
 let currentTurmaDetailId = null
 let currentCorrecao = null
 let currentTurmaAlunosId = null
@@ -914,12 +1057,37 @@ let freehandDrag = null
 let audioRecorder = null
 let audioChunks = []
 let currentAvaliacaoData = null
+let annotationUndoStack = []
+let annotationRedoStack = []
+let annotationHistoryBusy = false
+let activeCommentBalloonCancel = null
 
 // Escapa HTML para uso seguro dentro de template strings (usado pelo balão de comentário e previews).
 function esc(s) {
   return String(s == null ? '' : s).replace(/[&<>"']/g, c => ({
     '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;'
   }[c]))
+}
+
+function formatMoneyBR(value) {
+  const n = Number(value || 0)
+  return n > 0
+    ? n.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })
+    : '0,00'
+}
+
+function formatPriceBR(value) {
+  const n = Number(value || 0)
+  return n > 0 ? `R$ ${formatMoneyBR(n)}` : 'Gratuito'
+}
+
+function parseMoneyBR(value) {
+  const digits = String(value || '').replace(/\D/g, '')
+  return digits ? Number(digits) / 100 : 0
+}
+
+function maskMoneyInput(input) {
+  input.value = formatMoneyBR(parseMoneyBR(input.value))
 }
 
 function parseFeedbackPayload(value) {
@@ -1002,6 +1170,7 @@ function defaultCms() {
     },
     theme: defaultTheme(),
     posts: [],
+    child_teachers: [],
     pre_comments: [],
     themes: [],
     evaluation_modes: [],
@@ -1013,6 +1182,7 @@ async function init() {
   const res = await fetch('/api/auth/me')
   if (!res.ok) { location.href = loginPath; return }
   const user = await res.json()
+  currentUser = user
   if (!['ADMIN','SUPERADMIN','CORRETOR'].includes(user.role)) { location.href = loginPath; return }
   if (user.role !== 'SUPERADMIN' && user.ativo === false) {
     await fetch('/api/auth/logout', { method: 'POST' })
@@ -1021,7 +1191,7 @@ async function init() {
   }
   document.getElementById('sb-uname').textContent = user.nome || user.email
   document.getElementById('sb-av').textContent = (user.nome || user.email).substring(0,2).toUpperCase()
-  loadSite()
+  await loadSite()
   loadStats()
   loadCorrecoes('recentes')
 }
@@ -1034,23 +1204,24 @@ function siteUrl(site) {
 
 function siteEditUrl(site) {
   const url = siteUrl(site)
-  if (url === '#') return url
-  return `${url}${url.includes('?') ? '&' : '?'}edit=1`
+  return url
 }
 
 async function loadSite() {
   const res = await fetch('/api/admin/site')
   if (!res.ok) return
   currentSite = await res.json()
+  currentChildTeacher = currentSite.current_child_teacher || null
   if (tenantSlug && currentSite.slug !== tenantSlug) {
     await fetch('/api/auth/logout', { method: 'POST' })
     location.href = loginPath + '?erro=site'
     return
   }
+  applyChildTeacherMode()
   applySiteTheme(currentSite)
   const url = siteEditUrl(currentSite)
   document.getElementById('btn-site-top').href = url
-  document.getElementById('btn-site-top').style.display = 'inline-flex'
+  document.getElementById('btn-site-top').style.display = isChildTeacherMode() ? 'none' : 'inline-flex'
   document.getElementById('site-public-link').href = url
   document.getElementById('site-nome').value = currentSite.nome_prof || ''
   document.getElementById('site-bio').value = currentSite.bio_prof || ''
@@ -1062,6 +1233,22 @@ async function loadSite() {
   renderAvaliacaoModos()
   refreshAvaliacaoSelect()
   updateSitePreview()
+}
+
+function isChildTeacherMode() {
+  return Boolean(currentChildTeacher)
+}
+
+function applyChildTeacherMode() {
+  const child = isChildTeacherMode()
+  document.body.classList.toggle('child-teacher-mode', child)
+  document.querySelectorAll('.owner-only').forEach((el) => { el.style.display = child ? 'none' : '' })
+  const role = document.getElementById('sb-role-label')
+  if (role) role.textContent = child ? 'CORRETOR' : 'PROFESSOR'
+  const sub = document.getElementById('topbar-sub')
+  if (child && sub && !document.body.classList.contains('correcao-mode')) {
+    sub.textContent = 'Somente redações direcionadas para você'
+  }
 }
 
 function applySiteTheme(site) {
@@ -1119,9 +1306,21 @@ async function saveSite(e) {
 function showSiteErr(msg) { const el = document.getElementById('alert-site'); el.textContent = msg; el.style.display = 'block' }
 function hideSiteAlerts() { ['alert-site','alert-site-ok'].forEach(id => { const el = document.getElementById(id); if (el) el.style.display = 'none' }) }
 
-function openLayoutModal() {
+function focusSiteArea(id) {
+  const el = document.getElementById(id)
+  if (!el) return
+  el.scrollIntoView({ behavior: 'smooth', block: 'center' })
+  el.classList.add('site-focus-pulse')
+  setTimeout(() => el.classList.remove('site-focus-pulse'), 1800)
+}
+
+function openLayoutModal(section = '') {
   updateSitePreview()
   openModal('modal-layout')
+  if (section) {
+    const target = document.querySelector(`[data-layout-section="${section}"]`)
+    setTimeout(() => target?.scrollIntoView({ behavior: 'smooth', block: 'start' }), 80)
+  }
 }
 
 function openPostsModal() {
@@ -1136,7 +1335,9 @@ function loadCmsForm(cms) {
   data.contact = { ...defaultCms().contact, ...(data.contact || {}) }
   data.theme = normalizeTheme(data.theme, currentSite?.cor_primaria, currentSite?.cor_accent)
   cmsPosts = Array.isArray(data.posts) ? data.posts : []
-  preComentarios = Array.isArray(data.pre_comments) ? data.pre_comments : []
+  const loadedPre = Array.isArray(data.pre_comments) ? data.pre_comments : []
+  preComentarios = mergeDefaultPreComentarios(loadedPre)
+  if (JSON.stringify(preComentarios) !== JSON.stringify(loadedPre)) setTimeout(() => persistPreComentarios(), 0)
   cmsTemas = Array.isArray(data.themes) ? data.themes : []
   document.getElementById('site-whatsapp').value = data.contact.whatsapp_phone || defaultCms().contact.whatsapp_phone
   setThemeControls(data.theme)
@@ -1148,11 +1349,16 @@ function loadCmsForm(cms) {
   document.getElementById('cms-profile-photo').value = data.layout.profile_photo || ''
   document.getElementById('cms-profile-photo-original').value = data.layout.profile_photo_original || data.layout.profile_photo || ''
   document.getElementById('cms-profile-photo-bg').checked = Boolean(data.layout.profile_photo_remove_bg)
+  document.getElementById('photo-bg-original')?.classList.toggle('on', !data.layout.profile_photo_remove_bg)
+  document.getElementById('photo-bg-remove')?.classList.toggle('on', Boolean(data.layout.profile_photo_remove_bg))
   renderProfilePhotoPreview()
   document.getElementById('cms-turmas-title').value = data.layout.turmas_title || ''
   document.getElementById('cms-turmas-subtitle').value = data.layout.turmas_subtitle || ''
   document.getElementById('cms-posts-title').value = data.layout.posts_title || ''
   document.getElementById('cms-posts-intro').value = data.layout.posts_intro || ''
+  document.getElementById('cms-aluno-title').value = data.layout.aluno_title || ''
+  document.getElementById('cms-aluno-text').value = data.layout.aluno_text || ''
+  document.getElementById('cms-aluno-cta').value = data.layout.aluno_cta || ''
   renderCmsPosts()
   renderPreComentarios()
   renderTemas()
@@ -1179,7 +1385,10 @@ function collectCmsForm() {
       turmas_title: document.getElementById('cms-turmas-title').value.trim() || defaultCms().layout.turmas_title,
       turmas_subtitle: document.getElementById('cms-turmas-subtitle').value.trim() || defaultCms().layout.turmas_subtitle,
       posts_title: document.getElementById('cms-posts-title').value.trim() || defaultCms().layout.posts_title,
-      posts_intro: document.getElementById('cms-posts-intro').value.trim() || defaultCms().layout.posts_intro
+      posts_intro: document.getElementById('cms-posts-intro').value.trim() || defaultCms().layout.posts_intro,
+      aluno_title: document.getElementById('cms-aluno-title').value.trim() || defaultCms().layout.aluno_title,
+      aluno_text: document.getElementById('cms-aluno-text').value.trim() || defaultCms().layout.aluno_text,
+      aluno_cta: document.getElementById('cms-aluno-cta').value.trim() || defaultCms().layout.aluno_cta
     },
     contact: {
       ...(previous.contact || {}),
@@ -1194,11 +1403,63 @@ function collectCmsForm() {
 }
 
 function defaultPreComentarios() {
+  const mark = 'Marcação no corpo do texto'
+  const general = 'Comentários gerais'
   return [
-    { id: 'pre-coisa', atalho: '/coisa', titulo: 'Palavra vaga', categoria: 'Linguagem', conteudo: 'Evite usar a palavra "coisa". Prefira um termo mais preciso para deixar sua ideia clara.' },
-    { id: 'pre-argumentacao', atalho: '/argumentacao', titulo: 'Argumentação', categoria: 'Argumentação', conteudo: 'Seu argumento precisa ser melhor desenvolvido: explique a relação entre a ideia apresentada e a tese defendida.' },
-    { id: 'pre-conectivo', atalho: '/conectivo', titulo: 'Conectivo', categoria: 'Coesão', conteudo: 'Atenção ao uso dos conectivos. Eles precisam indicar com clareza a relação entre as partes do texto.' }
+    { id: 'pre-o-mesmo', atalho: '/o mesmo', titulo: 'Uso de "o mesmo"', categoria: mark, conteudo: 'Na gramática normativa da língua portuguesa, a expressão "o mesmo" ou "a mesma" não deve ser usada como pronome pessoal para substituir um substantivo já citado. Para retomar uma ideia, prefira pronomes pessoais como "ele", "ela", "eles" e "elas"; demonstrativos como "este", "esta" e "isso"; ou pronomes relativos como "o qual" e "a qual".' },
+    { id: 'pre-atraves', atalho: '/através', titulo: 'Uso de "através"', categoria: mark, conteudo: 'Em textos formais, "através" deve ser usado preferencialmente com ideia de atravessamento físico. Quando o sentido for instrumento ou meio, prefira "por meio de", "mediante", "com o auxílio de" ou "com base em".' },
+    { id: 'pre-repertorio', atalho: '/Repertório', titulo: 'Repertório sociocultural', categoria: mark, conteudo: 'Insira um repertório sociocultural. Ele funciona como validação externa do ponto de vista do autor. Ao inserir um dado histórico, uma teoria filosófica, uma lei ou uma referência literária, você fortalece a credibilidade do argumento e mostra que sua análise está ancorada em conhecimento reconhecido e relevante.' },
+    { id: 'pre-cd2', atalho: '/CD2', titulo: 'Conectivo do D2', categoria: mark, conteudo: 'Insira um elemento coesivo para iniciar o parágrafo de desenvolvimento 2. Você pode usar, por exemplo, "Outrossim", "Além disso", "Ademais" ou "Sob outra perspectiva", conforme a relação de sentido pretendida.' },
+    { id: 'pre-juizo-valor', atalho: '//juízo de valor', titulo: 'Juízo de valor', categoria: mark, conteudo: 'Insira um juízo de valor para reforçar sua análise. Expressões como "é evidente que", "é notório que", "é essencial" e "é indubitável" podem ajudar a evidenciar a avaliação crítica do problema, desde que sejam acompanhadas de explicação.' },
+    { id: 'pre-titulo', atalho: '/título', titulo: 'Título criativo', categoria: mark, conteudo: 'Gostei muito do título. Ele demonstra criatividade e estabelece uma boa porta de entrada para a leitura do texto. Parabéns pela escolha.' },
+    { id: 'pre-gerundio', atalho: '/Gerúndio', titulo: 'Gerúndio', categoria: mark, conteudo: 'Evite o uso excessivo do gerúndio. Em redações formais, ele pode deixar o período menos objetivo ou criar ambiguidade. Prefira construções verbais mais diretas quando possível.' },
+    { id: 'pre-indefinidos', atalho: '/indefinidos', titulo: 'Pronomes indefinidos', categoria: mark, conteudo: 'Evite o uso genérico de pronomes indefinidos, como "algo", "alguém", "alguns" e "muitos", quando eles não forem especificados. Em textos argumentativos, a precisão fortalece a clareza e a força do argumento.' },
+    { id: 'pre-afim', atalho: '/AFIM', titulo: 'A fim de', categoria: mark, conteudo: 'A forma correta é "a fim de" (separado) quando o sentido for finalidade, equivalente a "para". Exemplo: "O governo deve investir em educação a fim de reduzir desigualdades". "Afim" junto indica afinidade ou semelhança.' },
+    { id: 'pre-ha', atalho: '/há', titulo: 'Há', categoria: mark, conteudo: '"Há" indica tempo passado ou existência. Quando houver ideia de tempo decorrido, não use "atrás" junto com "há", pois isso gera redundância. Exemplo: "Há dois anos, o problema se intensificou".' },
+    { id: 'pre-margem', atalho: '//margem', titulo: 'Margem', categoria: mark, conteudo: 'Atenção à formatação: não ultrapasse a margem. Manter o texto dentro dos limites da folha demonstra cuidado com a apresentação e evita prejuízos na leitura da redação.' },
+    { id: 'pre-onde', atalho: '/ONDE', titulo: 'Onde', categoria: mark, conteudo: '"Onde" deve ser usado para indicar lugar físico. Quando a referência não for espacial, prefira termos como "em que", "no qual", "na qual" ou "nesse contexto".' },
+    { id: 'pre-argumentos', atalho: '/argumentos', titulo: 'Escolha dos argumentos', categoria: mark, conteudo: 'Reveja a escolha dos argumentos. Eles precisam dialogar diretamente com a tese e com o recorte temático proposto, evitando informações soltas ou pouco produtivas para a defesa do ponto de vista.' },
+    { id: 'pre-dia-a-dia', atalho: '/dia a dia', titulo: 'Dia a dia', categoria: mark, conteudo: 'A expressão "dia a dia" não leva hífen na ortografia atual quando indica cotidiano ou passagem diária do tempo. Use-a com atenção ao sentido no período.' },
+    { id: 'pre-por-conta', atalho: '/por conta', titulo: 'Por conta', categoria: mark, conteudo: 'A expressão "por conta de" pode soar informal em contextos dissertativos. Em redações formais, prefira "em razão de", "devido a", "por causa de" ou "em decorrência de".' },
+    { id: 'pre-tanto', atalho: '/tanto', titulo: 'Tanto quanto', categoria: general, conteudo: 'A expressão "tanto quanto" não leva vírgula quando funciona como comparação direta.\n\nIncorreto: "Ele estudou tanto, quanto eu."\nCorreto: "Ele estudou tanto quanto eu." / "Ela se dedicou tanto quanto os outros alunos."' },
+    { id: 'pre-traz', atalho: '/traz', titulo: 'Traz', categoria: mark, conteudo: 'A forma correta é "traz", com Z, quando se trata do verbo trazer. "Trás" com S indica parte posterior ou posição atrás de algo.' },
+    { id: 'pre-estado', atalho: '/Estado', titulo: 'Estado', categoria: mark, conteudo: 'A palavra "Estado" deve ser escrita com inicial maiúscula quando se refere à instituição política ou ao poder público. Use inicial minúscula quando indicar condição ou situação.' },
+    { id: 'pre-virgula-pois', atalho: '/vírgula pois', titulo: 'Vírgula com pois', categoria: mark, conteudo: 'Revise a pontuação com "pois". Quando tem valor explicativo, geralmente é precedido por vírgula; quando aparece deslocado ou conclusivo, pode exigir vírgulas antes e depois.' },
+    { id: 'pre-concretude', atalho: '/concretude', titulo: 'Concretude argumentativa', categoria: mark, conteudo: 'Sua argumentação ficou abstrata. Procure inserir exemplos, dados, repertórios ou explicações mais concretas para demonstrar como o problema ocorre na realidade.' },
+    { id: 'pre-pauta', atalho: '//pauta', titulo: 'Pauta de discussão', categoria: mark, conteudo: 'Ao escrever que algo é "uma pauta a ser discutida", evite deixar a análise vaga. Explique qual é o problema, quem é afetado e por que a discussão é relevante.' },
+    { id: 'pre-primeiro-lugar', atalho: '//em primeiro lugar', titulo: 'Conectivo inicial', categoria: mark, conteudo: 'Atente-se ao emprego dos conectivos no início dos parágrafos. Use-os para indicar progressão lógica e relação clara entre as ideias.' },
+    { id: 'pre-emendas', atalho: '/emendas', titulo: 'Emendas e rasuras', categoria: mark, conteudo: 'Atente-se às emendas e rasuras, pois elas podem prejudicar a legibilidade e a apresentação do texto. Sempre que possível, escreva com clareza e organização visual.' },
+    { id: 'pre-rasura', atalho: '/rasura', titulo: 'Rasura', categoria: mark, conteudo: 'Evite rasuras excessivas. Elas podem comprometer a leitura e passar impressão de pouca revisão. Planeje antes de escrever a versão final.' },
+    { id: 'pre-coesao', atalho: '/coesão', titulo: 'Coesão', categoria: mark, conteudo: 'Bom uso do elemento coesivo. A conexão entre as ideias ficou mais clara e contribuiu para a progressão do texto.' },
+    { id: 'pre-primeira-pessoa', atalho: '/primeira pessoa', titulo: 'Primeira pessoa', categoria: mark, conteudo: 'Em textos dissertativos formais, evite o uso da primeira pessoa. Prefira construções impessoais ou objetivas para manter o tom analítico.' },
+    { id: 'pre-argumentacao', atalho: '/argumentação', titulo: 'Argumentação', categoria: mark, conteudo: 'O parágrafo argumentativo apresenta boa articulação, mas pode ser aprofundado. Explique melhor a relação entre repertório, argumento e tese.' },
+    { id: 'pre-tese', atalho: '/tese', titulo: 'Tese', categoria: mark, conteudo: 'Parabéns! Sua tese está clara e objetiva. Ela orienta bem a leitura e antecipa o posicionamento que será desenvolvido no texto.' },
+    { id: 'pre-contextualizacao', atalho: '/contextualização', titulo: 'Contextualização', categoria: mark, conteudo: 'Procure construir uma contextualização mais estratégica. A introdução deve aproximar o leitor do tema e preparar o caminho para a tese.' },
+    { id: 'pre-crase', atalho: '/crase', titulo: 'Crase', categoria: mark, conteudo: 'Regra básica: ocorre crase quando há fusão da preposição "a" com o artigo feminino "a". Verifique se o termo posterior admite artigo feminino e se o termo anterior exige preposição.' },
+    { id: 'pre-conclusao-geral', atalho: '/conclusão', titulo: 'Conclusão', categoria: general, conteudo: 'Sua conclusão está muito bem construída! Retoma com clareza a tese, apresenta um fechamento coerente e reforça a ideia central do texto com maturidade. Ótimo desfecho!' }
   ]
+}
+
+function mergeDefaultPreComentarios(list) {
+  const current = Array.isArray(list) ? list : []
+  const defaults = defaultPreComentarios()
+  const defaultsByShortcut = new Map(defaults.map(item => [normalizeAtalho(item.atalho), item]))
+  const used = new Set()
+  const updated = current.map(item => {
+    const key = normalizeAtalho(item.atalho)
+    const def = defaultsByShortcut.get(key)
+    if (!def) return item
+    used.add(key)
+    return {
+      ...item,
+      titulo: def.titulo,
+      categoria: def.categoria,
+      conteudo: def.conteudo,
+      updated_at: new Date().toISOString()
+    }
+  })
+  const missing = defaults.filter(item => !used.has(normalizeAtalho(item.atalho)) && !current.some(cur => normalizeAtalho(cur.atalho) === normalizeAtalho(item.atalho)))
+  return [...updated, ...missing.map(item => ({ ...item, created_at: new Date().toISOString(), updated_at: new Date().toISOString() }))]
 }
 
 function normalizeAtalho(value) {
@@ -1212,6 +1473,38 @@ function preComentariosForUse() {
     .filter(item => item && item.atalho && item.conteudo)
 }
 
+const PRE_COMMENT_USAGE_KEY = 'pre_comment_usage_v1'
+
+function preCommentUsageMap() {
+  try { return JSON.parse(localStorage.getItem(PRE_COMMENT_USAGE_KEY) || '{}') || {} } catch { return {} }
+}
+
+function preCommentUsageKey(item) {
+  return String(item?.id || normalizeAtalho(item?.atalho) || item?.titulo || '').trim()
+}
+
+function preCommentUsageCount(item) {
+  const usage = preCommentUsageMap()
+  return Number(usage[preCommentUsageKey(item)] || usage[normalizeAtalho(item?.atalho)] || 0)
+}
+
+function rememberPreCommentUse(item) {
+  const key = preCommentUsageKey(item)
+  if (!key) return
+  const usage = preCommentUsageMap()
+  usage[key] = Number(usage[key] || 0) + 1
+  const shortcut = normalizeAtalho(item?.atalho)
+  if (shortcut && shortcut !== key) usage[shortcut] = Math.max(Number(usage[shortcut] || 0), usage[key])
+  localStorage.setItem(PRE_COMMENT_USAGE_KEY, JSON.stringify(usage))
+}
+
+function sortPreComentariosByUsage(list) {
+  return [...list].sort((a, b) =>
+    preCommentUsageCount(b) - preCommentUsageCount(a) ||
+    String(a.atalho || a.titulo || '').localeCompare(String(b.atalho || b.titulo || ''), 'pt-BR')
+  )
+}
+
 function renderPreCategoriaOptions() {
   const sel = document.getElementById('pre-filter-category')
   if (!sel) return
@@ -1221,12 +1514,25 @@ function renderPreCategoriaOptions() {
   sel.value = cats.includes(selected) ? selected : ''
 }
 
+function setPreComentarioSubmenu(category) {
+  const sel = document.getElementById('pre-filter-category')
+  if (sel) sel.value = category
+  document.querySelectorAll('[data-pre-tab]').forEach(btn => btn.classList.toggle('on', btn.dataset.preTab === category))
+  renderPreComentarios()
+}
+
 function renderPreComentarios() {
   renderPreCategoriaOptions()
   const el = document.getElementById('precomentarios-list')
   if (!el) return
   const q = (document.getElementById('pre-search')?.value || '').trim().toLowerCase()
-  const cat = document.getElementById('pre-filter-category')?.value || ''
+  let cat = document.getElementById('pre-filter-category')?.value || ''
+  if (!cat && document.querySelector('[data-pre-tab]')) {
+    cat = 'Marcação no corpo do texto'
+    const sel = document.getElementById('pre-filter-category')
+    if (sel) sel.value = cat
+  }
+  document.querySelectorAll('[data-pre-tab]').forEach(btn => btn.classList.toggle('on', btn.dataset.preTab === cat))
   const list = preComentariosForUse().filter(item => {
     const hay = [item.atalho, item.titulo, item.categoria, item.conteudo].join(' ').toLowerCase()
     return (!q || hay.includes(q)) && (!cat || item.categoria === cat)
@@ -1254,12 +1560,13 @@ function renderPreComentarios() {
 
 function openPreComentarioModal(id = '') {
   const item = preComentariosForUse().find(p => p.id === id) || {}
+  const activeCat = document.getElementById('pre-filter-category')?.value || 'Marcação no corpo do texto'
   document.getElementById('alert-pre').style.display = 'none'
   document.getElementById('pre-modal-title').textContent = id ? 'Editar pré-comentário' : 'Novo pré-comentário'
   document.getElementById('pre-id').value = item.id || ''
   document.getElementById('pre-atalho').value = item.atalho || ''
   document.getElementById('pre-titulo').value = item.titulo || ''
-  document.getElementById('pre-categoria').value = item.categoria || ''
+  document.getElementById('pre-categoria').value = item.categoria || activeCat
   document.getElementById('pre-conteudo').value = item.conteudo || ''
   openModal('modal-precomentario')
 }
@@ -1746,6 +2053,9 @@ function renderLayoutPreview() {
   const cta = document.getElementById('cms-cta')?.value.trim() || defaultCms().layout.cta_text
   const turmasTitle = document.getElementById('cms-turmas-title')?.value.trim() || defaultCms().layout.turmas_title
   const postsTitle = document.getElementById('cms-posts-title')?.value.trim() || defaultCms().layout.posts_title
+  const alunoTitle = document.getElementById('cms-aluno-title')?.value.trim() || defaultCms().layout.aluno_title
+  const alunoText = document.getElementById('cms-aluno-text')?.value.trim() || defaultCms().layout.aluno_text
+  const alunoCta = document.getElementById('cms-aluno-cta')?.value.trim() || defaultCms().layout.aluno_cta
   el.innerHTML = `
     <div class="cms-live-site">
       <div class="cms-live-nav"><span>Redação</span><strong>${esc(nome)}</strong><button type="button">Entrar</button></div>
@@ -1757,6 +2067,7 @@ function renderLayoutPreview() {
       </div>
       <div class="cms-live-section"><strong>${esc(turmasTitle)}</strong><span>Turmas abertas aparecem aqui</span></div>
       <div class="cms-live-section"><strong>${esc(postsTitle)}</strong><span>Publicações aparecem aqui</span></div>
+      <div class="cms-live-section"><strong>${esc(alunoTitle)}</strong><span>${esc(alunoText)}</span><button type="button">${esc(alunoCta)}</button></div>
       ${renderDashboardExtraPreview()}
     </div>`
 }
@@ -2199,8 +2510,8 @@ function imageFromDataUrl(src) {
   })
 }
 
-function canvasToBoundedDataUrl(img, removeBg) {
-  const max = 900
+function canvasToBoundedDataUrl(img, removeBg, maxSize = 900, quality = 0.88) {
+  const max = maxSize
   const ratio = Math.min(1, max / Math.max(img.naturalWidth || img.width, img.naturalHeight || img.height))
   const w = Math.max(1, Math.round((img.naturalWidth || img.width) * ratio))
   const h = Math.max(1, Math.round((img.naturalHeight || img.height) * ratio))
@@ -2210,7 +2521,7 @@ function canvasToBoundedDataUrl(img, removeBg) {
   const ctx = canvas.getContext('2d')
   ctx.drawImage(img, 0, 0, w, h)
   if (removeBg) removeUniformBackground(ctx, w, h)
-  return canvas.toDataURL(removeBg ? 'image/png' : 'image/jpeg', removeBg ? undefined : 0.88)
+  return canvas.toDataURL(removeBg ? 'image/png' : 'image/jpeg', removeBg ? undefined : quality)
 }
 
 function removeUniformBackground(ctx, w, h) {
@@ -2267,10 +2578,20 @@ async function reprocessProfilePhoto() {
   updateSitePreview()
 }
 
+function setProfilePhotoBgMode(remove) {
+  const check = document.getElementById('cms-profile-photo-bg')
+  if (check) check.checked = Boolean(remove)
+  document.getElementById('photo-bg-original')?.classList.toggle('on', !remove)
+  document.getElementById('photo-bg-remove')?.classList.toggle('on', Boolean(remove))
+  reprocessProfilePhoto()
+}
+
 function clearProfilePhoto() {
   document.getElementById('cms-profile-photo').value = ''
   document.getElementById('cms-profile-photo-original').value = ''
   document.getElementById('cms-profile-photo-bg').checked = false
+  document.getElementById('photo-bg-original')?.classList.add('on')
+  document.getElementById('photo-bg-remove')?.classList.remove('on')
   renderProfilePhotoPreview()
   updateSitePreview()
 }
@@ -2349,6 +2670,227 @@ async function loadStats() {
   document.getElementById('badge-pend').textContent = d.aguardando
 }
 
+const PROFESSOR_CHILD_PERMISSIONS = [
+  ['gerenciar_turmas', 'Poderá gerenciar as turmas'],
+  ['gerenciar_temas', 'Poderá gerenciar os temas'],
+  ['gerenciar_comentarios', 'Poderá gerenciar o banco de comentários'],
+  ['enviar_redacoes', 'Poderá enviar redações'],
+  ['selecionar_corretores', 'Poderá selecionar os corretores'],
+  ['relatorios_alunos', 'Poderá ver os relatórios dos alunos'],
+  ['gerenciar_cursos', 'Poderá gerenciar o módulo de cursos'],
+  ['gerenciar_alunos', 'Poderá gerenciar os alunos'],
+  ['gerenciar_atividades', 'Poderá gerenciar as atividades'],
+  ['gerenciar_redacoes', 'Poderá gerenciar as redações'],
+  ['ver_todas_redacoes', 'Poderá ver as redações direcionadas'],
+  ['excluir_redacoes', 'Poderá excluir redações'],
+  ['relatorios_professores', 'Poderá ver os relatórios dos professores']
+]
+
+function defaultProfessorChildPermissions() {
+  return {
+    gerenciar_turmas: false,
+    gerenciar_temas: false,
+    gerenciar_comentarios: true,
+    enviar_redacoes: false,
+    selecionar_corretores: false,
+    relatorios_alunos: false,
+    gerenciar_cursos: false,
+    gerenciar_alunos: false,
+    gerenciar_atividades: false,
+    gerenciar_redacoes: true,
+    ver_todas_redacoes: true,
+    excluir_redacoes: false,
+    relatorios_professores: false
+  }
+}
+
+async function loadProfessoresFilhos() {
+  const res = await fetch('/api/admin/professores-filhos')
+  const alert = document.getElementById('alert-professores')
+  if (!res.ok) {
+    if (alert) { alert.style.display = 'block'; alert.textContent = (await res.json().catch(() => ({}))).error || 'Não foi possível carregar os professores.' }
+    return
+  }
+  const payload = await res.json()
+  professoresFilhosCache = payload.data || []
+  professoresFilhosTurmas = payload.turmas || []
+  professoresFilhosAlunos = payload.alunos || []
+  professoresFilhosMatriculas = payload.matriculas || []
+  renderProfessoresFilhos()
+}
+
+function renderProfessoresFilhos() {
+  const list = document.getElementById('professores-filhos-list')
+  const ativos = professoresFilhosCache.filter(p => p.ativo !== false)
+  const rotas = professoresFilhosCache.reduce((sum, p) => sum + (p.assignment?.turma_ids?.length || 0) + (p.assignment?.aluno_ids?.length || 0), 0)
+  document.getElementById('kpi-prof-filhos').textContent = ativos.length
+  document.getElementById('kpi-prof-rotas').textContent = rotas
+  if (!professoresFilhosCache.length) {
+    list.innerHTML = '<div class="empty"><div class="empty-icon">👨‍🏫</div><p>Nenhum professor corretor cadastrado.</p></div>'
+    return
+  }
+  list.innerHTML = professoresFilhosCache.map((p) => {
+    const permissions = { ...defaultProfessorChildPermissions(), ...(p.permissions || {}) }
+    const turmaNames = (p.assignment?.turma_ids || []).map(id => professoresFilhosTurmas.find(t => t.id === id)?.nome).filter(Boolean)
+    const alunoNames = (p.assignment?.aluno_ids || []).map(id => professoresFilhosAlunos.find(a => a.id === id)?.nome).filter(Boolean)
+    return `
+      <section class="prof-child-card ${p.ativo === false ? 'is-off' : ''}">
+        <div class="prof-child-head">
+          <div>
+            <strong>${esc(p.nome || 'Professor corretor')}</strong>
+            <span>${esc(p.email || '')}</span>
+          </div>
+          <span class="tag ${p.ativo === false ? 'tag-pend' : 'tag-done'}">${p.ativo === false ? 'Inativo' : 'Ativo'}</span>
+        </div>
+        <div class="prof-child-money">
+          <span>💵 ${formatPriceBR(p.valor_correcao || 0)} por redação corrigida</span>
+          <span>💵 ${formatPriceBR(p.valor_revisao || 0)} por revisão finalizada</span>
+        </div>
+        <div class="prof-child-routes">
+          <div><strong>Turmas:</strong> ${turmaNames.length ? turmaNames.map(esc).join(', ') : 'Nenhuma turma inteira'}</div>
+          <div><strong>Alunos:</strong> ${alunoNames.length ? alunoNames.map(esc).join(', ') : 'Nenhum aluno específico'}</div>
+        </div>
+        <div class="prof-perm-read">
+          ${PROFESSOR_CHILD_PERMISSIONS.map(([key, label]) => `<span class="${permissions[key] ? 'ok' : 'no'}">${permissions[key] ? '✓' : '×'} ${label}</span>`).join('')}
+        </div>
+        <div class="prof-child-actions">
+          <button class="btn btn-sec btn-sm" type="button" onclick="openProfessorFilhoModal('${p.id}')">Alterar permissões</button>
+          <button class="btn btn-danger btn-sm" type="button" onclick="deleteProfessorFilho('${p.id}')">Inativar</button>
+        </div>
+      </section>`
+  }).join('')
+}
+
+function renderProfessorFilhoModalLists(item = null) {
+  const permissions = { ...defaultProfessorChildPermissions(), ...(item?.permissions || {}) }
+  document.getElementById('pf-permissions').innerHTML = PROFESSOR_CHILD_PERMISSIONS.map(([key, label]) => `
+    <label class="switch-line">
+      <input type="checkbox" data-pf-permission="${key}" ${permissions[key] ? 'checked' : ''}>
+      <span>${label}</span>
+    </label>`).join('')
+  const turmaIds = new Set(item?.assignment?.turma_ids || [])
+  const alunoIds = new Set(item?.assignment?.aluno_ids || [])
+  const used = assignedToOtherProfessor(item?.id || '')
+  const alunoMap = new Map(professoresFilhosAlunos.map(a => [a.id, a]))
+  const byTurma = new Map()
+  professoresFilhosMatriculas.forEach(m => {
+    if (!m.turma_id || !m.aluno_id || used.alunos.has(m.aluno_id)) return
+    if (!byTurma.has(m.turma_id)) byTurma.set(m.turma_id, [])
+    const aluno = alunoMap.get(m.aluno_id)
+    if (aluno) byTurma.get(m.turma_id).push(aluno)
+  })
+  const turmaHtml = professoresFilhosTurmas
+    .filter(t => !used.turmas.has(t.id))
+    .map(t => {
+      const alunos = (byTurma.get(t.id) || []).filter(Boolean).sort((a,b) => String(a.nome || '').localeCompare(String(b.nome || '')))
+      if (!alunos.length && !turmaIds.has(t.id)) return ''
+      const checkedTurma = turmaIds.has(t.id)
+      const alunosHtml = alunos.map(a => `
+        <label class="prof-student-line">
+          <input type="checkbox" data-pf-aluno="${a.id}" data-pf-turma-aluno="${t.id}" ${checkedTurma || alunoIds.has(a.id) ? 'checked' : ''}>
+          <span>${esc(a.nome || 'Aluno')}</span>
+        </label>`).join('')
+      return `
+        <div class="prof-turma-choice">
+          <label class="prof-turma-line">
+            <input type="checkbox" data-pf-turma="${t.id}" ${checkedTurma ? 'checked' : ''} onchange="toggleProfessorTurmaStudents('${t.id}', this.checked)">
+            <span><strong>${esc(t.nome || 'Turma')}</strong><small>${alunos.length} aluno(s) disponível(is)</small></span>
+          </label>
+          <div class="prof-turma-students ${alunos.length > 10 ? 'scroll' : ''}">${alunosHtml || '<div class="hint">Sem alunos disponíveis nesta turma.</div>'}</div>
+        </div>`
+    }).filter(Boolean).join('')
+  document.getElementById('pf-turmas').innerHTML = turmaHtml || '<div class="hint">Nenhuma turma/aluno disponível para direcionamento.</div>'
+
+}
+
+function assignedToOtherProfessor(currentId = '') {
+  const turmas = new Set()
+  const alunos = new Set()
+  professoresFilhosCache
+    .filter(p => p.id !== currentId && p.ativo !== false)
+    .forEach(p => {
+      ;(p.assignment?.turma_ids || []).forEach(id => turmas.add(id))
+      ;(p.assignment?.aluno_ids || []).forEach(id => alunos.add(id))
+    })
+  return { turmas, alunos }
+}
+
+function toggleProfessorTurmaStudents(turmaId, checked) {
+  document.querySelectorAll(`[data-pf-turma-aluno="${turmaId}"]`).forEach(input => { input.checked = checked })
+}
+
+function openProfessorFilhoModal(id = '') {
+  const item = professoresFilhosCache.find(p => p.id === id) || null
+  document.getElementById('pf-modal-title').textContent = item ? 'Editar professor corretor' : 'Adicionar professor corretor'
+  document.getElementById('pf-id').value = item?.id || ''
+  document.getElementById('pf-nome').value = item?.nome || ''
+  document.getElementById('pf-email').value = item?.email || ''
+  document.getElementById('pf-email').disabled = Boolean(item)
+  document.getElementById('pf-telefone').value = item?.telefone || ''
+  document.getElementById('pf-password').value = ''
+  document.getElementById('pf-password').placeholder = item ? 'Não altera senha por aqui' : 'Obrigatória ao criar'
+  document.getElementById('pf-password').disabled = Boolean(item)
+  document.getElementById('pf-valor-correcao').value = formatMoneyBR(item?.valor_correcao || 0)
+  document.getElementById('pf-valor-revisao').value = formatMoneyBR(item?.valor_revisao || 0)
+  document.getElementById('alert-pf').style.display = 'none'
+  renderProfessorFilhoModalLists(item)
+  openModal('modal-professor-filho')
+}
+
+function collectProfessorFilhoPayload() {
+  const permissions = {}
+  document.querySelectorAll('[data-pf-permission]').forEach(input => { permissions[input.dataset.pfPermission] = input.checked })
+  return {
+    nome: document.getElementById('pf-nome').value.trim(),
+    email: document.getElementById('pf-email').value.trim(),
+    telefone: document.getElementById('pf-telefone').value.trim(),
+    password: document.getElementById('pf-password').value,
+    valor_correcao: parseMoneyBR(document.getElementById('pf-valor-correcao').value),
+    valor_revisao: parseMoneyBR(document.getElementById('pf-valor-revisao').value),
+    permissions,
+    assignment: {
+      turma_ids: Array.from(document.querySelectorAll('[data-pf-turma]:checked')).map(input => input.dataset.pfTurma),
+      aluno_ids: [...new Set(Array.from(document.querySelectorAll('[data-pf-aluno]:checked')).map(input => input.dataset.pfAluno))]
+    }
+  }
+}
+
+async function saveProfessorFilho() {
+  const id = document.getElementById('pf-id').value
+  const body = collectProfessorFilhoPayload()
+  if (id) delete body.password
+  const res = await fetch(id ? `/api/admin/professores-filhos/${id}` : '/api/admin/professores-filhos', {
+    method: id ? 'PATCH' : 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(body)
+  })
+  if (!res.ok) {
+    const data = await res.json().catch(() => ({}))
+    const alert = document.getElementById('alert-pf')
+    alert.style.display = 'block'
+    alert.textContent = data.error || 'Não foi possível salvar o professor.'
+    return
+  }
+  closeModal('modal-professor-filho')
+  await loadProfessoresFilhos()
+  await loadCorrecoes('pendentes', 'PENDENTES')
+  await loadCorrecoes('todas')
+}
+
+async function deleteProfessorFilho(id) {
+  const item = professoresFilhosCache.find(p => p.id === id)
+  if (!confirm(`Inativar o corretor ${item?.nome || ''}? Ele deixará de acessar as redações direcionadas.`)) return
+  const res = await fetch(`/api/admin/professores-filhos/${id}`, { method: 'DELETE' })
+  if (!res.ok) {
+    const data = await res.json().catch(() => ({}))
+    alert(data.error || 'Não foi possível inativar o professor.')
+    return
+  }
+  loadProfessoresFilhos()
+  loadCorrecoes('pendentes', 'PENDENTES')
+  loadCorrecoes('todas')
+}
+
 async function loadCorrecoes(target, status) {
   const url = status ? `/api/admin/correcoes?status=${status}` : '/api/admin/correcoes'
   const res = await fetch(url)
@@ -2358,8 +2900,19 @@ async function loadCorrecoes(target, status) {
   const el = document.getElementById(ids[target])
   if (!el) return
   if (!data.length) { el.innerHTML = '<div class="empty"><div class="empty-icon">✅</div><p>Nenhuma correção encontrada.</p></div>'; return }
-  el.innerHTML = data.map(c => `
-    <div class="corr-card" style="margin-bottom:10px">
+  if (target === 'pendentes' || target === 'todas') {
+    el.innerHTML = renderCorrecoesPorTurma(data)
+    return
+  }
+  el.innerHTML = data.map(c => renderCorrecaoCard(c)).join('')
+}
+
+function renderCorrecaoCard(c) {
+  const assignedToChild = Boolean(c.assigned_child_id)
+  const assignedForOther = assignedToChild && !isChildTeacherMode()
+  const canCorrect = !assignedForOther || c.status === 'FINALIZADA'
+  return `
+    <div class="corr-card ${assignedToChild ? 'assigned-child-card' : ''}" style="margin-bottom:10px">
       <div class="corr-thumb">📄</div>
       <div class="corr-info">
         <div class="corr-aluno">${c.aluno_nome || 'Aluno'}</div>
@@ -2369,12 +2922,67 @@ async function loadCorrecoes(target, status) {
           ${c.nota != null ? `<span style="font-size:11px;font-weight:700;color:var(--brand)">Nota: ${c.nota}</span>` : ''}
           <span class="corr-date">${fmtDate(c.created_at)}</span>
         </div>
+        ${assignedToChild ? renderAssignedChildBadge(c) : ''}
       </div>
       <div style="display:flex;gap:8px;flex-wrap:wrap;justify-content:flex-end">
-        <button class="btn btn-sec btn-sm" onclick="openCorrecao('${c.id}')" title="${c.status === 'FINALIZADA' ? 'Ver correção' : 'Corrigir'}">${c.status === 'FINALIZADA' ? '👁' : 'Corrigir'}</button>
+        ${canCorrect
+          ? `<button class="btn btn-sec btn-sm" onclick="openCorrecao('${c.id}')" title="${c.status === 'FINALIZADA' ? 'Ver correção' : 'Corrigir'}">${c.status === 'FINALIZADA' ? '👁' : 'Corrigir'}</button>`
+          : `<button class="btn btn-sec btn-sm" onclick="openAssignmentEditor('${c.assigned_child_id}')">Direcionamento</button>`}
         ${c.status !== 'EXCLUIDA_PELO_PROFESSOR' ? `<button class="btn btn-danger btn-sm" onclick="excluirCorrecao('${c.id}')">Excluir</button>` : '<span class="tag tag-pend">Excluída</span>'}
       </div>
-    </div>`).join('')
+    </div>`
+}
+
+function renderAssignedChildBadge(c) {
+  const parts = [
+    `Corretor: ${esc(c.assigned_child_name || 'corretor')}`,
+    c.assigned_child_assigned_at ? `atribuída em ${fmtDateTime(c.assigned_child_assigned_at)}` : '',
+    c.assigned_child_corrected_at ? `corrigida em ${fmtDateTime(c.assigned_child_corrected_at)}` : '',
+    c.assigned_child_corrected_at ? '' : `${Number(c.assigned_child_pending_days || 0)} dia(s) pendente(s)`
+  ].filter(Boolean)
+  return `<div class="child-assignment-badge">${parts.join(' · ')}</div>`
+}
+
+function fmtDateTime(s) {
+  if (!s) return '—'
+  return new Date(s).toLocaleString('pt-BR', { dateStyle: 'short', timeStyle: 'short' })
+}
+
+async function openAssignmentEditor(childId) {
+  showPage('professores', document.querySelector('.sb-item[onclick*="professores"]'))
+  await loadProfessoresFilhos()
+  openProfessorFilhoModal(childId)
+}
+
+function renderCorrecoesPorTurma(data) {
+  const groups = new Map()
+  data.forEach(c => {
+    const key = c.turma_id || 'sem-turma'
+    if (!groups.has(key)) groups.set(key, { nome: c.turma_nome || 'Sem turma', items: [] })
+    groups.get(key).items.push(c)
+  })
+  return `<div class="corr-turma-grid">${Array.from(groups.values()).map(group => {
+    const total = group.items.length
+    const pendentes = group.items.filter(c => ['AGUARDANDO', 'EM_ANDAMENTO', 'EM_CORRECAO'].includes(c.status)).length
+    const corrigidas = group.items.filter(c => c.status === 'FINALIZADA').length
+    const emCorrecao = group.items.filter(c => c.status === 'EM_CORRECAO').length
+    return `
+      <section class="corr-turma-box">
+        <div class="corr-turma-head">
+          <div>
+            <strong>${esc(group.nome)}</strong>
+            <span>${total} redação(ões)</span>
+          </div>
+          <div class="corr-turma-count">${total}</div>
+        </div>
+        <div class="corr-turma-stats">
+          <span>${pendentes} pendente(s)</span>
+          <span>${emCorrecao} em correção</span>
+          <span>${corrigidas} corrigida(s)</span>
+        </div>
+        <div class="corr-turma-list">${group.items.map(c => renderCorrecaoCard(c)).join('')}</div>
+      </section>`
+  }).join('')}</div>`
 }
 
 async function loadTurmas() {
@@ -2397,13 +3005,14 @@ async function loadTurmas() {
           <span>${t.settings?.envios_abertos === false ? 'Envios fechados' : 'Envios abertos'}</span>
         </div>
       </div>
-      <span style="font-size:13px;font-weight:700;color:var(--brand)">${t.preco > 0 ? 'R$ ' + t.preco.toFixed(2) : 'Gratuito'}</span>
+      <span style="font-size:13px;font-weight:700;color:var(--brand)">${formatPriceBR(t.preco)}</span>
       <button class="btn btn-sec btn-sm" onclick="openTurmaDetalhes('${t.id}')">Detalhes</button>
       <button class="btn btn-sec btn-sm" onclick="openInviteModal('${t.id}')">Convite</button>
       <button class="btn btn-brand btn-sm" onclick="openTurmaAlunos('${t.id}')">Alunos</button>
       <button class="btn btn-sec btn-sm" onclick="openTurmaErros('${t.id}')">Erros</button>
       <button class="btn btn-sec btn-sm" onclick="openTurmaModal('${t.id}')">Editar</button>
       <button class="btn ${t.status === 'ABERTA' ? 'btn-danger' : 'btn-accent'} btn-sm" onclick="toggleTurmaStatus('${t.id}')">${t.status === 'ABERTA' ? 'Inativar' : 'Ativar'}</button>
+      <button class="btn btn-danger btn-sm" onclick="deleteTurma('${t.id}')">Excluir</button>
     </div>`).join('')}`
 }
 
@@ -2423,7 +3032,7 @@ function openTurmaDetalhes(id) {
       <div><span>Nome</span><strong>${esc(t.nome || '')}</strong></div>
       <div><span>Concurso</span><strong>${esc(t.concurso || '')}</strong></div>
       <div><span>Status</span><strong>${esc(t.status || '')}</strong></div>
-      <div><span>Preço</span><strong>${t.preco > 0 ? 'R$ ' + Number(t.preco).toFixed(2) : 'Gratuito'}</strong></div>
+      <div><span>Preço</span><strong>${formatPriceBR(t.preco)}</strong></div>
       <div><span>Alunos ativos</span><strong>${Number(t.alunos_ativos || 0)}</strong></div>
       <div><span>Matrículas</span><strong>${t.settings?.matriculas_abertas === false ? 'Fechadas' : 'Abertas'}</strong></div>
       <div><span>Envios de redação</span><strong>${t.settings?.envios_abertos === false ? 'Fechados' : 'Abertos'}</strong></div>
@@ -2461,6 +3070,38 @@ async function toggleTurmaStatus(id) {
   if (!res.ok) {
     const d = await res.json().catch(() => ({}))
     alert(d.error || 'Não foi possível alterar o status da turma.')
+    return
+  }
+  loadTurmas()
+}
+
+async function deleteTurma(id) {
+  const t = turmasCache.find(item => item.id === id)
+  if (!t) return
+  const alunos = Number(t.alunos_total || 0)
+  if (alunos > 0) {
+    if (confirm(`A turma "${t.nome}" tem ${alunos} aluno(s) vinculado(s).\n\nPara excluir a turma, primeiro desvincule os alunos no menu "Alunos" desta turma.\n\nAbrir esse menu agora?`)) {
+      openTurmaAlunos(id)
+    }
+    return
+  }
+  if (!confirm(`Excluir definitivamente a turma "${t.nome}"?`)) return
+  const res = await fetch(`/api/admin/turmas/${id}`, { method: 'DELETE' })
+  const d = await res.json().catch(() => ({}))
+  if (!res.ok) {
+    if (res.status === 409) {
+      const hasAlunos = Number(d.alunos || 0) > 0
+      const msg = hasAlunos
+        ? `${d.error || 'Esta turma possui alunos vinculados.'}\n\nAbra o menu "Alunos" da turma para desvincular antes de excluir.\n\nAbrir esse menu agora?`
+        : d.error || 'Não foi possível excluir a turma.'
+      if (hasAlunos && confirm(msg)) {
+        openTurmaAlunos(id)
+      } else if (!hasAlunos) {
+        alert(msg)
+      }
+      return
+    }
+    alert(d.error || 'Não foi possível excluir a turma.')
     return
   }
   loadTurmas()
@@ -2577,6 +3218,38 @@ async function loadAlunos() {
   if (!res.ok) return
   const { data } = await res.json()
   alunosCache = data || []
+  alunosPorTurmaCache = []
+  renderAlunos()
+}
+
+async function loadAlunosPorTurmas() {
+  if (!turmasCache.length) await loadTurmas()
+  const turmas = [...turmasCache]
+  const result = await Promise.all(turmas.map(async (turma) => {
+    try {
+      const res = await fetch(`/api/admin/turmas/${turma.id}/alunos`)
+      const data = await res.json().catch(() => ({}))
+      return {
+        turma,
+        alunos: res.ok ? (data.data || []) : [],
+        error: res.ok ? '' : (data.error || 'Não foi possível carregar esta turma.')
+      }
+    } catch {
+      return { turma, alunos: [], error: 'Erro ao carregar esta turma.' }
+    }
+  }))
+  alunosPorTurmaCache = result
+}
+
+async function setAlunosView(view) {
+  alunosView = view === 'turmas' ? 'turmas' : 'todos'
+  document.getElementById('alunos-tab-todos')?.classList.toggle('active', alunosView === 'todos')
+  document.getElementById('alunos-tab-turmas')?.classList.toggle('active', alunosView === 'turmas')
+  if (alunosView === 'turmas' && !alunosPorTurmaCache.length) {
+    const el = document.getElementById('alunos-list')
+    if (el) el.innerHTML = '<div class="empty"><div class="empty-icon">⏳</div><p>Carregando turmas e alunos...</p></div>'
+    await loadAlunosPorTurmas()
+  }
   renderAlunos()
 }
 
@@ -2610,6 +3283,12 @@ function renderAlunos() {
   renderAlunosSummary()
   const query = (document.getElementById('aluno-search')?.value || '').trim().toLowerCase()
   const status = document.getElementById('aluno-filter-status')?.value || ''
+  document.getElementById('alunos-tab-todos')?.classList.toggle('active', alunosView === 'todos')
+  document.getElementById('alunos-tab-turmas')?.classList.toggle('active', alunosView === 'turmas')
+  if (alunosView === 'turmas') {
+    renderAlunosPorTurmas(query, status)
+    return
+  }
   const list = alunosCache.filter(a => {
     const creditos = Math.max(0, Number(a.creditos_info?.creditos) || 0)
     const vence = a.creditos_info?.vence_em || ''
@@ -2651,10 +3330,79 @@ function renderAlunos() {
           <button class="btn btn-sec btn-sm" onclick="openEditAlunoModal('${a.id}')">Editar</button>
           <button class="btn btn-sec btn-sm" onclick="openCreditosModal('${a.id}')">Créditos</button>
           <button class="btn btn-sm ${a.ativo ? 'btn-sec' : 'btn-accent'}" onclick="toggleAluno('${a.id}', ${!a.ativo})">${a.ativo ? 'Bloquear' : 'Aprovar'}</button>
+          <button class="btn btn-danger btn-sm" onclick="deleteAluno('${a.id}')">Excluir</button>
         </div>
       </td>
     </tr>`
     }).join('')}</tbody></table>`
+}
+
+function alunoMatchesFilters(a, query, status) {
+  const creditos = Math.max(0, Number(a.creditos_info?.creditos) || 0)
+  const vence = a.creditos_info?.vence_em || ''
+  const vencido = vence && new Date(`${vence}T23:59:59`).getTime() < Date.now()
+  const matchesQuery = !query || String(a.nome || '').toLowerCase().includes(query)
+  const matchesStatus =
+    !status ||
+    (status === 'ativos' && a.ativo) ||
+    (status === 'pendentes' && !a.ativo) ||
+    (status === 'sem-creditos' && creditos <= 0) ||
+    (status === 'vencidos' && vencido)
+  return matchesQuery && matchesStatus
+}
+
+function renderAlunosPorTurmas(query = '', status = '') {
+  const el = document.getElementById('alunos-list')
+  if (!el) return
+  if (!turmasCache.length && !alunosPorTurmaCache.length) {
+    el.innerHTML = '<div class="empty"><div class="empty-icon">🏫</div><p>Nenhuma turma criada.</p></div>'
+    return
+  }
+  const html = alunosPorTurmaCache.map(({ turma, alunos, error }) => {
+    const rows = (alunos || [])
+      .map(m => ({ matricula: m, aluno: { ...(m.aluno || {}), id: m.aluno_id, ativo: m.aluno?.ativo, creditos_info: alunosCache.find(a => a.id === m.aluno_id)?.creditos_info || {} } }))
+      .filter(({ aluno }) => alunoMatchesFilters(aluno, query, status))
+    const ativos = rows.filter(({ matricula }) => matricula.ativo !== false).length
+    const inativos = rows.filter(({ matricula }) => matricula.ativo === false).length
+    return `
+      <section class="alunos-turma-card">
+        <div class="alunos-turma-head">
+          <div>
+            <strong>${esc(turma.nome || 'Turma')}</strong>
+            <span>${esc(turma.concurso || 'Redação')} · ${esc(turma.status || 'ABERTA')}</span>
+          </div>
+          <div class="alunos-turma-counts">
+            <span>${rows.length} aluno(s)</span>
+            <span>${ativos} ativo(s)</span>
+            <span>${inativos} inativo(s)</span>
+          </div>
+        </div>
+        ${error ? `<div class="alert alert-err" style="display:block">${esc(error)}</div>` : ''}
+        ${rows.length ? `
+          <div class="alunos-turma-list">
+            ${rows.map(({ matricula, aluno }) => {
+              const creditos = Math.max(0, Number(aluno.creditos_info?.creditos) || 0)
+              const vence = aluno.creditos_info?.vence_em || ''
+              const vencido = vence && new Date(`${vence}T23:59:59`).getTime() < Date.now()
+              return `
+                <article class="aluno-mini-card ${matricula.ativo === false ? 'is-off' : ''}">
+                  <label><input type="checkbox" class="aluno-check" value="${aluno.id}" onchange="renderAlunosSummary()"> <strong>${esc(aluno.nome || 'Aluno')}</strong></label>
+                  <div class="aluno-mini-meta">
+                    <span class="tag ${aluno.ativo ? 'tag-done' : 'tag-pend'}">${aluno.ativo ? 'Aprovado' : 'Pendente'}</span>
+                    <span class="tag ${matricula.ativo !== false ? 'tag-done' : 'tag-pend'}">${matricula.ativo !== false ? 'Na turma' : 'Inativo na turma'}</span>
+                    <span class="tag ${creditos > 0 && !vencido ? 'tag-done' : 'tag-pend'}">${creditos} crédito(s)</span>
+                  </div>
+                  <div class="aluno-mini-actions">
+                    <button class="btn btn-sec btn-sm" onclick="openEditAlunoModal('${aluno.id}')">Editar</button>
+                    <button class="btn btn-sec btn-sm" onclick="openCreditosModal('${aluno.id}')">Créditos</button>
+                    <button class="btn btn-danger btn-sm" onclick="deleteAluno('${aluno.id}')">Excluir</button>
+                  </div>
+                </article>`
+            }).join('')}
+          </div>` : `<div class="empty compact"><p>Nenhum aluno nesta turma com os filtros atuais.</p></div>`}
+      </section>`
+  }).join('')
+  el.innerHTML = `<div class="alunos-turmas-view">${html}</div>`
 }
 
 async function bulkToggleAlunos(ativo) {
@@ -2946,6 +3694,22 @@ async function toggleAluno(id, ativo) {
   loadStats()
 }
 
+async function deleteAluno(id) {
+  const aluno = alunosCache.find(a => a.id === id)
+  const nome = aluno?.nome || 'este aluno'
+  if (!confirm(`Excluir ${nome}? O aluno sumirá das listas e o acesso ao site será bloqueado.`)) return
+  const res = await fetch(`/api/admin/alunos/${id}`, { method: 'DELETE' })
+  const data = await res.json().catch(() => ({}))
+  if (!res.ok) {
+    alert(data.error || 'Não foi possível excluir o aluno.')
+    return
+  }
+  alunosPorTurmaCache = []
+  await loadAlunos()
+  await loadStats()
+  if (alunosView === 'turmas') await setAlunosView('turmas')
+}
+
 async function loadRelatorios() {
   const el = document.getElementById('relatorios-content')
   if (!el) return
@@ -3079,8 +3843,11 @@ function openTurmaModal(id) {
   document.getElementById('t-destaque').value = ''
   document.getElementById('t-beneficios').value = ''
   document.getElementById('t-roteiro').value = ''
+  document.getElementById('t-titulo-publico').value = ''
+  document.getElementById('t-titulo-entregas').value = ''
+  document.getElementById('t-titulo-roteiro').value = ''
   renderTurmaImagePreview()
-  document.getElementById('t-preco').value = '0'
+  document.getElementById('t-preco').value = '0,00'
   document.getElementById('t-status').value = 'ABERTA'
   document.getElementById('t-matriculas').checked = true
   document.getElementById('t-envios').checked = true
@@ -3098,14 +3865,18 @@ function openTurmaModal(id) {
     document.getElementById('t-destaque').value = turma.settings?.destaque || ''
     document.getElementById('t-beneficios').value = turma.settings?.beneficios || ''
     document.getElementById('t-roteiro').value = turma.settings?.roteiro || ''
+    document.getElementById('t-titulo-publico').value = turma.settings?.titulo_publico || ''
+    document.getElementById('t-titulo-entregas').value = turma.settings?.titulo_entregas || ''
+    document.getElementById('t-titulo-roteiro').value = turma.settings?.titulo_roteiro || ''
     renderTurmaImagePreview()
-    document.getElementById('t-preco').value = turma.preco || 0
+    document.getElementById('t-preco').value = formatMoneyBR(turma.preco)
     document.getElementById('t-status').value = turma.status || 'ABERTA'
     document.getElementById('t-matriculas').checked = turma.settings?.matriculas_abertas !== false
     document.getElementById('t-envios').checked = turma.settings?.envios_abertos !== false
     document.getElementById('turma-modal-title').textContent = 'Editar Turma'
     document.getElementById('turma-submit').textContent = 'Salvar Turma'
   }
+  updateTurmaPreview()
   openModal('modal-turma')
 }
 
@@ -3114,6 +3885,34 @@ function renderTurmaImagePreview() {
   const box = document.getElementById('t-imagem-preview')
   if (!box) return
   box.innerHTML = src ? `<img src="${src}" alt="Prévia da turma">` : '<span>Prévia da turma</span>'
+  updateTurmaPreview()
+}
+
+function updateTurmaPreview() {
+  const box = document.getElementById('t-live-preview')
+  if (!box) return
+  const nome = document.getElementById('t-nome')?.value.trim() || 'Nome da turma'
+  const concurso = document.getElementById('t-concurso')?.value.trim() || 'Área'
+  const status = document.getElementById('t-status')?.value || 'ABERTA'
+  const desc = document.getElementById('t-desc')?.value.trim() || document.getElementById('t-destaque')?.value.trim() || 'A descrição da turma aparecerá aqui.'
+  const src = document.getElementById('t-imagem')?.value.trim()
+  const price = formatPriceBR(parseMoneyBR(document.getElementById('t-preco')?.value || '0,00'))
+  const benefits = String(document.getElementById('t-beneficios')?.value || '')
+    .split(/\r?\n/)
+    .map(line => line.trim())
+    .filter(Boolean)
+    .slice(0, 3)
+  const initials = nome.slice(0, 2).toUpperCase()
+  box.innerHTML = `
+    <article class="turma-preview-card">
+      <div class="turma-preview-cover">${src ? `<img src="${esc(src)}" alt="${esc(nome)}">` : esc(initials)}</div>
+      <div class="turma-preview-meta">${esc(concurso)} · ${esc(status)}</div>
+      <h3>${esc(nome)}</h3>
+      <p>${esc(desc)}</p>
+      ${benefits.length ? `<div class="turma-preview-benefits">${benefits.map(item => `<span>${esc(item)}</span>`).join('')}</div>` : ''}
+      <div class="turma-preview-price">${esc(price)}</div>
+      <button type="button" class="turma-preview-cta">Ver detalhes</button>
+    </article>`
 }
 
 async function handleTurmaImageFile(event) {
@@ -3123,7 +3922,7 @@ async function handleTurmaImageFile(event) {
   reader.onload = async () => {
     try {
       const img = await imageFromDataUrl(String(reader.result || ''))
-      document.getElementById('t-imagem').value = canvasToBoundedDataUrl(img, false)
+      document.getElementById('t-imagem').value = canvasToBoundedDataUrl(img, false, 720, 0.82)
       renderTurmaImagePreview()
     } catch {
       alert('Não foi possível carregar essa imagem.')
@@ -3135,12 +3934,15 @@ async function handleTurmaImageFile(event) {
 
 async function saveTurma(e) {
   e.preventDefault()
+  const alert = document.getElementById('alert-turma')
+  alert.style.display = 'none'
+  alert.textContent = ''
   const id = document.getElementById('t-id').value
   const body = {
     nome: document.getElementById('t-nome').value,
     concurso: document.getElementById('t-concurso').value,
     descricao: document.getElementById('t-desc').value,
-    preco: parseFloat(document.getElementById('t-preco').value) || 0,
+    preco: parseMoneyBR(document.getElementById('t-preco').value),
     status: document.getElementById('t-status').value
   }
   const res = await fetch(id ? `/api/admin/turmas/${id}` : '/api/admin/turmas', {
@@ -3149,14 +3951,19 @@ async function saveTurma(e) {
     body: JSON.stringify(body)
   })
   const d = await res.json()
-  if (!res.ok) { document.getElementById('alert-turma').textContent = d.error; document.getElementById('alert-turma').style.display = 'block'; return }
-  await saveTurmaSettings(d.id || id)
+  if (!res.ok) { alert.textContent = d.error || 'Não foi possível salvar a turma.'; alert.style.display = 'block'; return }
+  const settings = await saveTurmaSettings(d.id || id)
+  if (!settings.ok) {
+    alert.textContent = settings.error || 'A turma foi criada, mas a imagem/configurações não foram salvas. Tente uma imagem menor ou use uma URL.'
+    alert.style.display = 'block'
+    return
+  }
   closeModal('modal-turma'); loadTurmas()
 }
 
 async function saveTurmaSettings(id) {
-  if (!id) return
-  await fetch(`/api/admin/turmas/${id}/settings`, {
+  if (!id) return { ok: false, error: 'Turma sem identificador.' }
+  const res = await fetch(`/api/admin/turmas/${id}/settings`, {
     method: 'PATCH',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({
@@ -3165,9 +3972,14 @@ async function saveTurmaSettings(id) {
       imagem_url: document.getElementById('t-imagem').value.trim(),
       destaque: document.getElementById('t-destaque').value.trim(),
       beneficios: document.getElementById('t-beneficios').value.trim(),
-      roteiro: document.getElementById('t-roteiro').value.trim()
+      roteiro: document.getElementById('t-roteiro').value.trim(),
+      titulo_publico: document.getElementById('t-titulo-publico').value.trim(),
+      titulo_entregas: document.getElementById('t-titulo-entregas').value.trim(),
+      titulo_roteiro: document.getElementById('t-titulo-roteiro').value.trim()
     })
   })
+  const data = await res.json().catch(() => ({}))
+  return res.ok ? { ok: true, data } : { ok: false, error: data.error || 'Não foi possível salvar as configurações da turma.' }
 }
 
 async function openCorrecao(id) {
@@ -3182,6 +3994,7 @@ async function openCorrecao(id) {
   }
 
   currentCorrecao = data
+  resetAnnotationHistory()
   const feedbackPayload = parseFeedbackPayload(data.texto_ocr)
   currentAvaliacaoData = feedbackPayload.evaluation
   loadTurmaErros(data.turma_id)
@@ -3190,6 +4003,7 @@ async function openCorrecao(id) {
   document.getElementById('c-id').value = data.id
   document.getElementById('c-nota').value = data.nota ?? ''
   document.getElementById('c-comentario').value = feedbackPayload.feedback || ''
+  attachFeedbackPreCommentPicker()
   updateStatusUI(data.status || 'AGUARDANDO')
   setSaveIndicator(data.updated_at ? `Salvo ${formatSaveTime(data.updated_at)}` : 'Salvo automaticamente', '')
   // Pré-seleciona o modo de avaliação vinculado à turma desta redação.
@@ -3205,7 +4019,9 @@ async function openCorrecao(id) {
   }
   renderDocumento(data)
   renderMarcacoes(data.anotacoes || [])
+  updateAnnotationLockUI()
   showPage('correcao', null)
+  updateCorrecaoTopbar(data)
 }
 
 let autoSaveTimer = null
@@ -3237,11 +4053,55 @@ function updateStatusUI(status) {
   const reab = document.getElementById('btn-reabrir')
   if (fin) fin.style.display = status === 'FINALIZADA' ? 'none' : 'block'
   if (reab) reab.style.display = status === 'FINALIZADA' ? 'block' : 'none'
+  updateAnnotationLockUI()
+}
+
+function hasCorrectionGrade() {
+  const raw = document.getElementById('c-nota')?.value
+  return raw !== '' && raw != null && !isNaN(Number(raw))
+}
+
+function isAnnotationLocked() {
+  return Boolean(currentCorrecao && (
+    currentCorrecao.status === 'FINALIZADA' ||
+    hasCorrectionGrade() ||
+    (currentCorrecao.assigned_child_id && !isChildTeacherMode())
+  ))
+}
+
+function updateAnnotationLockUI() {
+  const locked = isAnnotationLocked()
+  document.body.classList.toggle('annotations-locked', locked)
+  const layer = document.getElementById('annotation-layer')
+  if (layer) layer.dataset.locked = locked ? '1' : '0'
+  document.querySelectorAll('.doc-controls .pointer-tool, #m-mark-width, #m-cor, .mark-swatch').forEach((el) => {
+    el.disabled = locked
+  })
+  if (locked) {
+    cancelAnnotationDrag()
+    deselectAnnotation()
+  }
+  const status = document.getElementById('ocr-status')
+  if (status) status.textContent = locked
+    ? (currentCorrecao?.assigned_child_id && !isChildTeacherMode()
+      ? 'Redação direcionada para outro corretor'
+      : 'Correção com nota: reabra para editar marcações')
+    : 'Arraste um retângulo na redação para comentar'
+}
+
+function guardAnnotationEditing() {
+  if (!isAnnotationLocked()) return false
+  showAnnotationError(currentCorrecao?.assigned_child_id && !isChildTeacherMode()
+    ? 'Esta redação está direcionada para outro corretor. Edite o direcionamento para assumir a correção.'
+    : 'Esta correção já tem nota. Clique em Reabrir correção para fazer novas marcações ou edições.')
+  updateAnnotationLockUI()
+  return true
 }
 
 // Salva nota/feedback automaticamente (debounce). status é alterado só por finalizar/reabrir.
 function scheduleAutoSave() {
   if (!currentCorrecao) return
+  updateAnnotationLockUI()
   setSaveIndicator('Salvando…', 'saving')
   clearTimeout(autoSaveTimer)
   autoSaveTimer = setTimeout(() => autoSaveCorrecao(), 800)
@@ -3279,8 +4139,17 @@ async function autoSaveCorrecao(extra = {}) {
 
 function refreshCorrecaoLists() {
   loadCorrecoes('recentes')
-  loadCorrecoes('pendentes', 'AGUARDANDO')
+  loadCorrecoes('pendentes', 'PENDENTES')
   loadCorrecoes('todas')
+}
+
+function updateCorrecaoTopbar(data = currentCorrecao) {
+  const aluno = data?.aluno_nome || 'Aluno'
+  const turma = data?.turma_nome || 'Sem turma'
+  const title = document.getElementById('topbar-title')
+  const sub = document.getElementById('topbar-sub')
+  if (title) title.textContent = 'Corrigir redação'
+  if (sub) sub.textContent = `${aluno} · ${turma}`
 }
 
 // Marca a correção como EM_ANDAMENTO assim que o professor começa a trabalhar nela.
@@ -3293,10 +4162,27 @@ function markEmAndamento() {
 
 async function finalizarCorrecao() {
   if (!currentCorrecao) return
-  const notaRaw = document.getElementById('c-nota').value
+  hideCorrecaoAlerts()
+  const notaEl = document.getElementById('c-nota')
+  const feedbackEl = document.getElementById('c-comentario')
+  const notaRaw = notaEl.value
+  const feedback = feedbackEl.value.trim()
+  const requiredMessage = (message, target) => {
+    const err = document.getElementById('alert-correcao')
+    if (err) {
+      err.textContent = message
+      err.style.display = 'block'
+    } else {
+      alert(message)
+    }
+    if (target) target.focus()
+  }
   if (notaRaw === '' || isNaN(Number(notaRaw))) {
-    alert('Defina uma nota antes de finalizar a correção.')
-    document.getElementById('c-nota').focus()
+    requiredMessage('Defina uma nota antes de finalizar a correção.', notaEl)
+    return
+  }
+  if (!feedback) {
+    requiredMessage('Preencha o feedback geral antes de finalizar a correção.', feedbackEl)
     return
   }
   await autoSaveCorrecao({ status: 'FINALIZADA' })
@@ -3307,6 +4193,8 @@ async function finalizarCorrecao() {
 
 async function reabrirCorrecao() {
   if (!currentCorrecao) return
+  const notaEl = document.getElementById('c-nota')
+  if (notaEl) notaEl.value = ''
   await autoSaveCorrecao({ status: 'EM_ANDAMENTO' })
   updateStatusUI('EM_ANDAMENTO')
 }
@@ -3450,13 +4338,13 @@ function setMarkColor(cor) {
 }
 
 function updateThicknessLabels() {
-  document.getElementById('mark-width-label').textContent = `${document.getElementById('m-mark-width').value}px`
-  document.getElementById('underline-width-label').textContent = `${document.getElementById('m-underline-width').value}px`
+  const input = document.getElementById('m-mark-width')
+  const label = document.getElementById('mark-width-label')
+  if (input && label) label.textContent = `${input.value}px`
 }
 
 function markThickness(tipo) {
-  const id = tipo === 'SUBLINHADO' ? 'm-underline-width' : 'm-mark-width'
-  return Number(document.getElementById(id)?.value || (tipo === 'SUBLINHADO' ? 4 : 3))
+  return Number(document.getElementById('m-mark-width')?.value || 1)
 }
 
 function setDocZoom(value) {
@@ -3539,6 +4427,7 @@ function selectAnnotation(id) {
 }
 
 function addAnnotToolbar(box, id) {
+  if (isAnnotationLocked()) return
   const bar = document.createElement('div')
   bar.className = 'annot-tools'
   bar.innerHTML = `
@@ -3561,6 +4450,7 @@ function addResizeHandles(box, id, item) {
 }
 
 function startHandleResize(evt, id, dir, box, item) {
+  if (guardAnnotationEditing()) return
   evt.preventDefault()
   evt.stopPropagation()
   handleDrag = {
@@ -3610,17 +4500,15 @@ function bindHandleResizeOnce() {
 }
 
 async function patchAnnotation(id, fields) {
+  if (guardAnnotationEditing()) return
   const item = (currentCorrecao.anotacoes || []).find(a => a.id === id)
   if (!item) return
-  const res = await fetch(`/api/admin/correcoes/${currentCorrecao.id}/anotacoes/${id}`, {
-    method: 'PATCH',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ comentario: item.comentario, cor: item.cor, opacidade: item.opacidade, ...fields })
-  })
-  const data = await res.json()
-  if (res.ok && data.id) {
-    currentCorrecao.anotacoes = currentCorrecao.anotacoes.map(a => a.id === id ? data : a)
-    renderMarcacoes(currentCorrecao.anotacoes)
+  const before = cloneAnnotation(item)
+  try {
+    const data = await patchAnnotationPayload(id, { comentario: item.comentario, cor: item.cor, opacidade: item.opacidade, ...fields })
+    pushAnnotationHistory({ type: 'update', before, after: cloneAnnotation(data) })
+  } catch (err) {
+    showAnnotationError(err?.message || 'Nao foi possivel editar a marcação.')
   }
 }
 
@@ -3796,11 +4684,26 @@ function renderRunSelection() {
 document.addEventListener('keydown', (evt) => {
   const typing = /^(INPUT|TEXTAREA|SELECT)$/.test(document.activeElement?.tagName || '')
   if (evt.key === 'Escape') {
+    if (activeCommentBalloonCancel) {
+      activeCommentBalloonCancel()
+      return
+    }
     clearOcrSelection(true)
-    document.querySelectorAll('.comment-balloon').forEach(el => el.remove())
+    cancelAnnotationDrag()
     deselectAnnotation()
   }
+  if ((evt.ctrlKey || evt.metaKey) && !typing && currentCorrecao) {
+    const key = evt.key.toLowerCase()
+    if (key === 'z') {
+      evt.preventDefault()
+      undoAnnotationAction()
+    } else if (key === 'y') {
+      evt.preventDefault()
+      redoAnnotationAction()
+    }
+  }
   if ((evt.key === 'Delete' || evt.key === 'Backspace') && selectedAnnotationId && currentCorrecao && !typing) {
+    if (guardAnnotationEditing()) return
     evt.preventDefault()
     deleteMarcacao(selectedAnnotationId, true)
   }
@@ -3816,6 +4719,7 @@ function layerPoint(evt) {
 
 function startAnnotationDrag(evt) {
   if (!currentCorrecao) return
+  if (guardAnnotationEditing()) return
   if (pointerTool === 'MAO') {
     const view = document.getElementById('c-doc-view')
     docPan = { x: evt.clientX, y: evt.clientY, left: view.scrollLeft, top: view.scrollTop }
@@ -3968,6 +4872,8 @@ async function finishAnnotationDrag(evt) {
 function cancelAnnotationDrag() {
   if (markDrag?.draft) markDrag.draft.remove()
   markDrag = null
+  if (freehandDrag?.draft) freehandDrag.draft.remove()
+  freehandDrag = null
   if (ocrDrag?.draft) ocrDrag.draft.remove()
   ocrDrag = null
   clearOcrSelection(true)
@@ -3975,7 +4881,7 @@ function cancelAnnotationDrag() {
 
 function openCommentBalloon(drag, initial = '') {
   return new Promise((resolve) => {
-    document.querySelectorAll('.comment-balloon').forEach(el => el.remove())
+    if (activeCommentBalloonCancel) activeCommentBalloonCancel()
     const pane = document.querySelector('.doc-pane')
     const view = document.getElementById('c-doc-view')
     const layer = document.getElementById('annotation-layer')
@@ -3986,20 +4892,33 @@ function openCommentBalloon(drag, initial = '') {
     box.innerHTML = `
       <div class="comment-balloon-title">Comentário da marcação</div>
       ${erroSelectHtml()}
+      <div class="pre-picker">
+        <label>Usar pré-comentário</label>
+        <input data-role="pre-search-input" name="mark_pre_comment_search" type="search" autocomplete="off" autocapitalize="off" autocorrect="off" spellcheck="false" inputmode="search" readonly onfocus="this.removeAttribute('readonly')" placeholder="Digite para buscar por atalho, título ou conteúdo">
+        <div class="pre-picker-results" data-role="pre-picker-results"></div>
+      </div>
       <textarea placeholder="Escreva o comentário para este trecho">${esc(initial)}</textarea>
       <div class="pre-hint">Digite / para usar um pré-comentário.</div>
       <div class="pre-suggest" data-role="pre-suggest"></div>
-      <div class="audio-comment">
-        <button type="button" class="btn btn-sec btn-sm" data-action="audio">🎙 Gravar áudio</button>
-        <span data-role="audio-status">Sem áudio</span>
-        <audio controls style="display:none"></audio>
-      </div>
       <div class="comment-balloon-actions">
         <button type="button" class="btn btn-sec btn-sm" data-action="clear">Remover seleção</button>
         <button type="button" class="btn btn-sec btn-sm" data-action="cancel">Cancelar</button>
         <button type="button" class="btn btn-accent btn-sm" data-action="save">Salvar</button>
       </div>`
     pane.appendChild(box)
+    let settled = false
+    const settle = (value) => {
+      if (settled) return
+      settled = true
+      box.remove()
+      if (activeCommentBalloonCancel === cancel) activeCommentBalloonCancel = null
+      resolve(value)
+    }
+    const cancel = () => {
+      clearOcrSelection(true)
+      settle(null)
+    }
+    activeCommentBalloonCancel = cancel
     const bounds = drag.bounds || {
       x_inicio: Math.min(drag.start.xp, drag.end.xp),
       y_inicio: Math.min(drag.start.yp, drag.end.yp),
@@ -4011,7 +4930,7 @@ function openCommentBalloon(drag, initial = '') {
       const selectedRight = layerRect.left + (bounds.x_fim / 100) * layerRect.width - paneRect.left
       const selectedTop = layerRect.top + (bounds.y_inicio / 100) * layerRect.height - paneRect.top
       const selectedMidY = selectedTop + ((bounds.y_fim - bounds.y_inicio) / 100) * layerRect.height / 2
-      const boxWidth = Math.min(340, Math.max(260, paneRect.width - 28))
+      const boxWidth = Math.min(494, Math.max(364, paneRect.width - 28))
       box.style.width = `${boxWidth}px`
       const gap = 14
       const leftSpace = selectedLeft - gap
@@ -4039,10 +4958,10 @@ function openCommentBalloon(drag, initial = '') {
     const textarea = box.querySelector('textarea')
     textarea.focus()
     attachPreCommentAutocomplete(box, textarea)
-    box.querySelector('[data-action="clear"]').onclick = () => { box.remove(); clearOcrSelection(true); resolve(null) }
-    box.querySelector('[data-action="cancel"]').onclick = () => { box.remove(); resolve(null) }
-    box.querySelector('[data-action="save"]').onclick = () => resolve(collectBalloonResult(box, textarea))
-    box.querySelector('[data-action="audio"]').onclick = () => toggleAudioComment(box)
+    attachPreCommentPicker(box, textarea)
+    box.querySelector('[data-action="clear"]').onclick = cancel
+    box.querySelector('[data-action="cancel"]').onclick = cancel
+    box.querySelector('[data-action="save"]').onclick = () => settle(collectBalloonResult(box, textarea))
     // Marcar/desmarcar erro atualiza o resumo de pontos do balão.
     box.querySelectorAll('[data-role="erro-check"]').forEach(ch => ch.onchange = () => updateBalloonPontos(box))
     updateBalloonPontos(box)
@@ -4077,14 +4996,16 @@ function attachPreCommentAutocomplete(box, textarea) {
     const pos = before.length + insert.length
     textarea.setSelectionRange(pos, pos)
     textarea.focus()
+    rememberPreCommentUse(item)
     close()
   }
   const render = () => {
     const token = currentPreToken(textarea)
     if (!token || token.token.length < 1) { close(); return }
     const query = token.token.toLowerCase()
-    const itens = preComentariosForUse()
+    const itens = sortPreComentariosByUsage(preComentariosForUse()
       .filter(p => normalizeAtalho(p.atalho).startsWith(query) || String(p.titulo || '').toLowerCase().includes(query.slice(1)))
+    )
       .slice(0, 8)
     if (!itens.length) { close(); return }
     active = Math.min(active, itens.length - 1)
@@ -4127,6 +5048,140 @@ function attachPreCommentAutocomplete(box, textarea) {
     }
   })
   textarea.addEventListener('blur', () => setTimeout(close, 160))
+}
+
+function attachPreCommentPicker(box, textarea) {
+  const input = box.querySelector('[data-role="pre-search-input"]')
+  const results = box.querySelector('[data-role="pre-picker-results"]')
+  if (!input || !results) return
+  const insert = (item) => {
+    const current = textarea.value.trim()
+    const text = String(item.conteudo || '').trim()
+    textarea.value = current ? `${current}\n${text}` : text
+    textarea.focus()
+    textarea.setSelectionRange(textarea.value.length, textarea.value.length)
+    input.value = item.atalho || item.titulo || ''
+    rememberPreCommentUse(item)
+    results.classList.remove('on')
+    results.innerHTML = ''
+  }
+  const render = () => {
+    const query = input.value.trim().toLowerCase()
+    const words = query.split(/\s+/).filter(Boolean)
+    const itens = sortPreComentariosByUsage(preComentariosForUse()
+      .filter((item) => {
+        const haystack = `${item.atalho || ''} ${item.titulo || ''} ${item.categoria || ''} ${item.conteudo || ''}`.toLowerCase()
+        return !words.length || words.every((word) => haystack.includes(word))
+      })
+    )
+      .slice(0, 10)
+    if (!itens.length) {
+      results.classList.remove('on')
+      results.innerHTML = ''
+      return
+    }
+    results.innerHTML = itens.map((item) => `
+      <button type="button" data-pre-id="${esc(item.id)}">
+        <span class="pre-shortcut">${esc(item.atalho || '')}</span>
+        <strong>${esc(item.titulo || item.atalho || 'Comentário')}</strong>
+        <small>${esc(item.conteudo || '')}</small>
+      </button>
+    `).join('')
+    results.classList.add('on')
+    results.querySelectorAll('button').forEach((btn) => {
+      btn.onmousedown = (evt) => {
+        evt.preventDefault()
+        const item = itens.find((entry) => entry.id === btn.dataset.preId)
+        if (item) insert(item)
+      }
+    })
+  }
+  input.addEventListener('input', render)
+  input.addEventListener('focus', render)
+  input.addEventListener('keydown', (evt) => {
+    if (evt.key === 'Escape') {
+      results.classList.remove('on')
+      results.innerHTML = ''
+    }
+  })
+  input.addEventListener('blur', () => setTimeout(() => results.classList.remove('on'), 180))
+}
+
+function normalizePreCommentText(value) {
+  return String(value || '')
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .toLowerCase()
+    .trim()
+}
+
+function feedbackPreComentariosForUse() {
+  return preComentariosForUse().filter((item) => normalizePreCommentText(item.categoria) === 'comentarios gerais')
+}
+
+function attachFeedbackPreCommentPicker() {
+  const input = document.querySelector('[data-role="feedback-pre-search"]')
+  const results = document.querySelector('[data-role="feedback-pre-results"]')
+  const textarea = document.getElementById('c-comentario')
+  if (!input || !results || !textarea || input.dataset.bound === '1') return
+  input.dataset.bound = '1'
+
+  const close = () => {
+    results.classList.remove('on')
+    results.innerHTML = ''
+  }
+
+  const insert = (item) => {
+    const current = textarea.value.trim()
+    const text = String(item.conteudo || '').trim()
+    textarea.value = current ? `${current}\n${text}` : text
+    textarea.focus()
+    textarea.setSelectionRange(textarea.value.length, textarea.value.length)
+    input.value = item.atalho || item.titulo || ''
+    rememberPreCommentUse(item)
+    scheduleAutoSave()
+    close()
+  }
+
+  const render = () => {
+    const query = normalizePreCommentText(input.value)
+    const words = query.split(/\s+/).filter(Boolean)
+    const itens = sortPreComentariosByUsage(feedbackPreComentariosForUse()
+      .filter((item) => {
+        const haystack = normalizePreCommentText(`${item.atalho || ''} ${item.titulo || ''} ${item.conteudo || ''}`)
+        return !words.length || words.every((word) => haystack.includes(word))
+      })
+    )
+      .slice(0, 10)
+
+    if (!itens.length) {
+      close()
+      return
+    }
+
+    results.innerHTML = itens.map((item) => `
+      <button type="button" data-pre-id="${esc(item.id)}">
+        <span class="pre-shortcut">${esc(item.atalho || '')}</span>
+        <strong>${esc(item.titulo || item.atalho || 'Comentário geral')}</strong>
+        <small>${esc(item.conteudo || '')}</small>
+      </button>
+    `).join('')
+    results.classList.add('on')
+    results.querySelectorAll('button').forEach((btn) => {
+      btn.onmousedown = (evt) => {
+        evt.preventDefault()
+        const item = itens.find((entry) => entry.id === btn.dataset.preId)
+        if (item) insert(item)
+      }
+    })
+  }
+
+  input.addEventListener('focus', render)
+  input.addEventListener('input', render)
+  input.addEventListener('keydown', (evt) => {
+    if (evt.key === 'Escape') close()
+  })
+  input.addEventListener('blur', () => setTimeout(close, 180))
 }
 
 async function toggleAudioComment(box) {
@@ -4514,10 +5569,185 @@ async function addMarcacao(e) {
   await createMarcacao({ tipo, trecho, comentario, cor: currentMarkColor, x_inicio: 0, y_inicio: 0, x_fim: 0, y_fim: 0 })
 }
 
+function cloneAnnotation(value) {
+  return value ? JSON.parse(JSON.stringify(value)) : null
+}
+
+function annotationPayloadFrom(annotation) {
+  if (!annotation) return null
+  return {
+    pagina: annotation.pagina ?? 1,
+    tipo: annotation.tipo || 'GRIFO',
+    categoria: annotation.categoria || annotation.tipo || 'GRIFO',
+    numero: annotation.numero || (currentCorrecao?.anotacoes?.length || 0) + 1,
+    comentario: annotation.comentario || '',
+    cor: annotation.cor || '#EF4444',
+    opacidade: annotation.opacidade ?? markThickness(annotation.tipo || 'GRIFO'),
+    x_inicio: Number(annotation.x_inicio) || 0,
+    y_inicio: Number(annotation.y_inicio) || 0,
+    x_fim: Number(annotation.x_fim) || 0,
+    y_fim: Number(annotation.y_fim) || 0,
+    tipo_erro_id: annotation.tipo_erro_id || null,
+    pontos: Number(annotation.pontos) || 0
+  }
+}
+
+function resetAnnotationHistory() {
+  annotationUndoStack = []
+  annotationRedoStack = []
+  updateAnnotationHistoryButtons()
+}
+
+function pushAnnotationHistory(action) {
+  if (annotationHistoryBusy) return
+  annotationUndoStack.push(action)
+  if (annotationUndoStack.length > 40) annotationUndoStack.shift()
+  annotationRedoStack = []
+  updateAnnotationHistoryButtons()
+}
+
+function updateAnnotationHistoryButtons() {
+  const undo = document.getElementById('btn-undo-annotation')
+  const redo = document.getElementById('btn-redo-annotation')
+  const locked = isAnnotationLocked()
+  if (undo) undo.disabled = locked || annotationHistoryBusy || !annotationUndoStack.length
+  if (redo) redo.disabled = locked || annotationHistoryBusy || !annotationRedoStack.length
+}
+
+async function postAnnotationPayload(payload) {
+  const res = await fetch(`/api/admin/correcoes/${currentCorrecao.id}/anotacoes`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(payload)
+  })
+  const data = await res.json()
+  if (!res.ok) throw new Error(data.error || 'Nao foi possivel adicionar a marcação.')
+  const normalized = { ...payload, ...data }
+  if (!normalized.categoria && payload.categoria) normalized.categoria = payload.categoria
+  if (!normalized.tipo && payload.tipo) normalized.tipo = payload.tipo
+  currentCorrecao.anotacoes = [...(currentCorrecao.anotacoes || []), normalized]
+  renderMarcacoes(currentCorrecao.anotacoes)
+  return normalized
+}
+
+async function patchAnnotationPayload(id, payload) {
+  const res = await fetch(`/api/admin/correcoes/${currentCorrecao.id}/anotacoes/${id}`, {
+    method: 'PATCH',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(payload)
+  })
+  const data = await res.json()
+  if (!res.ok) throw new Error(data.error || 'Nao foi possivel editar a marcação.')
+  currentCorrecao.anotacoes = (currentCorrecao.anotacoes || []).map(a => a.id === id ? data : a)
+  renderMarcacoes(currentCorrecao.anotacoes)
+  return data
+}
+
+async function deleteAnnotationRemote(id) {
+  const res = await fetch(`/api/admin/correcoes/${currentCorrecao.id}/anotacoes/${id}`, { method: 'DELETE' })
+  if (!res.ok) {
+    const data = await res.json().catch(() => ({}))
+    throw new Error(data.error || 'Nao foi possivel excluir a marcação.')
+  }
+  currentCorrecao.anotacoes = (currentCorrecao.anotacoes || []).filter(a => a.id !== id)
+  if (selectedAnnotationId === id) selectedAnnotationId = null
+  renderMarcacoes(currentCorrecao.anotacoes)
+}
+
+async function limparCorrecaoAtual() {
+  if (!currentCorrecao) return
+  if (guardAnnotationEditing()) return
+  cancelAnnotationDrag()
+  const anotacoes = [...(currentCorrecao.anotacoes || [])]
+  if (!anotacoes.length) return
+  const ok = confirm(`Remover todos os ${anotacoes.length} comentário(s) e marcação(ões) desta correção? Essa ação será salva agora.`)
+  if (!ok) return
+  hideCorrecaoAlerts()
+  try {
+    for (const item of anotacoes) {
+      await deleteAnnotationRemote(item.id)
+    }
+    resetAnnotationHistory()
+    const msg = document.getElementById('alert-correcao-ok')
+    if (msg) {
+      msg.textContent = 'Todos os comentários e marcações foram removidos desta correção.'
+      msg.style.display = 'block'
+    }
+    setSaveIndicator(`Salvo ${formatSaveTime()}`, '')
+    markEmAndamento()
+  } catch (err) {
+    showAnnotationError(err?.message || 'Nao foi possivel limpar os comentários da correção.')
+  }
+}
+
+function showAnnotationError(message) {
+  const el = document.getElementById('alert-correcao')
+  if (!el) return
+  el.textContent = message
+  el.style.display = 'block'
+}
+
+async function undoAnnotationAction() {
+  if (guardAnnotationEditing()) return
+  if (!currentCorrecao || annotationHistoryBusy || !annotationUndoStack.length) return
+  const action = annotationUndoStack.pop()
+  annotationHistoryBusy = true
+  updateAnnotationHistoryButtons()
+  try {
+    if (action.type === 'create') {
+      await deleteAnnotationRemote(action.annotation.id)
+    } else if (action.type === 'delete') {
+      const restored = await postAnnotationPayload(annotationPayloadFrom(action.annotation))
+      action.annotation = restored
+    } else if (action.type === 'update') {
+      const restored = await patchAnnotationPayload(action.after.id, annotationPayloadFrom(action.before))
+      action.before = restored
+    }
+    annotationRedoStack.push(action)
+  } catch (err) {
+    annotationUndoStack.push(action)
+    showAnnotationError(err?.message || 'Nao foi possivel desfazer.')
+  } finally {
+    annotationHistoryBusy = false
+    updateAnnotationHistoryButtons()
+  }
+}
+
+async function redoAnnotationAction() {
+  if (guardAnnotationEditing()) return
+  if (!currentCorrecao || annotationHistoryBusy || !annotationRedoStack.length) return
+  const action = annotationRedoStack.pop()
+  annotationHistoryBusy = true
+  updateAnnotationHistoryButtons()
+  try {
+    if (action.type === 'create') {
+      const recreated = await postAnnotationPayload(annotationPayloadFrom(action.annotation))
+      action.annotation = recreated
+    } else if (action.type === 'delete') {
+      await deleteAnnotationRemote(action.annotation.id)
+    } else if (action.type === 'update') {
+      const updated = await patchAnnotationPayload(action.before.id, annotationPayloadFrom(action.after))
+      action.after = updated
+    }
+    annotationUndoStack.push(action)
+  } catch (err) {
+    annotationRedoStack.push(action)
+    showAnnotationError(err?.message || 'Nao foi possivel refazer.')
+  } finally {
+    annotationHistoryBusy = false
+    updateAnnotationHistoryButtons()
+  }
+}
+
 async function createMarcacao({ tipo, trecho = '', comentario = '', cor = '#EF4444', opacidade = null, x_inicio = 0, y_inicio = 0, x_fim = 0, y_fim = 0, draft = null, tipo_erro_id = null, pontos = 0, categoria = null }) {
+  if (guardAnnotationEditing()) {
+    if (draft) draft.remove()
+    return
+  }
+  const categoriaFinal = categoria || tipo
   const body = {
     tipo,
-    categoria: categoria || tipo,
+    categoria: categoriaFinal,
     numero: (currentCorrecao.anotacoes?.length || 0) + 1,
     comentario: trecho ? `${trecho}: ${comentario}` : comentario,
     cor,
@@ -4530,23 +5760,18 @@ async function createMarcacao({ tipo, trecho = '', comentario = '', cor = '#EF44
     pontos: Number(pontos) || 0
   }
 
-  const res = await fetch(`/api/admin/correcoes/${currentCorrecao.id}/anotacoes`, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify(body)
-  })
-  const data = await res.json()
-  if (!res.ok) {
+  try {
+    const data = await postAnnotationPayload(body)
+    if (draft) draft.remove()
+    pushAnnotationHistory({ type: 'create', annotation: cloneAnnotation(data) })
+  } catch (err) {
     const el = document.getElementById('alert-correcao')
-    el.textContent = data.error || 'Nao foi possivel adicionar a marcação.'
+    el.textContent = err?.message || 'Nao foi possivel adicionar a marcação.'
     el.style.display = 'block'
     return
   }
-  if (draft) draft.remove()
-  currentCorrecao.anotacoes = [...(currentCorrecao.anotacoes || []), data]
   document.getElementById('m-trecho').value = ''
   document.getElementById('m-comentario').value = ''
-  renderMarcacoes(currentCorrecao.anotacoes)
   markEmAndamento()
 }
 
@@ -4576,10 +5801,11 @@ function renderAnnotationOverlay(anotacoes) {
       box.innerHTML = freehandSvg(meta.points, a.cor || '#EF4444', thickness)
     } else if (tipo === 'SUBLINHADO') {
       box.style.setProperty('border-bottom-width', `${thickness}px`, 'important')
+      box.style.background = 'transparent'
     } else {
       box.style.borderWidth = `${thickness}px`
+      box.style.background = hexToRgba(a.cor || '#EF4444', 0.32)
     }
-    box.style.background = tipo === 'SUBLINHADO' ? 'transparent' : hexToRgba(a.cor || '#EF4444', 0.32)
     box.title = a.comentario || tipo
     layer.appendChild(box)
   })
@@ -4591,10 +5817,14 @@ function renderAnnotationOverlay(anotacoes) {
 }
 
 function parseAnnotationMeta(a) {
-  try {
-    const raw = String(a.categoria || '')
-    return raw.trim().startsWith('{') ? JSON.parse(raw) : {}
-  } catch { return {} }
+  const candidates = [a?.categoria, a?.trecho]
+  for (const value of candidates) {
+    try {
+      const raw = String(value || '')
+      if (raw.trim().startsWith('{')) return JSON.parse(raw)
+    } catch {}
+  }
+  return {}
 }
 
 function goToMarcacao(id) {
@@ -4606,39 +5836,33 @@ function goToMarcacao(id) {
 }
 
 async function editMarcacao(id) {
+  if (guardAnnotationEditing()) return
   const item = (currentCorrecao.anotacoes || []).find(a => a.id === id)
   if (!item) return
   const novo = prompt('Editar comentário:', item.comentario || '')
   if (novo === null) return
-  const res = await fetch(`/api/admin/correcoes/${currentCorrecao.id}/anotacoes/${id}`, {
-    method: 'PATCH',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ comentario: novo.trim(), cor: item.cor, opacidade: item.opacidade })
-  })
-  const data = await res.json()
-  if (!res.ok) {
-    const el = document.getElementById('alert-correcao')
-    el.textContent = data.error || 'Nao foi possivel editar a marcação.'
-    el.style.display = 'block'
+  const before = cloneAnnotation(item)
+  try {
+    const data = await patchAnnotationPayload(id, { comentario: novo.trim(), cor: item.cor, opacidade: item.opacidade })
+    pushAnnotationHistory({ type: 'update', before, after: cloneAnnotation(data) })
+  } catch (err) {
+    showAnnotationError(err?.message || 'Nao foi possivel editar a marcação.')
     return
   }
-  currentCorrecao.anotacoes = currentCorrecao.anotacoes.map(a => a.id === id ? data : a)
-  renderMarcacoes(currentCorrecao.anotacoes)
 }
 
 async function deleteMarcacao(id, skipConfirm = false) {
+  if (guardAnnotationEditing()) return
   if (!skipConfirm && !confirm('Excluir este comentário e a marcação no arquivo?')) return
-  const res = await fetch(`/api/admin/correcoes/${currentCorrecao.id}/anotacoes/${id}`, { method: 'DELETE' })
-  if (!res.ok) {
-    const data = await res.json()
-    const el = document.getElementById('alert-correcao')
-    el.textContent = data.error || 'Nao foi possivel excluir a marcação.'
-    el.style.display = 'block'
+  const item = (currentCorrecao.anotacoes || []).find(a => a.id === id)
+  if (!item) return
+  try {
+    await deleteAnnotationRemote(id)
+    pushAnnotationHistory({ type: 'delete', annotation: cloneAnnotation(item) })
+  } catch (err) {
+    showAnnotationError(err?.message || 'Nao foi possivel excluir a marcação.')
     return
   }
-  currentCorrecao.anotacoes = (currentCorrecao.anotacoes || []).filter(a => a.id !== id)
-  if (selectedAnnotationId === id) selectedAnnotationId = null
-  renderMarcacoes(currentCorrecao.anotacoes)
 }
 
 // Monta o canvas da redação: imagem + marcações numeradas + rodapé com os comentários do professor.
@@ -4872,6 +6096,21 @@ function buildAnnotatedCanvas() {
   return canvas
 }
 
+function safeFilePart(value) {
+  return String(value || '')
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .replace(/[^a-zA-Z0-9]+/g, '-')
+    .replace(/^-+|-+$/g, '')
+    .slice(0, 80)
+}
+
+function correctedFileBase() {
+  const aluno = safeFilePart(currentCorrecao?.aluno_nome || 'aluno')
+  const turma = safeFilePart(currentCorrecao?.turma_nome || 'sem-turma')
+  return `${aluno}-${turma}-correcao`.toLowerCase()
+}
+
 async function downloadAnnotatedImage() {
   const canvas = buildAnnotatedCanvas()
   if (!canvas) {
@@ -4879,7 +6118,7 @@ async function downloadAnnotatedImage() {
     return
   }
   const link = document.createElement('a')
-  link.download = `redacao-corrigida-${currentCorrecao.id}.png`
+  link.download = `${correctedFileBase()}.png`
   link.href = canvas.toDataURL('image/png')
   link.click()
 }
@@ -4903,7 +6142,7 @@ async function downloadAnnotatedPdf() {
     const orientation = pdfWidth > pdfHeight ? 'l' : 'p'
     const pdf = new jsPDF({ unit: 'pt', format: [pdfWidth, pdfHeight], orientation, compress: true })
     pdf.addImage(canvas.toDataURL('image/jpeg', 0.95), 'JPEG', 0, 0, pdfWidth, pdfHeight)
-    pdf.save(`redacao-corrigida-${currentCorrecao.id}.pdf`)
+    pdf.save(`${correctedFileBase()}.pdf`)
     if (statusEl) statusEl.textContent = 'PDF corrigido gerado.'
   } catch (err) {
     if (statusEl) statusEl.textContent = err?.message || 'Nao foi possivel gerar o PDF.'
@@ -5129,7 +6368,7 @@ function hexToRgba(hex, alpha) {
 }
 
 async function excluirCorrecao(id) {
-  if (!confirm('Excluir esta atividade do aluno? Ela continuará aparecendo para o aluno como excluída pelo professor.')) return
+  if (!confirm('Excluir esta redação? Ela sumirá das listas do professor e do aluno.')) return
   const res = await fetch(`/api/admin/correcoes/${id}/excluir`, { method: 'POST' })
   const d = await res.json()
   if (!res.ok) {
@@ -5138,7 +6377,7 @@ async function excluirCorrecao(id) {
   }
   loadStats()
   loadCorrecoes('recentes')
-  loadCorrecoes('pendentes', 'AGUARDANDO')
+  loadCorrecoes('pendentes', 'PENDENTES')
   loadCorrecoes('todas')
 }
 
@@ -5150,6 +6389,10 @@ function hideCorrecaoAlerts() {
 }
 
 function showPage(name, link) {
+  if (isChildTeacherMode()) {
+    const allowed = new Set(['dashboard', 'pendentes', 'todas', 'correcao'])
+    if (!allowed.has(name)) name = 'dashboard'
+  }
   // Pré-comentários agora fica dentro do Corretor automático.
   if (name === 'precomentarios') {
     const corrLink = document.querySelector('.sb-item[onclick*="corretor"]')
@@ -5163,13 +6406,18 @@ function showPage(name, link) {
   document.body.classList.toggle('correcao-mode', name === 'correcao')
   document.querySelectorAll('.sb-item').forEach(i => i.classList.remove('on'))
   if (link) link.classList.add('on')
-  const titles = { dashboard:'Dashboard', site:'Meu site', pendentes:'Correções Pendentes', todas:'Todas as Correções', turmas:'Turmas', alunos:'Alunos', temas:'Temas', relatorios:'Relatórios', corretor:'Corretor automático', correcao:'Corrigir redação' }
+  const titles = { dashboard:'Dashboard', site:'Meu site', pendentes:'Correções Pendentes', todas:'Todas as Correções', turmas:'Turmas', alunos:'Alunos', professores:'Professores', temas:'Temas', relatorios:'Relatórios', corretor:'Corretor automático', correcao:'Corrigir redação' }
   document.getElementById('topbar-title').textContent = titles[name] || name
+  if (isChildTeacherMode() && name !== 'correcao') {
+    const sub = document.getElementById('topbar-sub')
+    if (sub) sub.textContent = 'Somente redações direcionadas para você'
+  }
   if (name === 'site') loadSite()
-  if (name === 'pendentes') loadCorrecoes('pendentes', 'AGUARDANDO')
+  if (name === 'pendentes') loadCorrecoes('pendentes', 'PENDENTES')
   if (name === 'todas') loadCorrecoes('todas')
   if (name === 'turmas') loadTurmas()
   if (name === 'alunos') loadAlunos()
+  if (name === 'professores') loadProfessoresFilhos()
   if (name === 'temas') { renderTemas(); loadTurmas() }
   if (name === 'relatorios') loadRelatorios()
   if (name === 'corretor') loadTiposErro()
