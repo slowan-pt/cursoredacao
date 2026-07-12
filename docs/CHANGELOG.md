@@ -40,9 +40,12 @@ Todas as mudanças relevantes deste projeto devem ser registradas aqui.
 
 ### Segurança
 
-- Nenhuma rotação de credenciais foi executada nesta entrada.
-- Nenhuma limpeza de histórico Git foi executada nesta entrada.
-- Nenhum push ou deploy foi executado nesta entrada.
+- Limpeza local do reflog/objetos órfãos após backup mirror e bundle.
+- Scanner estrito da história alcançável não encontrou formatos reais de segredo.
+- Commit órfão local/reflog `608247c...` com secret key antiga foi removido por expiração de reflog e `git gc --prune=now`.
+- Nenhuma nova rotação de credenciais foi executada nesta entrada; as credenciais novas já estavam validadas.
+- A limpeza local de reflog/objetos órfãos foi executada nesta entrada.
+- Nenhum deploy foi executado nesta entrada.
 - A CSP foi definida de forma compatível com o frontend atual, mantendo `unsafe-inline` enquanto houver scripts/estilos inline.
 - Rate limiting efetivo foi documentado como bloqueio porque não deve ser simulado com memória local em Cloudflare Workers.
 - O provider local de storage não é persistente e não deve ser usado em produção.

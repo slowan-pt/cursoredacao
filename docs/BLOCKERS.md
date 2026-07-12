@@ -17,12 +17,13 @@
 
 - Prioridade: crítica.
 - Impacto: commits antigos ainda podem conter ou referenciar credenciais expostas.
-- Situação: proibida no ciclo autônomo atual.
+- Situação: limpeza local executada em 2026-07-12; validação remota ainda pendente até push e clone limpo.
 - Solução sugerida:
-  1. Criar backup local sensível.
-  2. Reescrever histórico com `git filter-repo`.
-  3. Validar branches, tags, reflog e objetos alcançáveis.
-  4. Fazer `git push --force-with-lease` apenas com confirmação explícita.
+  1. Backup local sensível criado.
+  2. História alcançável validada sem formatos reais de segredo.
+  3. Reflog/objetos órfãos limpos localmente.
+  4. Fazer `git push --force-with-lease`.
+  5. Clonar o remoto em pasta temporária e validar que GitHub ficou limpo.
 
 ## SUPABASE_ANON_KEY ainda legacy
 

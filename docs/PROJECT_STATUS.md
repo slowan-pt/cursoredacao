@@ -4,8 +4,8 @@
 
 - Data da atualização: 2026-07-12.
 - Branch atual: `main`.
-- Relação com remoto: `main...origin/main [ahead 22]` após a consolidação local de 2026-07-12.
-- Último commit local confirmado: `f66a1ee feat: consolidate professor management flows`.
+- Relação com remoto: `main...origin/main [ahead 25]` antes do registro deste ciclo de limpeza Git.
+- Último commit local confirmado antes deste ciclo: `3b37877 docs: record publishable key migration`.
 - Estado do working tree: limpo após consolidar os 11 arquivos rastreados modificados preexistentes.
 - Versão atual declarada: `1.0.0` em `package.json`.
 - Ambiente atual observado: Cloudflare Workers, URL pública `https://cursoreducao.slowgithub.workers.dev`.
@@ -291,7 +291,7 @@ Resumo anterior do `git diff --stat`:
 | Rotação da Supabase service key | não verificado |
 | Desativação da service key legacy | concluído |
 | Migração da anon key para publishable key | concluído |
-| Limpeza do histórico Git | pendente |
+| Limpeza do histórico Git | parcial |
 | Secrets atualizadas no Cloudflare | não verificado |
 | `APP_ENV=production` no ambiente final | não verificado |
 | Domínio `redacaocomestrategia.com.br` configurado | pendente |
@@ -378,6 +378,45 @@ Resumo anterior do `git diff --stat`:
 - A nova `SUPABASE_ANON_KEY` com valor `sb_publishable_...` está validada.
 - O nome da variável permanece legado para evitar refatoração durante o incidente; renomear para `SUPABASE_PUBLISHABLE_KEY` pode ficar para ciclo futuro.
 - Próxima ação segura: iniciar o ciclo controlado de limpeza do histórico Git, com backup local sensível e validação antes de qualquer force push.
+
+## Ciclo 1 — Limpeza Git local — 2026-07-12
+
+### Estado encontrado
+
+- Branch atual: `main`.
+- Remoto: `origin` apontando para `https://github.com/slowan-pt/redacao.git`.
+- Branch local: `main...origin/main [ahead 25]`.
+- Tags: nenhuma tag local listada.
+- Working tree antes da limpeza: limpo.
+- Scanner estrito da história alcançável: nenhum formato real de segredo encontrado.
+- Scanner estrito do reflog antes da limpeza: encontrou uma secret key Supabase em commit órfão local/reflog `608247c...`, no arquivo `scripts/check.mjs`.
+- `origin/main`: continha apenas marcador de host Supabase em `scripts/migrate.mjs`, sem connection string literal detectada.
+
+### Ações executadas
+
+- Backup local criado fora do repositório:
+  - `C:\Users\adm.sloannascimento\Downloads\puppin\_git_backups\cursoreducao-20260712-191058`
+- Backup contém:
+  - clone mirror local;
+  - bundle Git `cursoreducao-before-cleanup.bundle`;
+  - `HEAD.txt`;
+  - `STATUS.txt`.
+- Reflog local expirado com `git reflog expire --expire=now --expire-unreachable=now --all`.
+- Objetos inalcançáveis podados com `git gc --prune=now`.
+- `git-filter-repo` não foi aplicado à `main` porque a varredura estrita não encontrou segredos reais na história alcançável; o segredo restante estava somente em reflog/objeto órfão, fora do escopo de reescrita de commits alcançáveis.
+
+### Validação após limpeza
+
+- Reflog: vazio ou sem refs retornadas.
+- `git fsck --full --unreachable --no-reflogs`: sem objetos inalcançáveis listados.
+- Scanner estrito da história alcançável: sem formatos reais de segredo.
+- `npm run check:all`: passou.
+
+### Pendências deste ciclo
+
+- Commitar esta documentação.
+- Fazer push com `git push --force-with-lease` para publicar a sequência local e substituir o remoto antigo com segurança.
+- Clonar/validar o remoto após o push.
 
 ## Próxima ação recomendada
 

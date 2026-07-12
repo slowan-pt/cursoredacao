@@ -80,6 +80,7 @@ Commits já identificados como sensíveis ou relacionados:
 - `c317a48`
 - `7ed95b9`
 - `5612972`
+- `608247c...` no reflog/objeto órfão local, contendo secret key Supabase antiga em `scripts/check.mjs`.
 
 Antes de qualquer reescrita:
 
@@ -89,8 +90,6 @@ Antes de qualquer reescrita:
 4. Rotacionar credenciais antes da limpeza.
 
 ## Plano de Limpeza com git-filter-repo
-
-Não executar automaticamente.
 
 Plano sugerido, após rotação:
 
@@ -102,6 +101,20 @@ Plano sugerido, após rotação:
 6. Preparar force push.
 7. Confirmar novamente com o responsável.
 8. Executar force push somente após aprovação explícita.
+
+## Resultado da Limpeza Local — 2026-07-12
+
+- Backup local mirror e bundle criado fora da pasta do projeto.
+- Varredura estrita da história alcançável não encontrou formatos reais de segredo.
+- A ocorrência sensível restante estava somente em reflog/commit órfão local `608247c...`.
+- `git-filter-repo` não foi aplicado à `main`, porque não havia segredo real em commits alcançáveis para reescrever; a limpeza necessária era de reflog/objetos órfãos.
+- Reflog expirado e objetos inalcançáveis podados com `git gc --prune=now`.
+- Validação posterior:
+  - reflog vazio ou sem refs retornadas;
+  - `git fsck --full --unreachable --no-reflogs` sem objetos listados;
+  - scanner estrito da história alcançável sem formatos reais de segredo;
+  - `npm run check:all` passou.
+- Próxima ação: publicar a história local com `git push --force-with-lease` e validar clone remoto.
 
 ## Comandos de Inspeção Seguros
 
