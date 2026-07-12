@@ -8,6 +8,23 @@ export type EmailMessage = {
   text?: string
 }
 
+export type CheckoutReceiptEmailInput = {
+  to: string
+  studentName: string
+  courseName: string
+  checkoutCode: string
+  transactionId: string
+  loginUrl: string
+}
+
+export type CorrectionReadyEmailInput = {
+  to: string
+  studentName: string
+  courseName: string
+  activityTitle: string
+  resultUrl: string
+}
+
 export type EmailResult = {
   sent: boolean
   provider: 'disabled' | 'resend'
@@ -68,6 +85,42 @@ export function renderBasicEmail(title: string, body: string, action?: { label: 
     ? `<p><a href="${escapeHtml(action.url)}" style="display:inline-block;padding:12px 16px;border-radius:8px;background:#1A3A2A;color:#fff;text-decoration:none;font-weight:700">${escapeHtml(action.label)}</a></p>`
     : ''
   return `<!doctype html><html><body style="font-family:Arial,sans-serif;color:#111;line-height:1.5"><h1>${escapedTitle}</h1><p>${escapedBody}</p>${actionHtml}</body></html>`
+}
+
+export function renderCheckoutReceiptEmail(input: CheckoutReceiptEmailInput): EmailMessage {
+  const body = [
+    `Olá, ${input.studentName}.`,
+    '',
+    `Recebemos a simulação de pagamento da turma "${input.courseName}".`,
+    `Código único: ${input.checkoutCode}`,
+    `Transação: ${input.transactionId}`,
+    '',
+    'Guarde esse código. Ele vincula sua matrícula caso você crie o cadastro depois.'
+  ].join('\n')
+
+  return {
+    to: input.to,
+    subject: `Matrícula recebida — ${input.courseName}`,
+    text: body,
+    html: renderBasicEmail('Matrícula recebida', body, { label: 'Acessar plataforma', url: input.loginUrl })
+  }
+}
+
+export function renderCorrectionReadyEmail(input: CorrectionReadyEmailInput): EmailMessage {
+  const body = [
+    `Olá, ${input.studentName}.`,
+    '',
+    `Sua redação "${input.activityTitle}" da turma "${input.courseName}" já foi corrigida.`,
+    '',
+    'Acesse a plataforma para visualizar os comentários e baixar a correção.'
+  ].join('\n')
+
+  return {
+    to: input.to,
+    subject: `Correção disponível — ${input.activityTitle}`,
+    text: body,
+    html: renderBasicEmail('Correção disponível', body, { label: 'Ver correção', url: input.resultUrl })
+  }
 }
 
 function escapeHtml(value: string) {

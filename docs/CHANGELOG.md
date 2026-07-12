@@ -19,6 +19,7 @@ Todas as mudanças relevantes deste projeto devem ser registradas aqui.
 - Documento `docs/BLOCKERS.md` com bloqueios críticos e importantes.
 - Provider local de desenvolvimento em memória para a camada de storage privado.
 - Utilitários de webhook Asaas para normalização de payload e chave de idempotência.
+- Templates puros de e-mail para recibo de checkout e correção disponível.
 
 ### Segurança
 
@@ -29,6 +30,7 @@ Todas as mudanças relevantes deste projeto devem ser registradas aqui.
 - Rate limiting efetivo foi documentado como bloqueio porque não deve ser simulado com memória local em Cloudflare Workers.
 - O provider local de storage não é persistente e não deve ser usado em produção.
 - A normalização de webhook Asaas não libera matrícula; ela apenas prepara dados para uma rota futura idempotente.
+- Templates de e-mail não enviam mensagens por conta própria; envio real continua atrás de `ENABLE_EMAILS`.
 
 ### Observações
 

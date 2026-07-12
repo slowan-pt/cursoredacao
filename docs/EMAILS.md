@@ -13,6 +13,7 @@ Atualizado em: 2026-07-12.
 ## Arquivos Preparados
 
 - `src/email.ts`: provider abstrato, provider desativado e provider Resend.
+- `src/email.ts`: templates puros para recibo de checkout e correção disponível.
 - `src/types.ts`: `RESEND_API_KEY` e `EMAIL_FROM`.
 - `.env.example`: variáveis sem valores reais.
 
@@ -50,12 +51,24 @@ EMAIL_FROM="Redação com Estratégia <no-reply@redacaocomestrategia.com.br>"
 
 ## Templates Planejados
 
+- recibo de checkout;
+- correção concluída;
 - confirmação de cadastro;
 - recuperação de senha via Supabase Auth;
 - pagamento confirmado;
 - matrícula liberada;
-- correção concluída;
 - falha de pagamento.
+
+## Templates Preparados
+
+- `renderCheckoutReceiptEmail`
+  - informa turma, código único e transação;
+  - direciona o aluno para login/cadastro;
+  - não envia e-mail sozinho.
+- `renderCorrectionReadyEmail`
+  - informa atividade/turma;
+  - direciona o aluno para visualizar a correção;
+  - não envia e-mail sozinho.
 
 ## Regras de Segurança
 

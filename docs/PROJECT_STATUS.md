@@ -528,3 +528,40 @@ Resumo do `git diff --stat`:
 ### Próximos passos
 
 - Preparar templates/serviço de e-mail sem envio real.
+
+## Sprint 5 — E-mails transacionais preparados — 2026-07-12
+
+### Tarefas concluídas
+
+- Adicionados templates puros de e-mail:
+  - recibo de checkout;
+  - correção disponível.
+- Mantido envio real desativado por `ENABLE_EMAILS=false`.
+- Atualizada documentação de e-mails.
+
+### Arquivos alterados
+
+- `src/email.ts`
+- `docs/EMAILS.md`
+- `docs/PROJECT_STATUS.md`
+- `docs/CHANGELOG.md`
+
+### Testes executados
+
+- `npm run typecheck`
+- `npm run security:scan`
+- `npm run check:diff`
+
+### Riscos encontrados
+
+- Templates ainda não estão integrados aos fluxos reais.
+- Envio real depende de domínio/remetente verificado no provedor.
+
+### Pendências
+
+- Integrar templates aos pontos adequados somente quando `ENABLE_EMAILS=true`.
+- Validar entregabilidade em homologação.
+
+### Próximos passos
+
+- Avançar para observabilidade local sem expor dados sensíveis.
