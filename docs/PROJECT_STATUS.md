@@ -4,9 +4,9 @@
 
 - Data da atualização: 2026-07-12.
 - Branch atual: `main`.
-- Relação com remoto: `main...origin/main [ahead 1]`.
-- Último commit local: `7ed95b9 chore: harden initial production settings`.
-- Estado do working tree: sujo, com 11 arquivos rastreados modificados e `docs/PROJECT_STATUS.md` novo não rastreado.
+- Relação com remoto: `main...origin/main [ahead 8]`.
+- Último commit local: `a5b1b02 docs: add deploy rollback and test plans`.
+- Estado do working tree: sujo, com 11 arquivos rastreados modificados preexistentes.
 - Versão atual declarada: `1.0.0` em `package.json`.
 - Ambiente atual observado: Cloudflare Workers, URL pública `https://cursoreducao.slowgithub.workers.dev`.
 - Última versão do Worker informada neste ciclo: `ee1800a1-114f-4b09-8067-ada375564e3e`.
@@ -29,8 +29,9 @@
 
 ### Estado confirmado no último commit
 
-- O último commit confirmado é `7ed95b9 chore: harden initial production settings`.
-- Pelo nome e pela inspeção dos arquivos presentes no workspace, este commit representa a primeira etapa de endurecimento inicial: configuração centralizada, `.env.example`, validação de variáveis, healthcheck e retirada de segredos hardcoded de scripts.
+- O último commit local é `a5b1b02 docs: add deploy rollback and test plans`.
+- O último commit de segurança base é `7ed95b9 chore: harden initial production settings`.
+- A sessão autônoma criou commits locais adicionais para documentação, scanner de segredos, seed scripts, R2, Asaas, e-mails e planos operacionais.
 - Este status não confirma por si só que credenciais antigas foram rotacionadas nem que o histórico Git foi limpo.
 
 ### Alterações locais não commitadas
@@ -49,15 +50,12 @@ Arquivos rastreados modificados:
 - `src/routes/auth.ts`
 - `src/routes/site.ts`
 
-Arquivos novos não rastreados:
-
-- `docs/PROJECT_STATUS.md`
-
 Resumo do `git diff --stat`:
 
 - 11 arquivos funcionais modificados.
-- Aproximadamente 2490 inserções e 303 remoções antes da criação deste documento.
+- Aproximadamente 2499 inserções e 306 remoções ainda não commitadas.
 - Maior volume de alteração em `public/professor/index.html`, `src/routes/admin.ts`, `src/routes/site.ts` e `public/css/style.css`.
+- Observação: há pequenos hunks de TTL de sessão em `src/routes/auth.ts` e `src/routes/aluno.ts` feitos nesta sessão, mas não commitados separadamente porque esses arquivos já continham diffs amplos preexistentes.
 
 ### Migrations alteradas
 
@@ -128,12 +126,12 @@ Resumo do `git diff --stat`:
 | Ciclo | Status | Observação |
 | --- | --- | --- |
 | Segurança inicial | concluído e commitado | Commit `7ed95b9`; ainda precisa validação pós-rotação. |
-| Rotação de credenciais e Git | parcial | Credenciais novas foram discutidas; limpeza de histórico ainda pendente. |
-| R2 e uploads | planejado | Base64 segue temporário; R2 não implementado. |
-| Asaas | não iniciado | Checkout atual é simulado. |
-| E-mails | parcial | Há placeholder/estrutura local; envio real não verificado. |
-| Domínio e produção | parcial | Domínio oficial definido; Worker ainda observado no subdomínio antigo. |
-| Testes e homologação | parcial | `npx tsc --noEmit` passou em ciclos anteriores; testes E2E não registrados. |
+| Rotação de credenciais e Git | parcial | Runbook e scanner criados; rotação/limpeza real seguem manuais e pendentes. |
+| R2 e uploads | parcial | Camada R2, binding, migration e documentação preparados; fluxo base64 ainda não integrado ao R2. |
+| Asaas | parcial | Gateway, envs, migration e documentação sandbox preparados; webhook/checkout real pendentes. |
+| E-mails | parcial | Provider Resend/mock preparado; nenhum envio real ativado. |
+| Domínio e produção | parcial | Docs de deploy/rollback criadas; domínio oficial ainda não configurado. |
+| Testes e homologação | parcial | Plano de teste criado; `npx tsc --noEmit` e scanner passam. |
 | Lançamento | planejado | Depende de credenciais, histórico Git, domínio, R2/pagamentos por flags e validação. |
 | Evolução do SaaS | planejado | Multi-professores, sites por professor e corretores filhos em evolução local. |
 
@@ -143,6 +141,7 @@ Resumo do `git diff --stat`:
 | --- | --- | --- | --- | --- | --- |
 | Healthcheck `/health` | concluído e commitado | `src/index.ts`/configuração de segurança, resposta observada anteriormente | sim | parcial | `APP_VERSION` aparece como `dev` no health atual. |
 | Configuração centralizada/env flags | concluído e commitado | `src/config.ts`, `src/types.ts`, `.env.example` | sim | parcial | Confirmar secrets reais no Cloudflare. |
+| Scanner local de segredos | concluído e commitado | `scripts/scan-secrets.mjs`, `npm run security:scan` | sim | sim | Não substitui varredura de histórico remoto. |
 | Supabase Auth | concluído e commitado | `src/supabase.ts`, `src/routes/auth.ts` | sim | parcial | Fluxos novos locais ainda não revisados. |
 | Login/cadastro com código de pagamento | implementado localmente, aguardando revisão | `public/login.html`, `src/routes/auth.ts` | não | não verificado | Pode afetar UX e validação de cadastro. |
 | OAuth Google | parcial | `src/routes/auth.ts`, `public/auth-callback.html`, flag `ENABLE_OAUTH` | sim/parcial | não verificado | Deve permanecer desativado se não aprovado. |
@@ -155,8 +154,10 @@ Resumo do `git diff --stat`:
 | Correção de redação | implementado localmente, aguardando revisão | `public/professor/index.html`, `public/css/style.css`, `src/routes/admin.ts` | não | parcial | Toolbar e bloqueios precisam regressão visual. |
 | Pré-comentários | implementado localmente, aguardando revisão | `public/professor/index.html`, `src/routes/admin.ts` | não | não verificado | Seeds/listagens precisam confirmação. |
 | Professores filhos/corretores | implementado localmente, aguardando revisão | `src/routes/admin.ts`, `public/professor/index.html` | não | não verificado | Controle de permissão é área sensível. |
+| R2 privado | parcial | `src/storage.ts`, `migrations/004_storage_files.sql`, `docs/R2.md` | sim | parcial | Não integrado ao fluxo de upload existente. |
 | Checkout simulado | parcial | `src/routes/site.ts`, `src/routes/auth.ts`, `public/login.html` | não | não verificado | Não substitui Asaas real. |
-| E-mails de transação | parcial | `src/routes/site.ts` placeholder | não | não verificado | Resend não configurado/validado. |
+| Gateway Asaas | parcial | `src/payments.ts`, `migrations/005_payments.sql`, `docs/ASAAS.md` | sim | parcial | Webhook e checkout real ainda pendentes. |
+| E-mails de transação | parcial | `src/email.ts`, `docs/EMAILS.md` | sim | parcial | Resend não configurado/validado; flag desligada. |
 | Relatórios | parcial | `public/professor/index.html` | não | não verificado | Dados e permissões precisam revisão. |
 
 ## Segurança
@@ -166,6 +167,8 @@ Resumo do `git diff --stat`:
 - `scripts/migrate.mjs` usa `SUPABASE_DB_URL` em vez de credencial hardcoded.
 - `.env.example` existe sem valores reais.
 - `src/config.ts` valida `SESSION_SECRET` e flags.
+- `scripts/setup.mjs` e `scripts/seed-puppin-teste.mjs` não imprimem mais senhas e exigem senhas por ambiente, salvo opt-in explícito de seed inseguro local.
+- `scripts/scan-secrets.mjs` verifica padrões de segredos sem imprimir valores.
 - Status: concluído e commitado no ciclo de segurança inicial.
 
 ### Segredos ainda no histórico
@@ -186,9 +189,8 @@ Resumo do `git diff --stat`:
 
 ### Situação do Git
 
-- Branch `main` está `ahead 1` em relação a `origin/main`.
+- Branch `main` está `ahead 8` em relação a `origin/main`.
 - Working tree está sujo.
-- `docs/PROJECT_STATUS.md` é novo e não rastreado.
 - Limpeza de histórico ainda não executada neste documento.
 
 ### Situação da service key
@@ -291,9 +293,11 @@ Resumo do `git diff --stat`:
 | Domínio `redacaocomestrategia.com.br` configurado | pendente |
 | `www` redirecionando para domínio principal | pendente |
 | R2 configurado | pendente |
+| Camada R2 local preparada | parcial |
 | Upload base64 bloqueado em produção | parcial |
-| Asaas sandbox | pendente |
+| Asaas sandbox | parcial |
 | Asaas produção | pendente |
+| Camada Resend/e-mails preparada | parcial |
 | Resend/e-mails reais | pendente |
 | Rate limiting efetivo | pendente |
 | Teste de login professor | não verificado |
@@ -316,8 +320,8 @@ Resumo do `git diff --stat`:
 ## Como retomar depois de 30 dias
 
 - Branch: `main`.
-- Último commit confirmado: `7ed95b9 chore: harden initial production settings`.
-- Alterações locais: 11 arquivos funcionais modificados e `docs/PROJECT_STATUS.md` novo.
+- Último commit confirmado: `a5b1b02 docs: add deploy rollback and test plans`.
+- Alterações locais: 11 arquivos funcionais modificados preexistentes.
 - Ciclo atual: rotação de credenciais e limpeza segura de histórico Git ainda pendentes.
 - Bloqueio principal: credenciais antigas comprometidas ainda precisam ser tratadas como expostas até rotação e limpeza final.
 - Próxima ação segura: retomar pelo ciclo de rotação, validar secrets local/Cloudflare e só depois limpar histórico.
@@ -330,3 +334,34 @@ Resumo do `git diff --stat`:
   - alteração destrutiva em alunos, turmas, redações ou sites;
   - remoção de branches/tags;
   - commit agrupando todas as alterações locais sem revisão por tema.
+
+## Sessão autônoma de 2026-07-12
+
+### Commits locais criados
+
+- `5612972 docs: add project status inventory`
+- `bdea73c security: harden seed scripts and token ttl`
+- `b4a5cdb security: add secret scan runbook`
+- `aa9965d feat: prepare private R2 storage`
+- `e3c6f72 feat: prepare Asaas payment gateway`
+- `17b4fc5 feat: prepare transactional email provider`
+- `a5b1b02 docs: add deploy rollback and test plans`
+
+### Testes executados
+
+- `npx tsc --noEmit`
+- `npm run security:scan`
+- `git diff --check`
+- `node --check` em scripts criados/alterados quando aplicável.
+
+### Ações não executadas por segurança
+
+- Nenhum `git push`.
+- Nenhum deploy com Wrangler.
+- Nenhuma alteração de DNS.
+- Nenhuma rotação real de credenciais.
+- Nenhuma limpeza de histórico Git.
+- Nenhuma migration executada contra Supabase.
+- Nenhum bucket R2 criado.
+- Nenhuma cobrança Asaas criada.
+- Nenhum e-mail real enviado.
