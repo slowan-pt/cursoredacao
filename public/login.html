@@ -37,6 +37,10 @@ body.tenant-login .login-card{padding:24px}
 body.tenant-login .auth-panels{display:grid;grid-template-columns:1fr 1fr;gap:22px;align-items:start}
 .auth-panel{min-width:0}
 body.tenant-login .auth-panel{border:1px solid var(--border);border-radius:14px;padding:22px;background:rgba(255,255,255,.74)}
+body.auth-signup-only .login-wrap,body.auth-login-only .login-wrap{max-width:460px}
+body.auth-signup-only .auth-panels,body.auth-login-only .auth-panels{display:block}
+body.auth-signup-only #login-panel,body.auth-login-only #signup-box{display:none!important}
+body.auth-signup-only #signup-box{display:block!important}
 
 /* FORM */
 .form-title{font-size:16px;font-weight:700;margin-bottom:4px}
@@ -60,6 +64,8 @@ input:focus{border-color:var(--brand3);box-shadow:0 0 0 3px rgba(61,122,88,.1)}
 body.tenant-login .signup-box{display:block;margin-top:0;padding-top:0;border-top:0}
 .mini-link{margin-top:14px;text-align:center;font-size:12px;color:var(--ink3)}
 .mini-link a{color:var(--brand2);font-weight:800;text-decoration:none}
+.checkout-code-field{display:none}
+.checkout-code-field.open{display:flex}
 
 /* ERROR */
 .alert-err{background:var(--danger-light);color:var(--danger);border:1px solid #f5c6c6;border-radius:var(--r);padding:11px 14px;font-size:13px;margin-bottom:16px;display:none}
@@ -100,7 +106,7 @@ body.tenant-login .signup-box{display:block;margin-top:0;padding-top:0;border-to
     <div id="alert-ok" class="alert-ok"></div>
 
     <div class="auth-panels">
-      <section class="auth-panel">
+      <section class="auth-panel" id="login-panel">
         <form id="login-form" onsubmit="doLogin(event)">
           <div class="form-title">Fazer login</div>
           <div class="form-sub">Entre se você já tem cadastro neste site.</div>
@@ -114,6 +120,7 @@ body.tenant-login .signup-box{display:block;margin-top:0;padding-top:0;border-to
           </div>
           <button type="submit" class="btn btn-accent" id="btn-submit">Entrar</button>
           <a href="#" class="forgot-link" onclick="forgotPassword(event)">Esqueci minha senha</a>
+          <div class="mini-link">Ainda não tem cadastro? <a href="#" id="login-signup-link" onclick="toggleSignup(event)">Criar cadastro</a></div>
         </form>
       </section>
 
@@ -129,11 +136,17 @@ body.tenant-login .signup-box{display:block;margin-top:0;padding-top:0;border-to
             <label for="signup-email">Email</label>
             <input type="email" id="signup-email" placeholder="seu@email.com" required autocomplete="email">
           </div>
+          <div class="form-group checkout-code-field" id="checkout-code-field">
+            <label for="signup-checkout-code">Código do pagamento</label>
+            <input id="signup-checkout-code" placeholder="Ex.: PG-XXXXXXXXXX" autocomplete="off">
+            <div class="hint">Use o código recebido/registrado ao finalizar o pagamento.</div>
+          </div>
           <div class="form-group">
             <label for="signup-password">Senha</label>
-            <input type="password" id="signup-password" placeholder="Mínimo 8 caracteres" minlength="8" required autocomplete="new-password">
+            <input type="password" id="signup-password" placeholder="Mínimo 6 caracteres" minlength="6" required autocomplete="new-password">
           </div>
           <button type="submit" class="btn btn-accent" id="btn-signup">Criar cadastro</button>
+          <div class="mini-link">Já tem cadastro? <a href="#" id="signup-login-link">Fazer login</a></div>
         </form>
       </section>
     </div>
@@ -147,6 +160,10 @@ const params = new URLSearchParams(location.search)
 const pathMatch = location.pathname.match(/^\/redacao\/([^/]+)\/login\/?$/)
 const siteSlug = params.get('site') || (pathMatch ? decodeURIComponent(pathMatch[1]) : '')
 const siteBase = siteSlug ? `/redacao/${encodeURIComponent(siteSlug)}` : ''
+const paidTurmaId = params.get('paid') === '1' ? (params.get('turma') || '') : ''
+const checkoutCodeParam = params.get('checkout_code') || params.get('code') || ''
+const paidLoginHref = paidTurmaId ? `${location.pathname}?paid=1&turma=${encodeURIComponent(paidTurmaId)}&email=${encodeURIComponent(params.get('email') || '')}` : '#'
+const paidSignupHref = paidTurmaId ? `${location.pathname}?signup=1&paid=1&turma=${encodeURIComponent(paidTurmaId)}&email=${encodeURIComponent(params.get('email') || '')}&nome=${encodeURIComponent(params.get('nome') || '')}&checkout_code=${encodeURIComponent(checkoutCodeParam)}` : '#'
 if (siteSlug && params.get('signup') === '1' && params.get('turma') && params.get('paid') !== '1') {
   location.replace(`${siteBase}/checkout/${encodeURIComponent(params.get('turma'))}`)
 }
@@ -160,6 +177,16 @@ if (params.get('signup') === '1') document.getElementById('signup-box').classLis
 if (params.get('email')) {
   document.getElementById('email').value = params.get('email')
   document.getElementById('signup-email').value = params.get('email')
+}
+if (params.get('nome')) document.getElementById('signup-name').value = params.get('nome')
+if (paidTurmaId) {
+  const codeField = document.getElementById('checkout-code-field')
+  codeField.classList.add('open')
+  document.getElementById('signup-checkout-code').required = true
+  document.getElementById('signup-checkout-code').value = checkoutCodeParam
+  document.body.classList.add(params.get('signup') === '1' ? 'auth-signup-only' : 'auth-login-only')
+  document.getElementById('login-signup-link').href = paidSignupHref
+  document.getElementById('signup-login-link').href = paidLoginHref
 }
 if (params.get('pendente') === '1') showOk('Seu acesso de professor ainda está aguardando aprovação do admin geral.')
 
@@ -226,6 +253,10 @@ function hideAlerts() {
 function toggleSignup(e) {
   e.preventDefault()
   hideAlerts()
+  if (paidTurmaId) {
+    location.href = paidSignupHref
+    return
+  }
   document.getElementById('signup-box').classList.toggle('open')
 }
 
@@ -285,7 +316,9 @@ async function registerStudent(e) {
     nome: document.getElementById('signup-name').value.trim(),
     email: document.getElementById('signup-email').value.trim(),
     password: document.getElementById('signup-password').value,
-    site_slug: siteSlug
+    site_slug: siteSlug,
+    turma_id: paidTurmaId || undefined,
+    checkout_code: document.getElementById('signup-checkout-code')?.value.trim() || undefined
   }
 
   try {
@@ -304,6 +337,11 @@ async function registerStudent(e) {
       : 'Cadastro criado. Agora entre com email e senha. O professor precisa aprovar para liberar o envio de redações.')
     document.getElementById('email').value = body.email
     document.getElementById('signup-box').classList.remove('open')
+    if (data.status === 'ATIVO_POR_PAGAMENTO') {
+      setTimeout(() => {
+        location.href = `${location.pathname}?paid=1&turma=${encodeURIComponent(paidTurmaId || '')}&email=${encodeURIComponent(body.email)}`
+      }, 3000)
+    }
   } catch {
     showErr('Erro de conexão. Tente novamente.')
   } finally {

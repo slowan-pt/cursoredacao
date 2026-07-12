@@ -14,7 +14,9 @@ function parseCms(site: any) {
   const base = {
     student_credits: {} as Record<string, { creditos?: number; vence_em?: string | null; updated_at?: string }>,
     enrollments: {} as Record<string, Record<string, { ativo?: boolean; origem?: string; created_at?: string; updated_at?: string }>>,
-    checkout_leads: {} as Record<string, any>
+    checkout_leads: {} as Record<string, any>,
+    blocked_students: {} as Record<string, any>,
+    deleted_students: {} as Record<string, any>
   }
   if (!raw) return base
   try {
@@ -23,7 +25,9 @@ function parseCms(site: any) {
       ...cms,
       student_credits: cms.student_credits && typeof cms.student_credits === 'object' ? cms.student_credits : {},
       enrollments: cms.enrollments && typeof cms.enrollments === 'object' ? cms.enrollments : {},
-      checkout_leads: cms.checkout_leads && typeof cms.checkout_leads === 'object' ? cms.checkout_leads : {}
+      checkout_leads: cms.checkout_leads && typeof cms.checkout_leads === 'object' ? cms.checkout_leads : {},
+      blocked_students: cms.blocked_students && typeof cms.blocked_students === 'object' ? cms.blocked_students : {},
+      deleted_students: cms.deleted_students && typeof cms.deleted_students === 'object' ? cms.deleted_students : {}
     }
   } catch {
     return base
@@ -39,13 +43,48 @@ function missingTurmaAlunos(error: any) {
   return /turma_alunos|relation .* does not exist|schema cache/i.test(String(error?.message || ''))
 }
 
-async function applyPaidCheckoutForStudent(env: Env, siteId: string, userId: string, email: string) {
+async function validateCheckoutCodeForRegistration(env: Env, siteId: string, email: string, turmaId?: string, checkoutCode?: string) {
+  if (!turmaId) return { ok: true }
+  const code = String(checkoutCode || '').trim().toUpperCase()
+  if (!code) return { ok: false, error: 'Informe o código do pagamento enviado para este e-mail.' }
+
+  const sb = getAdmin(env)
+  const { data: site, error } = await sb.from('sites').select('allowed_origins').eq('id', siteId).single()
+  if (error || !site) return { ok: false, error: error?.message || 'Site não encontrado.' }
+  const cms = parseCms(site)
+  const match = Object.values(cms.checkout_leads || {}).some((lead: any) =>
+    String(lead?.email || '').toLowerCase() === email &&
+    String(lead?.turma_id || '') === String(turmaId) &&
+    lead?.status === 'PAGAMENTO_APROVADO_SIMULADO' &&
+    String(lead?.checkout_code || lead?.code || '').trim().toUpperCase() === code
+  )
+  return match ? { ok: true } : { ok: false, error: 'Código de pagamento inválido para este e-mail.' }
+}
+
+async function applyPaidCheckoutForStudent(
+  env: Env,
+  siteId: string,
+  userId: string,
+  email: string,
+  options: { checkoutCode?: string; turmaId?: string; requireCode?: boolean } = {}
+) {
   const sb = getAdmin(env)
   const { data: site, error: siteErr } = await sb.from('sites').select('allowed_origins').eq('id', siteId).single()
   if (siteErr || !site) return { activated: false, error: siteErr }
   const cms = parseCms(site)
-  const paid = Object.values(cms.checkout_leads || {})
+  const normalizedCode = String(options.checkoutCode || '').trim().toUpperCase()
+  const allPaid = Object.values(cms.checkout_leads || {})
     .filter((lead: any) => String(lead?.email || '').toLowerCase() === email && lead?.status === 'PAGAMENTO_APROVADO_SIMULADO')
+    .filter((lead: any) => !options.turmaId || String(lead?.turma_id || '') === String(options.turmaId))
+  const paid = options.requireCode
+    ? allPaid.filter((lead: any) => String(lead?.checkout_code || lead?.code || '').trim().toUpperCase() === normalizedCode)
+    : allPaid
+  if (options.requireCode && allPaid.length && !paid.length) {
+    return { activated: false, error: { message: 'Código de pagamento inválido para este e-mail.' } }
+  }
+  if (options.requireCode && !allPaid.length) {
+    return { activated: false, error: { message: 'Pagamento não encontrado para este e-mail e turma.' } }
+  }
   const turmaIds = Array.from(new Set(paid.map((lead: any) => String(lead.turma_id || '')).filter(Boolean)))
   if (!turmaIds.length) return { activated: false }
 
@@ -142,11 +181,17 @@ auth.post('/login', async (c) => {
     return c.json({ error: 'Este usuário não tem acesso a este site.' }, 403)
   }
   if (requestedSiteId && profile.role === 'ALUNO') {
+    const { data: site } = await adminClient.from('sites').select('allowed_origins').eq('id', requestedSiteId).maybeSingle()
+    const cms = parseCms(site)
+    if (profile.ativo === false || cms.blocked_students?.[data.user.id] || cms.deleted_students?.[data.user.id]) {
+      return c.json({ error: 'Acesso bloqueado. Fale com o professor responsável pelo site.' }, 403)
+    }
     const paid = await applyPaidCheckoutForStudent(c.env, requestedSiteId, data.user.id, String(data.user.email || '').toLowerCase())
     if (paid.error) return c.json({ error: paid.error.message }, 500)
     if (paid.activated) profile.ativo = true
   }
 
+  const config = getConfig(c.env)
   const token = await createToken(
     {
       sub: data.user.id,
@@ -156,7 +201,8 @@ auth.post('/login', async (c) => {
       nome: profile.nome,
       ativo: profile.ativo !== false
     },
-    getConfig(c.env).sessionSecret
+    config.sessionSecret,
+    config.sessionTtlSeconds
   )
 
   setCookie(c, 'auth_token', token, sessionCookieOptions(c.env))
@@ -172,7 +218,7 @@ auth.post('/login', async (c) => {
 })
 
 auth.post('/register', async (c) => {
-  let body: { email: string; password: string; nome: string; site_slug?: string; site_id?: string }
+  let body: { email: string; password: string; nome: string; site_slug?: string; site_id?: string; turma_id?: string; checkout_code?: string }
   try {
     body = await c.req.json()
   } catch {
@@ -192,6 +238,9 @@ auth.post('/register', async (c) => {
   }
   if (!siteId) return c.json({ error: 'Site não encontrado' }, 404)
 
+  const checkoutValidation = await validateCheckoutCodeForRegistration(c.env, siteId, email, body.turma_id, body.checkout_code)
+  if (!checkoutValidation.ok) return c.json({ error: checkoutValidation.error }, 400)
+
   const { data, error } = await sb.auth.admin.createUser({
     email,
     password,
@@ -200,7 +249,11 @@ auth.post('/register', async (c) => {
   })
   if (error) return c.json({ error: error.message }, 400)
 
-  const paid = await applyPaidCheckoutForStudent(c.env, siteId, data.user.id, email)
+  const paid = await applyPaidCheckoutForStudent(c.env, siteId, data.user.id, email, {
+    checkoutCode: body.checkout_code,
+    turmaId: body.turma_id,
+    requireCode: Boolean(body.turma_id)
+  })
   if (paid.error) return c.json({ error: paid.error.message }, 500)
 
   await sb.from('profiles').update({
@@ -279,12 +332,21 @@ auth.post('/oauth-session', async (c) => {
     .single()
   if (pErr || !profile) return c.json({ error: 'Perfil não encontrado' }, 401)
 
+  if (profile.role === 'ALUNO' && profile.site_id) {
+    const { data: site } = await sb.from('sites').select('allowed_origins').eq('id', profile.site_id).maybeSingle()
+    const cms = parseCms(site)
+    if (profile.ativo === false || cms.blocked_students?.[authData.user.id] || cms.deleted_students?.[authData.user.id]) {
+      return c.json({ error: 'Acesso bloqueado. Fale com o professor responsável pelo site.' }, 403)
+    }
+  }
+
   let resolvedSiteSlug = requestedSiteSlug || null
   if (!resolvedSiteSlug && profile.site_id) {
     const { data: site } = await sb.from('sites').select('slug').eq('id', profile.site_id).maybeSingle()
     resolvedSiteSlug = site?.slug || null
   }
 
+  const config = getConfig(c.env)
   const token = await createToken(
     {
       sub: authData.user.id,
@@ -294,7 +356,8 @@ auth.post('/oauth-session', async (c) => {
       nome: profile.nome,
       ativo: profile.ativo !== false
     },
-    getConfig(c.env).sessionSecret
+    config.sessionSecret,
+    config.sessionTtlSeconds
   )
 
   setCookie(c, 'auth_token', token, sessionCookieOptions(c.env))
@@ -339,8 +402,24 @@ auth.post('/logout', (c) => {
   return c.json({ ok: true })
 })
 
-auth.get('/me', requireAuth, (c) => {
+auth.get('/me', requireAuth, async (c) => {
   const user = c.get('user')
+  if (user.role === 'ALUNO') {
+    const sb = getAdmin(c.env)
+    const { data: profile } = await sb.from('profiles').select('ativo, site_id').eq('id', user.sub).maybeSingle()
+    if (!profile || profile.ativo === false) {
+      deleteCookie(c, 'auth_token', expiredSessionCookieOptions(c.env))
+      return c.json({ error: 'Acesso bloqueado. Fale com o professor responsável pelo site.' }, 403)
+    }
+    if (profile.site_id) {
+      const { data: site } = await sb.from('sites').select('allowed_origins').eq('id', profile.site_id).maybeSingle()
+      const cms = parseCms(site)
+      if (cms.blocked_students?.[user.sub] || cms.deleted_students?.[user.sub]) {
+        deleteCookie(c, 'auth_token', expiredSessionCookieOptions(c.env))
+        return c.json({ error: 'Acesso bloqueado. Fale com o professor responsável pelo site.' }, 403)
+      }
+    }
+  }
   return c.json({
     id: user.sub,
     email: user.email,

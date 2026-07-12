@@ -14,8 +14,37 @@ function esc(value: unknown) {
     .replaceAll("'", '&#39;')
 }
 
+function moneyBR(value: unknown) {
+  const n = Number(value || 0)
+  return n > 0 ? `R$ ${n.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}` : 'Gratuito'
+}
+
 function jsonForScript(value: unknown) {
   return JSON.stringify(value).replaceAll('<', '\\u003c')
+}
+
+function makeCheckoutCode() {
+  return `PG-${crypto.randomUUID().replaceAll('-', '').slice(0, 10).toUpperCase()}`
+}
+
+function makeTransactionId(code: string) {
+  return `SIM-${Date.now()}-${code.replace(/\W/g, '')}`
+}
+
+async function sendCheckoutReceipt(env: Env, lead: any, turma: any, site: any) {
+  if (!getConfig(env).flags.emails) {
+    return { sent: false, reason: 'emails-disabled' }
+  }
+
+  // Placeholder seguro para o provedor de e-mail real. Enquanto Resend nao estiver
+  // configurado no ambiente, mantemos o recibo persistido no checkout_leads.
+  return {
+    sent: false,
+    reason: 'email-provider-not-configured',
+    subject: `Inscricao confirmada - ${String(turma?.nome || 'Turma')}`,
+    to: String(lead?.email || ''),
+    site: String(site?.slug || '')
+  }
 }
 
 function parseHex(value: unknown) {
@@ -371,8 +400,8 @@ h1{font-size:clamp(36px,5vw,62px);line-height:1.02;letter-spacing:-1px;font-weig
 .carousel-prev{left:-20px}.carousel-next{right:-20px}
 .card{background:var(--card);border:1px solid var(--border);border-radius:var(--r2);padding:24px;display:flex;flex-direction:column;gap:14px;transition:transform .32s ease,box-shadow .32s ease,border-color .32s ease}
 .card:hover{transform:translateY(-6px);box-shadow:0 22px 48px rgba(0,0,0,.12);border-color:var(--border2)}
-.course-cover{display:block;width:100%;aspect-ratio:4/3;border-radius:12px;overflow:hidden;background:linear-gradient(135deg,var(--brand),var(--accent));margin-bottom:4px}
-.course-cover img{width:100%;height:100%;object-fit:cover;display:block;transition:transform .55s ease,filter .35s ease}
+.course-cover{display:block;width:min(100%,260px);aspect-ratio:2/3;border-radius:16px;overflow:hidden;background:#050505;margin:0 auto 10px}
+.course-cover img{width:100%;height:100%;object-fit:contain;background:#050505;display:block;transition:transform .55s ease,filter .35s ease}
 .card:hover .course-cover img{transform:scale(1.045);filter:saturate(1.06)}
 .course-cover-placeholder{width:100%;height:100%;display:flex;align-items:center;justify-content:center;color:var(--brand-text);font-size:34px;font-weight:900;letter-spacing:.08em;background:linear-gradient(135deg,var(--brand),rgba(0,0,0,.35))}
 .course-card-link{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-top:auto}
@@ -501,7 +530,7 @@ ${blockOrderCss}
         <div class="meta">${esc(t.concurso)} · ${esc(t.status)}</div>
         <h3>${esc(t.nome)}</h3>
         <div class="desc">${esc(t.descricao || 'Acompanhamento, proposta de temas e correção individual.')}</div>
-        <div class="price">${Number(t.preco || 0) > 0 ? `R$ ${Number(t.preco).toFixed(2).replace('.', ',')}` : 'Gratuito'}</div>
+        <div class="price">${moneyBR(t.preco)}</div>
         <a class="course-card-link" href="${turmaUrl(t.id)}"><span>Ver detalhes</span><span class="course-arrow">↗</span></a>
       </article>
     `}).join('') : `
@@ -921,7 +950,7 @@ async function resetSiteToDefault() {
     showEditorMessage('Erro ao voltar ao padrão')
     return
   }
-  location.href = SITE_PATH + '?edit=1'
+  location.href = SITE_PATH
 }
 
 async function setCurrentAsDefaultModel() {
@@ -1115,6 +1144,10 @@ function clearDirty(message = 'Salvo') {
 async function bootProfessorEditMode() {
   const params = new URLSearchParams(location.search)
   if (params.get('edit') !== '1') return
+  params.delete('edit')
+  const clean = location.pathname + (params.toString() ? '?' + params.toString() : '') + location.hash
+  history.replaceState(null, '', clean)
+  return
   const meRes = await fetch('/api/auth/me')
   if (!meRes.ok) return
   const me = await meRes.json()
@@ -1444,7 +1477,7 @@ async function addTurmaFromSite() {
     '<label>Descrição</label>' +
     '<textarea id="modal-turma-desc" placeholder="Acompanhamento, temas e correção individual."></textarea>' +
     '<label>Preço em R$</label>' +
-    '<input id="modal-turma-preco" type="number" min="0" step="0.01" value="0">' +
+    '<input id="modal-turma-preco" inputmode="numeric" autocomplete="off" value="0,00" oninput="maskMoneyInput(this)" onblur="maskMoneyInput(this)">' +
     '<div class="site-modal-actions">' +
     '<button type="button" class="btn btn-light" onclick="closeSiteEditModal()">Cancelar</button>' +
     '<button type="submit" class="btn btn-accent">Salvar turma</button>' +
@@ -1505,8 +1538,18 @@ function bindSiteModalPreview() {
 }
 
 function moneyPreview(value) {
-  const num = Number(String(value || '0').replace(',', '.')) || 0
-  return num > 0 ? 'R$ ' + num.toFixed(2).replace('.', ',') : 'Gratuito'
+  const num = parseMoneyBR(value)
+  return num > 0 ? 'R$ ' + num.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) : 'Gratuito'
+}
+
+function parseMoneyBR(value) {
+  const digits = String(value || '').replace(/\D/g, '')
+  return digits ? Number(digits) / 100 : 0
+}
+
+function maskMoneyInput(input) {
+  const num = parseMoneyBR(input.value)
+  input.value = num.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })
 }
 
 function updateSiteModalPreview() {
@@ -1609,7 +1652,7 @@ async function saveTurmaFromModal() {
   const nome = document.getElementById('modal-turma-nome').value.trim()
   const concurso = document.getElementById('modal-turma-concurso').value.trim() || 'Redação'
   const descricao = document.getElementById('modal-turma-desc').value.trim()
-  const preco = Number(String(document.getElementById('modal-turma-preco').value || '0').replace(',', '.')) || 0
+  const preco = parseMoneyBR(document.getElementById('modal-turma-preco').value)
   if (!nome) return showSiteModalError('Informe o nome da turma.')
   const res = await fetch('/api/admin/turmas', {
     method: 'POST',
@@ -1659,7 +1702,7 @@ async function saveExtraTextFromModal() {
     body: JSON.stringify({ ...collectInlineSite(), cms: inlineCms })
   })
   if (!res.ok) return showSiteModalError('Não foi possível inserir o texto.')
-  location.href = SITE_PATH + '?edit=1'
+  location.href = SITE_PATH
 }
 
 async function saveExtraImageFromModal() {
@@ -1676,7 +1719,7 @@ async function saveExtraImageFromModal() {
     body: JSON.stringify({ ...collectInlineSite(), cms: inlineCms })
   })
   if (!res.ok) return showSiteModalError('Não foi possível inserir a imagem.')
-  location.href = SITE_PATH + '?edit=1'
+  location.href = SITE_PATH
 }
 
 async function saveExtraAvatarFromModal() {
@@ -1692,7 +1735,7 @@ async function saveExtraAvatarFromModal() {
     body: JSON.stringify({ ...collectInlineSite(), cms: inlineCms })
   })
   if (!res.ok) return showSiteModalError('Não foi possível inserir o avatar.')
-  location.href = SITE_PATH + '?edit=1'
+  location.href = SITE_PATH
 }
 
 async function saveExtraStyleFromModal() {
@@ -1717,7 +1760,7 @@ async function saveExtraStyleFromModal() {
     body: JSON.stringify(payload)
   })
   if (!res.ok) return showSiteModalError('Não foi possível editar o item.')
-  location.href = SITE_PATH + '?edit=1'
+  location.href = SITE_PATH
 }
 
 async function saveAvatarFromModal() {
@@ -1733,7 +1776,7 @@ async function saveAvatarFromModal() {
     body: JSON.stringify({ ...collectInlineSite(), cms: inlineCms })
   })
   if (!res.ok) return showSiteModalError('Não foi possível salvar o avatar.')
-  location.href = SITE_PATH + '?edit=1'
+  location.href = SITE_PATH
 }
 
 function initPublicCarousels() {
@@ -1807,7 +1850,7 @@ function renderTurmaPage(data: { site: any; turmas: any[] }, turma: any) {
   const sitePath = `/redacao/${encodeURIComponent(site.slug)}`
   const loginUrl = `${sitePath}/login`
   const checkoutUrl = `${sitePath}/checkout/${encodeURIComponent(turma.id)}`
-  const price = Number(turma.preco || 0) > 0 ? `R$ ${Number(turma.preco).toFixed(2).replace('.', ',')}` : 'Gratuito'
+  const price = moneyBR(turma.preco)
   const image = String(settings.imagem_url || '')
   const splitLines = (value: unknown, fallback: string[]) => {
     const lines = String(value || '').split(/\r?\n/).map((line) => line.trim()).filter(Boolean)
@@ -1826,6 +1869,9 @@ function renderTurmaPage(data: { site: any; turmas: any[] }, turma: any) {
     'Correções comentadas e ajustes finais'
   ])
   const destaque = String(settings.destaque || turma.descricao || 'Uma turma pensada para acompanhar sua evolução com clareza, prática e correções individualizadas.')
+  const tituloPublico = String(settings.titulo_publico || 'Para Quem É')
+  const tituloEntregas = String(settings.titulo_entregas || 'O Que A Turma Entrega')
+  const tituloRoteiro = String(settings.titulo_roteiro || 'Roteiro Do Curso')
   return `<!DOCTYPE html>
 <html lang="pt-BR">
 <head>
@@ -1838,7 +1884,7 @@ function renderTurmaPage(data: { site: any; turmas: any[] }, turma: any) {
 :root{--brand:${esc(theme.primary)};--brand-text:${esc(theme.primaryText)};--accent:${esc(theme.accent)};--accent-text:${esc(theme.accentText)};--surface:${esc(theme.background)};--ink:${esc(theme.text)};--ink2:${esc(theme.textSoft)};--ink3:${esc(theme.textMuted)};--card:${esc(theme.card)};--border:${esc(theme.border)};--r:10px}
 html{scroll-behavior:smooth}body{font-family:Inter,system-ui,sans-serif;background:var(--surface);color:var(--ink);-webkit-font-smoothing:antialiased}a{text-decoration:none;color:inherit}
 .nav{height:68px;background:var(--brand);color:var(--brand-text);display:flex;align-items:center;justify-content:space-between;padding:0 6%;position:sticky;top:0;z-index:20}.brand{font-weight:900}.nav a{font-size:13px;font-weight:800}.nav-actions{display:flex;gap:14px;align-items:center}.btn{display:inline-flex;align-items:center;justify-content:center;border:0;border-radius:999px;padding:13px 20px;font-weight:900;font-size:13px;cursor:pointer;transition:.22s}.btn:hover{transform:translateY(-2px)}.btn-accent{background:var(--accent);color:var(--accent-text)}.btn-light{background:#fff;color:var(--brand)}
-.hero{min-height:calc(100vh - 68px);background:linear-gradient(90deg,rgba(0,0,0,.54),rgba(0,0,0,.18)),var(--brand);color:var(--brand-text);display:grid;grid-template-columns:minmax(0,1fr) minmax(320px,460px);gap:54px;align-items:center;padding:72px 6%}.hero h1{font-size:clamp(38px,6vw,76px);line-height:.98;font-weight:900;max-width:820px}.eyebrow{text-transform:uppercase;font-weight:800;letter-spacing:.08em;margin-bottom:18px;color:rgba(255,255,255,.78)}.hero p{margin:24px 0;color:rgba(255,255,255,.82);font-size:18px;line-height:1.65;max-width:720px}.buy-card{background:#fff;color:#111;border-radius:28px;padding:34px;box-shadow:0 30px 80px rgba(0,0,0,.25)}.buy-card-cover{height:220px;border-radius:20px;overflow:hidden;background:linear-gradient(135deg,var(--brand),var(--accent));margin-bottom:22px;display:flex;align-items:center;justify-content:center;color:var(--brand-text);font-size:44px;font-weight:900}.buy-card-cover img{width:100%;height:100%;object-fit:cover}.price{display:inline-block;background:var(--accent);color:var(--accent-text);font-size:28px;font-weight:900;padding:4px 10px;margin:12px 0 18px}.buy-card ul{display:grid;gap:10px;margin:16px 0 22px}.buy-card li{list-style:none;color:#555}.buy-card li:before{content:'✓';display:inline-flex;width:22px;height:22px;border-radius:50%;background:var(--accent);color:var(--accent-text);align-items:center;justify-content:center;margin-right:9px;font-size:12px;font-weight:900}
+.hero{min-height:calc(100vh - 68px);background:linear-gradient(90deg,rgba(0,0,0,.54),rgba(0,0,0,.18)),var(--brand);color:var(--brand-text);display:grid;grid-template-columns:minmax(0,1fr) minmax(320px,460px);gap:54px;align-items:center;padding:72px 6%}.hero h1{font-size:clamp(38px,6vw,76px);line-height:.98;font-weight:900;max-width:820px}.eyebrow{text-transform:uppercase;font-weight:800;letter-spacing:.08em;margin-bottom:18px;color:rgba(255,255,255,.78)}.hero p{margin:24px 0;color:rgba(255,255,255,.82);font-size:18px;line-height:1.65;max-width:720px}.buy-card{background:#fff;color:#111;border-radius:28px;padding:34px;box-shadow:0 30px 80px rgba(0,0,0,.25)}.buy-card-cover{width:min(100%,300px);aspect-ratio:2/3;height:auto;border-radius:20px;overflow:hidden;background:#050505;margin:0 auto 22px;display:flex;align-items:center;justify-content:center;color:var(--brand-text);font-size:44px;font-weight:900}.buy-card-cover img{width:100%;height:100%;object-fit:contain;background:#050505}.price{display:inline-block;background:var(--accent);color:var(--accent-text);font-size:28px;font-weight:900;padding:4px 10px;margin:12px 0 18px}.buy-card ul{display:grid;gap:10px;margin:16px 0 22px}.buy-card li{list-style:none;color:#555}.buy-card li:before{content:'✓';display:inline-flex;width:22px;height:22px;border-radius:50%;background:var(--accent);color:var(--accent-text);align-items:center;justify-content:center;margin-right:9px;font-size:12px;font-weight:900}
 .section{padding:82px 6%}.dark{background:var(--brand);color:var(--brand-text)}.section-title{font-size:clamp(30px,4vw,52px);font-weight:900;margin-bottom:30px}.grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:18px}.info-card{background:var(--card);border:1px solid var(--border);border-radius:18px;padding:24px;min-height:150px;transition:.28s}.dark .info-card{background:rgba(255,255,255,.06);border-color:rgba(255,255,255,.16)}.info-card:hover{transform:translateY(-5px);box-shadow:0 18px 48px rgba(0,0,0,.12)}.info-card strong{display:block;font-size:16px;margin-bottom:8px}.info-card p{color:var(--ink2);line-height:1.6}.dark .info-card p{color:rgba(255,255,255,.72)}.compare{display:grid;grid-template-columns:1fr 1fr;gap:22px}.panel{border-radius:24px;padding:30px;background:#fff;color:#111}.panel.highlight{background:var(--accent);color:var(--accent-text)}.panel ul{display:grid;gap:11px;margin-top:16px}.panel li{list-style:none}.roadmap{columns:2;gap:44px}.roadmap li{break-inside:avoid;margin:0 0 14px;padding:14px 16px;border:1px solid var(--border);border-radius:14px;background:#fff;list-style:none}.cta{text-align:center;background:linear-gradient(135deg,var(--brand),#111);color:var(--brand-text);padding:86px 6%}.cta h2{font-size:clamp(34px,5vw,62px);font-weight:900;margin-bottom:16px}.reveal{opacity:0;transform:translateY(30px);transition:opacity .72s ease,transform .72s ease}.reveal.is-visible{opacity:1;transform:none}
 @media(max-width:860px){.hero{grid-template-columns:1fr;min-height:auto}.grid,.compare{grid-template-columns:1fr}.roadmap{columns:1}.nav-actions{display:none}}@media(prefers-reduced-motion:reduce){.reveal,.btn,.info-card{transition:none!important;transform:none!important}.reveal{opacity:1}}
 </style>
@@ -1850,9 +1896,9 @@ html{scroll-behavior:smooth}body{font-family:Inter,system-ui,sans-serif;backgrou
   <div><div class="eyebrow">${esc(turma.concurso || 'Turma')}</div><h1>${esc(turma.nome)}</h1><p>${esc(destaque)}</p><a class="btn btn-accent" href="${checkoutUrl}">Quero participar</a></div>
   <aside class="buy-card reveal"><div class="buy-card-cover">${image ? `<img src="${esc(image)}" alt="${esc(turma.nome)}">` : esc(String(turma.nome || 'TR').slice(0, 2).toUpperCase())}</div><h2>${esc(turma.nome)}</h2><div>Investimento</div><div class="price">${price}</div><ul>${benefits.slice(0, 3).map((item) => `<li>${esc(item)}</li>`).join('')}</ul><a class="btn btn-accent" href="${checkoutUrl}">Quero participar</a></aside>
 </section>
-<section class="section dark reveal"><h2 class="section-title">Para Quem É</h2><div class="grid">${['Quem está começando', 'Quem precisa de método', 'Quem quer acompanhamento'].map((title, index) => `<article class="info-card"><strong>${title}</strong><p>${esc(benefits[index] || 'A turma organiza estudo, prática e devolutiva para dar clareza ao próximo passo.')}</p></article>`).join('')}</div></section>
-<section class="section reveal"><h2 class="section-title">O Que A Turma Entrega</h2><div class="compare"><div class="panel"><h3>Estudo sozinho</h3><ul><li>Sem trilha clara</li><li>Sem devolutiva individual</li><li>Dificuldade para medir evolução</li></ul></div><div class="panel highlight"><h3>Com esta turma</h3><ul>${benefits.map((item) => `<li>✓ ${esc(item)}</li>`).join('')}</ul></div></div></section>
-<section class="section reveal"><h2 class="section-title">Roteiro Do Curso</h2><ol class="roadmap">${roteiro.map((item, index) => `<li><strong>${index + 1}.</strong> ${esc(item)}</li>`).join('')}</ol></section>
+<section class="section dark reveal"><h2 class="section-title">${esc(tituloPublico)}</h2><div class="grid">${['Quem está começando', 'Quem precisa de método', 'Quem quer acompanhamento'].map((title, index) => `<article class="info-card"><strong>${title}</strong><p>${esc(benefits[index] || 'A turma organiza estudo, prática e devolutiva para dar clareza ao próximo passo.')}</p></article>`).join('')}</div></section>
+<section class="section reveal"><h2 class="section-title">${esc(tituloEntregas)}</h2><div class="compare"><div class="panel"><h3>Estudo sozinho</h3><ul><li>Sem trilha clara</li><li>Sem devolutiva individual</li><li>Dificuldade para medir evolução</li></ul></div><div class="panel highlight"><h3>Com esta turma</h3><ul>${benefits.map((item) => `<li>✓ ${esc(item)}</li>`).join('')}</ul></div></div></section>
+<section class="section reveal"><h2 class="section-title">${esc(tituloRoteiro)}</h2><ol class="roadmap">${roteiro.map((item, index) => `<li><strong>${index + 1}.</strong> ${esc(item)}</li>`).join('')}</ol></section>
 <section class="cta reveal"><h2>Matricule-se Agora</h2><p>${esc(turma.descricao || 'Garanta seu acesso e acompanhe os conteúdos, temas e correções desta turma.')}</p><br><a class="btn btn-accent" href="${checkoutUrl}">Quero participar</a></section>
 </main>
 <script>
@@ -1871,7 +1917,7 @@ function renderCheckoutPage(data: { site: any; turmas: any[] }, turma: any) {
   const sitePath = `/redacao/${encodeURIComponent(site.slug)}`
   const loginUrl = `${sitePath}/login`
   const priceNumber = Number(turma.preco || 0)
-  const price = priceNumber > 0 ? `R$ ${priceNumber.toFixed(2).replace('.', ',')}` : 'Gratuito'
+  const price = moneyBR(priceNumber)
   const image = String(settings.imagem_url || '')
   const benefits = String(settings.beneficios || '')
     .split(/\r?\n/)
@@ -1896,13 +1942,15 @@ function renderCheckoutPage(data: { site: any; turmas: any[] }, turma: any) {
 body{font-family:Inter,system-ui,sans-serif;background:linear-gradient(135deg,var(--brand),#111);min-height:100vh;color:var(--ink);padding:28px;-webkit-font-smoothing:antialiased}
 a{text-decoration:none;color:inherit}.wrap{max-width:1080px;margin:0 auto}.top{display:flex;align-items:center;justify-content:space-between;gap:16px;color:var(--brand-text);margin-bottom:26px}.brand{font-weight:900}.back{font-size:13px;color:var(--brand-soft);font-weight:800}
 .checkout{display:grid;grid-template-columns:minmax(0,1fr) 420px;gap:22px;align-items:start}.panel{background:var(--card);border:1px solid var(--border);border-radius:24px;padding:28px;box-shadow:0 24px 70px rgba(0,0,0,.22)}
-.cover{height:260px;border-radius:18px;overflow:hidden;background:linear-gradient(135deg,var(--brand),var(--accent));display:flex;align-items:center;justify-content:center;color:var(--brand-text);font-weight:900;font-size:48px;margin-bottom:22px}.cover img{width:100%;height:100%;object-fit:cover}
+.cover{width:min(100%,320px);aspect-ratio:2/3;height:auto;border-radius:18px;overflow:hidden;background:#050505;display:flex;align-items:center;justify-content:center;color:var(--brand-text);font-weight:900;font-size:48px;margin:0 auto 22px}.cover img{width:100%;height:100%;object-fit:contain;background:#050505}
 .eyebrow{font-size:11px;text-transform:uppercase;letter-spacing:.08em;color:var(--ink3);font-weight:900;margin-bottom:8px}h1{font-size:clamp(30px,5vw,56px);line-height:1;font-weight:900;margin-bottom:14px}.desc{color:var(--ink2);line-height:1.65;font-size:15px}.benefits{display:grid;gap:10px;margin-top:22px}.benefits li{list-style:none;color:var(--ink2)}.benefits li:before{content:'✓';display:inline-flex;width:22px;height:22px;border-radius:50%;background:var(--accent);color:var(--accent-text);align-items:center;justify-content:center;margin-right:8px;font-size:12px;font-weight:900}
 .summary h2{font-size:22px;font-weight:900;margin-bottom:14px}.price-row{display:flex;align-items:center;justify-content:space-between;padding:16px 0;border-top:1px solid var(--border);border-bottom:1px solid var(--border);margin:18px 0}.price{font-size:28px;font-weight:900;background:var(--accent);color:var(--accent-text);padding:4px 10px;border-radius:8px}
 .form-group{display:flex;flex-direction:column;gap:7px;margin-bottom:14px}label{font-size:12px;font-weight:800;color:var(--ink2)}input{width:100%;padding:12px 14px;border:1.5px solid var(--border);border-radius:10px;font:inherit;outline:none}input:focus{border-color:var(--brand);box-shadow:0 0 0 3px rgba(0,0,0,.08)}
 .btn{width:100%;border:0;border-radius:10px;padding:14px 16px;font:inherit;font-weight:900;cursor:pointer;transition:.22s}.btn:hover{transform:translateY(-2px)}.btn-accent{background:var(--accent);color:var(--accent-text)}.btn-sec{background:transparent;border:1px solid var(--border);color:var(--ink)}
 .alert{display:none;border-radius:10px;padding:12px 14px;font-size:13px;margin-bottom:14px}.alert-ok{background:#EEF8F1;color:var(--success);border:1px solid #BFE8CD}.alert-err{background:#FEF0F0;color:var(--danger);border:1px solid #F5C6C6}.postpay{display:none;margin-top:18px}.postpay.open{display:block}.action-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px}.note{font-size:12px;color:var(--ink3);line-height:1.5;margin-top:12px}
-@media(max-width:860px){body{padding:18px}.checkout{grid-template-columns:1fr}.action-grid{grid-template-columns:1fr}.cover{height:210px}}
+.payment-modal{position:fixed;inset:0;background:rgba(0,0,0,.64);display:none;align-items:center;justify-content:center;padding:24px;z-index:50}.payment-modal.open{display:flex}.payment-box{width:min(760px,100%);background:var(--card);color:var(--ink);border:1px solid var(--border);border-radius:24px;padding:28px;box-shadow:0 30px 90px rgba(0,0,0,.42)}.payment-badge{display:inline-flex;background:var(--accent);color:var(--accent-text);border-radius:999px;padding:7px 12px;font-size:12px;font-weight:900;margin-bottom:14px}.payment-box h2{font-size:28px;font-weight:900;margin-bottom:10px}.payment-details{background:rgba(0,0,0,.04);border:1px solid var(--border);border-radius:14px;padding:14px;margin:16px 0;display:grid;gap:7px;font-size:13px;color:var(--ink2)}.payment-code{font-weight:900;color:var(--ink);letter-spacing:.08em}.modal-actions{display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-top:18px}.modal-actions .btn{font-size:17px;padding:20px 16px;border-radius:16px}.modal-note{font-size:12px;color:var(--ink3);line-height:1.55;margin-top:14px}
+@media(max-width:860px){body{padding:18px}.checkout{grid-template-columns:1fr}.action-grid{grid-template-columns:1fr}.cover{width:min(100%,280px)}}
+@media(max-width:620px){.modal-actions{grid-template-columns:1fr}.payment-box{padding:22px}.payment-box h2{font-size:24px}}
 </style>
 </head>
 <body>
@@ -1918,14 +1966,14 @@ a{text-decoration:none;color:inherit}.wrap{max-width:1080px;margin:0 auto}.top{d
     </section>
     <aside class="panel summary">
       <h2>Pagamento da inscrição</h2>
-      <p class="desc">Informe seu e-mail antes de finalizar. Ele será o vínculo da matrícula com seu cadastro.</p>
+      <p class="desc">Informe nome e e-mail antes de finalizar. O e-mail será o vínculo da matrícula com seu cadastro.</p>
       <div class="price-row"><span>Total</span><strong class="price">${price}</strong></div>
       <div id="alert-err" class="alert alert-err"></div>
       <div id="alert-ok" class="alert alert-ok"></div>
       <form id="pay-form" onsubmit="simulatePayment(event)">
         <div class="form-group">
           <label for="payer-name">Nome</label>
-          <input id="payer-name" placeholder="Seu nome completo" autocomplete="name">
+          <input id="payer-name" placeholder="Seu nome completo" required autocomplete="name">
         </div>
         <div class="form-group">
           <label for="payer-email">E-mail obrigatório</label>
@@ -1943,6 +1991,24 @@ a{text-decoration:none;color:inherit}.wrap{max-width:1080px;margin:0 auto}.top{d
     </aside>
   </main>
 </div>
+<div class="payment-modal" id="payment-modal" role="dialog" aria-modal="true" aria-labelledby="payment-title">
+  <div class="payment-box">
+    <span class="payment-badge">Pagamento aprovado</span>
+    <h2 id="payment-title">Agora escolha como acessar</h2>
+    <p class="desc">Sua inscrição foi registrada. Use o mesmo e-mail para entrar ou criar seu cadastro.</p>
+    <div class="payment-details">
+      <div><strong>Aluno:</strong> <span id="modal-name">-</span></div>
+      <div><strong>E-mail:</strong> <span id="modal-email">-</span></div>
+      <div><strong>Transação:</strong> <span id="modal-transaction">-</span></div>
+      <div><strong>Código único:</strong> <span class="payment-code" id="modal-code">-</span></div>
+    </div>
+    <div class="modal-actions">
+      <a class="btn btn-sec" id="modal-login-link" href="${loginUrl}">Fazer login</a>
+      <a class="btn btn-accent" id="modal-signup-link" href="${loginUrl}?signup=1&paid=1&turma=${encodeURIComponent(turma.id)}">Criar cadastro</a>
+    </div>
+    <p class="modal-note">Se você sair desta tela sem criar o cadastro, use o código enviado/registrado para concluir o cadastro depois.</p>
+  </div>
+</div>
 <script>
 const siteSlug=${jsonForScript(site.slug)}
 const turmaId=${jsonForScript(turma.id)}
@@ -1953,17 +2019,30 @@ async function simulatePayment(event){
   const btn=document.getElementById('btn-pay')
   const email=document.getElementById('payer-email').value.trim().toLowerCase()
   const nome=document.getElementById('payer-name').value.trim()
+  if(!nome){show('alert-err','Informe seu nome para registrar a matrícula.');return}
   if(!email){show('alert-err','Informe o e-mail para vincular a matrícula.');return}
   btn.disabled=true;btn.textContent='Processando pagamento...'
   try{
     const res=await fetch('/api/site/'+encodeURIComponent(siteSlug)+'/checkout',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({turma_id:turmaId,email,nome})})
     const data=await res.json()
     if(!res.ok){show('alert-err',data.error||'Não foi possível finalizar o pagamento.');return}
+    const code=data.checkout_code||''
+    const transactionId=data.transaction_id||''
     show('alert-ok','Pagamento aprovado em simulação. Agora faça login ou crie seu cadastro com este mesmo e-mail.')
     document.getElementById('pay-form').style.display='none'
     document.getElementById('postpay').classList.add('open')
-    document.getElementById('login-link').href='${loginUrl}?email='+encodeURIComponent(email)
-    document.getElementById('signup-link').href='${loginUrl}?signup=1&paid=1&turma='+encodeURIComponent(turmaId)+'&email='+encodeURIComponent(email)
+    const loginHref='${loginUrl}?paid=1&turma='+encodeURIComponent(turmaId)+'&email='+encodeURIComponent(email)
+    const signupHref='${loginUrl}?signup=1&paid=1&turma='+encodeURIComponent(turmaId)+'&email='+encodeURIComponent(email)+'&nome='+encodeURIComponent(nome)+'&checkout_code='+encodeURIComponent(code)
+    document.getElementById('login-link').href=loginHref
+    document.getElementById('signup-link').href=signupHref
+    document.getElementById('modal-login-link').href=loginHref
+    document.getElementById('modal-signup-link').href=signupHref
+    document.getElementById('modal-name').textContent=nome
+    document.getElementById('modal-email').textContent=email
+    document.getElementById('modal-transaction').textContent=transactionId||'-'
+    document.getElementById('modal-code').textContent=code||'-'
+    try{localStorage.setItem('checkout:'+siteSlug+':'+turmaId,JSON.stringify({nome,email,checkout_code:code,transaction_id:transactionId,created_at:new Date().toISOString()}))}catch{}
+    document.getElementById('payment-modal').classList.add('open')
   }catch{show('alert-err','Erro de conexão. Tente novamente.')}
   finally{btn.disabled=false;btn.textContent='Finalizar pagamento'}
 }
@@ -2097,7 +2176,9 @@ app.post('/api/site/:slug/checkout', async (c) => {
     return c.json({ error: 'Corpo inválido' }, 400)
   }
   const email = String(body.email || '').trim().toLowerCase()
+  const nome = String(body.nome || '').trim()
   const turmaId = String(body.turma_id || '').trim()
+  if (!nome) return c.json({ error: 'Informe o nome para registrar a matrícula.' }, 400)
   if (!email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) return c.json({ error: 'Informe um e-mail válido.' }, 400)
   if (!turmaId) return c.json({ error: 'Turma obrigatória.' }, 400)
 
@@ -2112,23 +2193,57 @@ app.post('/api/site/:slug/checkout', async (c) => {
   }
 
   const key = `${email}:${turmaId}`
+  const previous = cms.checkout_leads?.[key] || {}
+  const checkoutCode = previous.checkout_code || previous.code || makeCheckoutCode()
+  const transactionId = previous.transaction_id || makeTransactionId(checkoutCode)
+  const now = new Date().toISOString()
+  const lead = {
+    ...previous,
+    email,
+    nome,
+    turma_id: turmaId,
+    site_id: data.site.id,
+    status: 'PAGAMENTO_APROVADO_SIMULADO',
+    total: Number(turma.preco || 0),
+    checkout_code: checkoutCode,
+    code: checkoutCode,
+    transaction_id: transactionId,
+    payment_provider: 'SIMULADO',
+    receipt: {
+      aluno: nome,
+      email,
+      turma: turma.nome,
+      total: Number(turma.preco || 0),
+      transaction_id: transactionId,
+      checkout_code: checkoutCode
+    },
+    created_at: previous.created_at || now,
+    paid_at: previous.paid_at || now,
+    updated_at: now
+  }
+  const emailResult = await sendCheckoutReceipt(c.env, lead, turma, data.site)
   cms.checkout_leads = {
     ...(cms.checkout_leads || {}),
     [key]: {
-      email,
-      nome: String(body.nome || '').trim(),
-      turma_id: turmaId,
-      site_id: data.site.id,
-      status: 'PAGAMENTO_APROVADO_SIMULADO',
-      total: Number(turma.preco || 0),
-      created_at: cms.checkout_leads?.[key]?.created_at || new Date().toISOString(),
-      updated_at: new Date().toISOString()
+      ...lead,
+      email_sent: emailResult.sent,
+      email_status: emailResult.reason || (emailResult.sent ? 'sent' : 'not-sent'),
+      email_checked_at: now
     }
   }
 
   const save = await saveCms(c.env, data.site.id, cms)
   if (save.error) return c.json({ error: save.error.message }, 500)
-  return c.json({ ok: true, status: 'PAGAMENTO_APROVADO_SIMULADO', email, turma_id: turmaId })
+  return c.json({
+    ok: true,
+    status: 'PAGAMENTO_APROVADO_SIMULADO',
+    email,
+    nome,
+    turma_id: turmaId,
+    checkout_code: checkoutCode,
+    transaction_id: transactionId,
+    email_sent: emailResult.sent
+  })
 })
 
 app.get('/s/:slug', async (c) => {
