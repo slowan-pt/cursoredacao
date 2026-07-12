@@ -17,6 +17,14 @@ app.use('*', async (c, next) => {
   await next()
 })
 app.use('*', requestTelemetry)
+app.use('*', async (c, next) => {
+  const url = new URL(c.req.url)
+  if (url.hostname === 'www.redacaocomestrategia.com.br') {
+    url.hostname = 'redacaocomestrategia.com.br'
+    return c.redirect(url.toString(), 301)
+  }
+  await next()
+})
 
 app.use('*', secureHeaders({
   xFrameOptions: 'DENY',
