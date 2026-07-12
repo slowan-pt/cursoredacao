@@ -17,13 +17,26 @@
 
 - Prioridade: crítica.
 - Impacto: commits antigos ainda podem conter ou referenciar credenciais expostas.
-- Situação: limpeza local executada em 2026-07-12; validação remota ainda pendente até push e clone limpo.
+- Situação: limpeza local executada em 2026-07-12; validação remota ainda pendente porque o `origin` configurado retorna `Repository not found`.
 - Solução sugerida:
   1. Backup local sensível criado.
   2. História alcançável validada sem formatos reais de segredo.
   3. Reflog/objetos órfãos limpos localmente.
-  4. Fazer `git push --force-with-lease`.
-  5. Clonar o remoto em pasta temporária e validar que GitHub ficou limpo.
+  4. Corrigir o acesso ao repositório GitHub ou ajustar o `origin` para o repositório privado correto.
+  5. Fazer `git push --force-with-lease`.
+  6. Clonar o remoto em pasta temporária e validar que GitHub ficou limpo.
+
+## GitHub remoto inacessível
+
+- Prioridade: crítica.
+- Impacto: impede publicar os commits locais no GitHub e concluir a validação remota pós-limpeza.
+- Situação: `https://github.com/slowan-pt/redacao.git` retorna `Repository not found`; URLs prováveis também foram testadas sem sucesso.
+- Solução sugerida:
+  1. Confirmar se o repositório privado existe no GitHub.
+  2. Confirmar se a conta autenticada localmente tem acesso.
+  3. Corrigir `origin` se o usuário/organização/nome do repositório forem diferentes.
+  4. Repetir `git ls-remote origin refs/heads/main`.
+  5. Executar push somente depois do acesso confirmado.
 
 ## SUPABASE_ANON_KEY ainda legacy
 

@@ -4,12 +4,12 @@
 
 - Data da atualização: 2026-07-12.
 - Branch atual: `main`.
-- Relação com remoto: `main...origin/main [ahead 25]` antes do registro deste ciclo de limpeza Git.
-- Último commit local confirmado antes deste ciclo: `3b37877 docs: record publishable key migration`.
+- Relação com remoto: `main...origin/main [ahead 28]` após deploy R2; push GitHub bloqueado por acesso ao repositório.
+- Último commit local confirmado antes deste registro final: `5d5c147 chore: enable production R2 configuration`.
 - Estado do working tree: limpo após consolidar os 11 arquivos rastreados modificados preexistentes.
 - Versão atual declarada: `1.0.0` em `package.json`.
 - Ambiente atual observado: Cloudflare Workers, URL pública `https://cursoreducao.slowgithub.workers.dev`.
-- Última versão do Worker informada neste ciclo: `ee1800a1-114f-4b09-8067-ada375564e3e`.
+- Última versão do Worker informada neste ciclo: `627f2f9d-1a96-484a-91e9-24c55956ec30`.
 
 ## Arquitetura oficial
 
@@ -433,16 +433,36 @@ Resumo anterior do `git diff --stat`:
 - Backup local de metadados do schema criado em `C:\Users\adm.sloannascimento\Downloads\puppin\_db_backups`.
 - Migration `004_storage_files.sql` aplicada no Supabase.
 - `wrangler.jsonc` configurado com `APP_ENV=production`, `ENABLE_R2_UPLOADS=true` e integrações incompletas desligadas.
+- Deploy real executado no Worker `cursoreducao`.
 
 ### Testes
 
 - `npm run check:all`: passou.
 - `npx wrangler deploy --dry-run`: passou e reconheceu `env.R2_UPLOADS`.
+- `npx wrangler deploy`: passou; versão `627f2f9d-1a96-484a-91e9-24c55956ec30`.
+- `GET /health`: passou com `version=1.0.0`.
+- Login professor/corretor: passou.
+- Login aluno: passou.
+- Rota protegida professor/corretor: passou.
+- Rota protegida aluno: passou.
+- Logout professor/corretor e aluno: passou.
+- Isolamento do aluno em outro site: bloqueado.
+- R2 remoto: put/get/delete de objeto temporário passou, com exclusão do objeto de teste.
 
 ### Pendências
 
 - Criar endpoint autenticado/streaming para substituir a hidratação temporária por data URL.
-- Fazer deploy real e validar upload/leitura com arquivo de teste.
+- Validar upload/leitura via aplicação com aluno/turma de homologação dedicado, para evitar consumir créditos reais.
+
+## Bloqueio GitHub — 2026-07-12
+
+- `origin` configurado como `https://github.com/slowan-pt/redacao.git`.
+- `git ls-remote origin refs/heads/main` retornou `Repository not found`.
+- Testes de URLs prováveis (`slowan-pt/redacao`, `slowgithub/redacao`, `slowan-pt/cursoreducao`, `slowgithub/cursoreducao`) também retornaram `Repository not found`.
+- `gh` CLI não está instalado.
+- Git local usa credential helper do Windows e identidade `slowan-pt <slowgithub@gmail.com>`.
+- Push/force-with-lease não executado.
+- Próxima ação: corrigir acesso/remote do GitHub e então executar `git push --force-with-lease origin main`.
 
 ## Próxima ação recomendada
 

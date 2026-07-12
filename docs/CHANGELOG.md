@@ -39,6 +39,9 @@ Todas as mudanças relevantes deste projeto devem ser registradas aqui.
 - Bucket R2 privado `redacao-uploads` criado.
 - Migration `004_storage_files.sql` aplicada no Supabase após backup de metadados do schema.
 - Variáveis explícitas de produção adicionadas ao `wrangler.jsonc`, mantendo pagamentos, e-mails, OAuth e checkout simulado desligados.
+- Deploy real do Worker `cursoreducao` executado com versão `627f2f9d-1a96-484a-91e9-24c55956ec30`.
+- R2 remoto validado com put/get/delete de objeto temporário.
+- GitHub push segue bloqueado porque o remoto configurado retorna `Repository not found`.
 - Documentação operacional:
   - `docs/ARCHITECTURE.md`
   - `docs/ROADMAP.md`

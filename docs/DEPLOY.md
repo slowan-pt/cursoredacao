@@ -4,6 +4,19 @@ Atualizado em: 2026-07-12.
 
 Este projeto usa Cloudflare Workers com Wrangler. Não usar Docker/VPS para a arquitetura atual.
 
+## Estado Atual do Worker
+
+- Worker padrão: `cursoreducao`.
+- Último deploy validado: `627f2f9d-1a96-484a-91e9-24c55956ec30`.
+- URL atual: `https://cursoreducao.slowgithub.workers.dev`.
+- `APP_ENV=production`.
+- `ENABLE_R2_UPLOADS=true`.
+- `ENABLE_PAYMENTS=false`.
+- `ENABLE_PUBLIC_CHECKOUT_SIMULATED=false`.
+- `ENABLE_EMAILS=false`.
+- `ENABLE_OAUTH=false`.
+- Domínio oficial `redacaocomestrategia.com.br` ainda pendente de configuração final.
+
 ## Pré-requisitos
 
 - Credenciais rotacionadas.
@@ -92,3 +105,14 @@ Testar:
 - correção;
 - download de arquivo;
 - logout.
+
+Resultado do deploy validado em 2026-07-12:
+
+- `/health`: passou.
+- Login professor/corretor: passou.
+- Rota protegida professor/corretor: passou.
+- Login aluno: passou.
+- Rota protegida aluno: passou.
+- Isolamento do aluno em outro site: bloqueado como esperado.
+- Logout professor/corretor e aluno: passou.
+- R2 remoto: put/get/delete de objeto temporário passou.
