@@ -8,6 +8,7 @@ import { alunoRoutes } from './routes/aluno'
 import { siteRoutes } from './routes/site'
 import { getConfig } from './config'
 import { appSecurityHeaders } from './securityHeaders'
+import { logServerError, requestTelemetry } from './observability'
 
 const app = new Hono<{ Bindings: Env }>()
 
@@ -15,6 +16,7 @@ app.use('*', async (c, next) => {
   getConfig(c.env)
   await next()
 })
+app.use('*', requestTelemetry)
 
 app.use('*', secureHeaders({
   xFrameOptions: 'DENY',
@@ -36,7 +38,7 @@ app.route('/', siteRoutes)
 
 app.notFound((c) => c.json({ error: 'Rota não encontrada' }, 404))
 app.onError((err, c) => {
-  console.error(err)
+  logServerError(err, c.res.headers.get('x-request-id') || undefined)
   return c.json({ error: 'Erro interno do servidor' }, 500)
 })
 

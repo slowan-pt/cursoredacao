@@ -565,3 +565,39 @@ Resumo do `git diff --stat`:
 ### Próximos passos
 
 - Avançar para observabilidade local sem expor dados sensíveis.
+
+## Sprint 6 — Observabilidade local — 2026-07-12
+
+### Tarefas concluídas
+
+- Adicionado middleware `requestTelemetry`.
+- Incluído header `x-request-id` por requisição.
+- Incluído `server-timing` com duração da aplicação.
+- Substituído log bruto de erro por log estruturado mínimo.
+
+### Arquivos alterados
+
+- `src/observability.ts`
+- `src/index.ts`
+- `docs/PROJECT_STATUS.md`
+- `docs/CHANGELOG.md`
+
+### Testes executados
+
+- `npm run typecheck`
+- `npm run security:scan`
+- `npm run check:diff`
+
+### Riscos encontrados
+
+- Métricas ainda são básicas e dependem dos logs do Worker.
+- Não há exportação para ferramenta externa de observabilidade.
+
+### Pendências
+
+- Validar headers em `wrangler dev`.
+- Definir política futura para amostragem de logs e correlação com usuários sem expor dados sensíveis.
+
+### Próximos passos
+
+- Antes de mexer nas telas de professor/aluno/admin, revisar o alto volume de alterações locais não commitadas.
