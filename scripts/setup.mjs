@@ -18,9 +18,17 @@ loadDevVars()
 
 const SUPABASE_URL = process.env.SUPABASE_URL
 const SUPABASE_SERVICE_KEY = process.env.SUPABASE_SERVICE_KEY
+const ALLOW_INSECURE_DEV_SEED = String(process.env.ALLOW_INSECURE_DEV_SEED || '').toLowerCase() === 'true'
 
 if (!SUPABASE_URL || !SUPABASE_SERVICE_KEY) {
   throw new Error('SUPABASE_URL e SUPABASE_SERVICE_KEY são obrigatórios')
+}
+
+function seedPassword(envName, insecureDevFallback) {
+  const value = process.env[envName]
+  if (value) return value
+  if (ALLOW_INSECURE_DEV_SEED) return insecureDevFallback
+  throw new Error(`${envName} é obrigatória. Para seeds locais descartáveis, defina ALLOW_INSECURE_DEV_SEED=true.`)
 }
 
 const sb = createClient(SUPABASE_URL, SUPABASE_SERVICE_KEY, {
@@ -77,21 +85,21 @@ async function main() {
   const users = [
     {
       email: 'sloan.nascimento@gmail.com',
-      password: '123456',
+      password: seedPassword('SEED_SUPERADMIN_PASSWORD', '123456'),
       nome: 'Sloann Nascimento',
       role: 'SUPERADMIN',
       site_id: null
     },
     {
       email: 'slowgithub@gmail.com',
-      password: 'Prof@cursoreducao123',
+      password: seedPassword('SEED_PROFESSOR_PASSWORD', 'Prof@cursoreducao123'),
       nome: 'Professor',
       role: 'CORRETOR',
       site_id: site.id
     },
     {
       email: 'testeplataformas8@gmail.com',
-      password: 'Aluno@cursoreducao123',
+      password: seedPassword('SEED_STUDENT_PASSWORD', 'Aluno@cursoreducao123'),
       nome: 'Aluno Teste',
       role: 'ALUNO',
       site_id: site.id
@@ -125,15 +133,16 @@ async function main() {
       await sb.from('profiles')
         .update({ nome: u.nome, role: u.role, site_id: u.site_id })
         .eq('id', data.user.id)
-      console.log(`✅ Criado: ${u.email} (${u.role}) → senha: ${u.password}`)
+      console.log(`✅ Criado: ${u.email} (${u.role})`)
     }
   }
 
   console.log('\n✅ Setup completo!')
   console.log('\n📋 Credenciais de acesso:')
-  console.log('   Admin Geral  → sloan.nascimento@gmail.com  / 123456')
-  console.log('   Professor    → slowgithub@gmail.com         / Prof@cursoreducao123')
-  console.log('   Aluno        → testeplataformas8@gmail.com  / Aluno@cursoreducao123')
+  console.log('   Admin Geral  → sloan.nascimento@gmail.com')
+  console.log('   Professor    → slowgithub@gmail.com')
+  console.log('   Aluno        → testeplataformas8@gmail.com')
+  console.log('   Senhas       → definidas por variáveis de ambiente; não são exibidas.')
 }
 
 main().catch(console.error)

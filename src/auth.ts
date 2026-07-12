@@ -3,10 +3,11 @@ import type { JWTPayload } from './types'
 
 export async function createToken(
   payload: Omit<JWTPayload, 'exp' | 'iat'>,
-  secret: string
+  secret: string,
+  ttlSeconds = 60 * 60 * 24 * 7
 ): Promise<string> {
   const now = Math.floor(Date.now() / 1000)
-  return sign({ ...payload, iat: now, exp: now + 60 * 60 * 24 * 7 }, secret, 'HS256')
+  return sign({ ...payload, iat: now, exp: now + ttlSeconds }, secret, 'HS256')
 }
 
 export async function verifyToken(

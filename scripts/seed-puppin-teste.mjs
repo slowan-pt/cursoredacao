@@ -18,6 +18,15 @@ if (!SUPABASE_URL || !SUPABASE_SERVICE_KEY) {
   throw new Error('SUPABASE_URL e SUPABASE_SERVICE_KEY são obrigatórios')
 }
 
+const ALLOW_INSECURE_DEV_SEED = String(process.env.ALLOW_INSECURE_DEV_SEED || '').toLowerCase() === 'true'
+
+function seedPassword(envName, insecureDevFallback) {
+  const value = process.env[envName]
+  if (value) return value
+  if (ALLOW_INSECURE_DEV_SEED) return insecureDevFallback
+  throw new Error(`${envName} é obrigatória. Para seeds locais descartáveis, defina ALLOW_INSECURE_DEV_SEED=true.`)
+}
+
 const sb = createClient(SUPABASE_URL, SUPABASE_SERVICE_KEY, {
   auth: { autoRefreshToken: false, persistSession: false }
 })
@@ -102,7 +111,7 @@ async function main() {
 
   await ensureUser({
     email: 'puppin@gmail.com',
-    password: '123456',
+    password: seedPassword('SEED_PUPPIN_PROFESSOR_PASSWORD', '123456'),
     nome: 'Professor Puppin',
     role: 'CORRETOR',
     site_id: site.id,
@@ -117,7 +126,7 @@ async function main() {
   for (const student of paidStudents) {
     const user = await ensureUser({
       ...student,
-      password: '123456',
+      password: seedPassword('SEED_PUPPIN_STUDENT_PASSWORD', '123456'),
       role: 'ALUNO',
       site_id: site.id,
       ativo: true
@@ -137,7 +146,7 @@ async function main() {
 
   await ensureUser({
     email: 'aluno.pendente.puppin@gmail.com',
-    password: '123456',
+    password: seedPassword('SEED_PUPPIN_PENDING_STUDENT_PASSWORD', '123456'),
     nome: 'Aluno Puppin Pendente',
     role: 'ALUNO',
     site_id: site.id,
@@ -148,8 +157,7 @@ async function main() {
     site: `/redacao/${site.slug}`,
     professor: 'puppin@gmail.com',
     alunos_pagos: paidStudents.map((student) => student.email),
-    aluno_pendente: 'aluno.pendente.puppin@gmail.com',
-    senha: '123456'
+    aluno_pendente: 'aluno.pendente.puppin@gmail.com'
   }, null, 2))
 }
 
