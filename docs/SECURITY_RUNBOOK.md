@@ -8,9 +8,12 @@ Este runbook prepara ações manuais de segurança. Não execute etapas destruti
 
 - Branch local: `main`.
 - O branch local está à frente do remoto.
-- Há alterações locais funcionais não commitadas que devem ser preservadas.
+- O working tree funcional foi consolidado em commits locais.
 - Há histórico Git com indicação de credenciais antigas expostas.
 - Há arquivos locais ignorados de ambiente que podem conter segredos reais e não devem ser commitados.
+- Legacy API keys do Supabase foram desativadas manualmente em 2026-07-12.
+- A nova `SUPABASE_SERVICE_KEY` em formato `sb_secret_...` passou em leitura administrativa.
+- Login professor/aluno falhou após a desativação porque `SUPABASE_ANON_KEY` ainda precisa ser migrada para a Publishable key `sb_publishable_...`.
 
 ## Credenciais Que Devem Ser Rotacionadas
 
@@ -18,6 +21,7 @@ Este runbook prepara ações manuais de segurança. Não execute etapas destruti
 2. Supabase service key ou secret key exposta anteriormente.
 3. Secrets correspondentes no Cloudflare Worker.
 4. Qualquer `.dev.vars`, `.env` ou `.env.*` local que tenha usado valores antigos.
+5. `SUPABASE_ANON_KEY`, caso as Legacy API Keys tenham sido desativadas em conjunto.
 
 ## Ordem Segura de Rotação
 
@@ -30,9 +34,10 @@ Este runbook prepara ações manuais de segurança. Não execute etapas destruti
    - login controlado
    - `/health`
    - consulta somente leitura ao Supabase
-5. Invalidar credenciais antigas no provedor.
-6. Confirmar que as credenciais antigas não funcionam mais.
-7. Somente depois limpar histórico Git.
+5. Migrar `SUPABASE_ANON_KEY` para a Publishable key antes ou imediatamente após desativar legacy anon.
+6. Invalidar credenciais antigas no provedor.
+7. Confirmar que as credenciais antigas não funcionam mais.
+8. Somente depois limpar histórico Git.
 
 ## Wrangler Secrets
 

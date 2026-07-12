@@ -50,6 +50,9 @@ Todas as mudanças relevantes deste projeto devem ser registradas aqui.
 - Templates de e-mail não enviam mensagens por conta própria; envio real continua atrás de `ENABLE_EMAILS`.
 - Logs de erro não registram payloads, tokens ou dados de arquivos.
 - Alterações de UX foram adiadas para evitar misturar novas mudanças com arquivos funcionais já modificados.
+- Legacy API keys do Supabase foram desativadas manualmente em 2026-07-12.
+- A nova `SUPABASE_SERVICE_KEY` `sb_secret_...` passou em leitura administrativa.
+- Após a desativação, login professor/aluno falhou com `401`; pendente migrar `SUPABASE_ANON_KEY` para a Publishable key.
 
 ### Observações
 

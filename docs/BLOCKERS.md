@@ -24,6 +24,17 @@
   3. Validar branches, tags, reflog e objetos alcançáveis.
   4. Fazer `git push --force-with-lease` apenas com confirmação explícita.
 
+## SUPABASE_ANON_KEY ainda legacy
+
+- Prioridade: crítica.
+- Impacto: após desativar as Legacy API Keys do Supabase, login professor/aluno falha porque a autenticação ainda usa `SUPABASE_ANON_KEY` no formato JWT legacy.
+- Situação: a `SUPABASE_SERVICE_KEY` já foi migrada para `sb_secret_...`, mas a anon key precisa ser substituída pela Publishable key `sb_publishable_...`.
+- Solução sugerida:
+  1. Atualizar `SUPABASE_ANON_KEY` em `.dev.vars` com a Publishable key.
+  2. Testar login local/remoto conforme aplicável.
+  3. Atualizar o secret `SUPABASE_ANON_KEY` no Worker `cursoreducao`.
+  4. Repetir os testes de professor e aluno.
+
 ## Rate limiting efetivo
 
 - Prioridade: importante.

@@ -210,7 +210,7 @@ Resumo anterior do `git diff --stat`:
 ### Riscos atuais
 
 - Histórico Git ainda pode expor credenciais antigas.
-- Alto volume de alterações locais não commitadas dificulta rollback fino.
+- Legacy API keys do Supabase foram desativadas em 2026-07-12; a `SUPABASE_SERVICE_KEY` nova funciona, mas logins falharam porque `SUPABASE_ANON_KEY` ainda está no formato JWT legacy.
 - Permissões de professor filho e isolamento por site/aluno são sensíveis e precisam teste.
 - Upload base64 não é solução definitiva.
 - Checkout simulado não deve ser confundido com pagamento real.
@@ -289,6 +289,8 @@ Resumo anterior do `git diff --stat`:
 | Feature flags básicas | concluído |
 | Rotação da senha do banco | não verificado |
 | Rotação da Supabase service key | não verificado |
+| Desativação da service key legacy | parcial |
+| Migração da anon key para publishable key | pendente |
 | Limpeza do histórico Git | pendente |
 | Secrets atualizadas no Cloudflare | não verificado |
 | `APP_ENV=production` no ambiente final | não verificado |
@@ -349,6 +351,31 @@ Resumo anterior do `git diff --stat`:
 - Nenhuma migration real.
 - Nenhuma alteração em Supabase, Cloudflare, DNS, R2, Asaas ou Resend.
 - Nenhuma limpeza de histórico Git.
+
+## Desativação das Legacy API Keys — 2026-07-12
+
+### Estado
+
+- Legacy API keys do Supabase desativadas manualmente no painel.
+- `SUPABASE_SERVICE_KEY` local e do Worker padrão `cursoreducao` já usam `sb_secret_...`.
+- Leitura administrativa com a nova secret key passou.
+- `SUPABASE_ANON_KEY` ainda está no formato JWT legacy.
+
+### Testes após desativação
+
+- `npm run check:all`: passou.
+- `GET /health`: passou.
+- Leitura administrativa com `sb_secret_...`: passou.
+- Login professor: falhou com `401`.
+- Login aluno: falhou com `401`.
+- Painel do aluno: não verificado porque login falhou.
+- Tentativa de acesso do aluno a outro site: não conclusiva porque login falhou antes da regra de autorização.
+
+### Diagnóstico
+
+- A nova `SUPABASE_SERVICE_KEY` está validada.
+- A falha de login é compatível com a desativação da legacy `anon`, pois `src/supabase.ts` ainda usa `SUPABASE_ANON_KEY` para autenticar com `signInWithPassword`.
+- Próxima ação segura: migrar `SUPABASE_ANON_KEY` local e Cloudflare para a Publishable key `sb_publishable_...`, sem alterar código, e repetir os testes.
 
 ## Próxima ação recomendada
 
