@@ -8,16 +8,7 @@
     "enabled": true,
     "head_sampling_rate": 1
   },
-  "routes": [
-    {
-      "pattern": "redacaocomestrategia.com.br",
-      "custom_domain": true
-    },
-    {
-      "pattern": "www.redacaocomestrategia.com.br",
-      "custom_domain": true
-    }
-  ],
+  "workers_dev": true,
   "vars": {
     "APP_ENV": "production",
     "APP_URL": "https://redacaocomestrategia.com.br",
