@@ -17,6 +17,7 @@ Todas as mudanças relevantes deste projeto devem ser registradas aqui.
   - `Permissions-Policy`
   - `Cross-Origin-Opener-Policy`
 - Documento `docs/BLOCKERS.md` com bloqueios críticos e importantes.
+- Provider local de desenvolvimento em memória para a camada de storage privado.
 
 ### Segurança
 
@@ -25,6 +26,7 @@ Todas as mudanças relevantes deste projeto devem ser registradas aqui.
 - Nenhum push ou deploy foi executado nesta entrada.
 - A CSP foi definida de forma compatível com o frontend atual, mantendo `unsafe-inline` enquanto houver scripts/estilos inline.
 - Rate limiting efetivo foi documentado como bloqueio porque não deve ser simulado com memória local em Cloudflare Workers.
+- O provider local de storage não é persistente e não deve ser usado em produção.
 
 ### Observações
 

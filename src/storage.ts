@@ -23,6 +23,13 @@ export type StoredObject = {
   etag?: string
 }
 
+export type StoredObjectBody = {
+  key: string
+  size: number
+  mime: string
+  arrayBuffer(): Promise<ArrayBuffer>
+}
+
 export type StoragePutInput = UploadKeyInput & {
   bytes: ArrayBuffer
   originalName?: string
@@ -30,7 +37,7 @@ export type StoragePutInput = UploadKeyInput & {
 
 export interface PrivateStorage {
   put(input: StoragePutInput): Promise<StoredObject>
-  get(key: string): Promise<R2ObjectBody | null>
+  get(key: string): Promise<StoredObjectBody | null>
   delete(key: string): Promise<void>
 }
 
@@ -80,6 +87,35 @@ class DisabledStorage implements PrivateStorage {
   async delete(): Promise<void> {}
 }
 
+const localObjects = new Map<string, { bytes: ArrayBuffer; mime: string }>()
+
+class LocalStorageProvider implements PrivateStorage {
+  async put(input: StoragePutInput): Promise<StoredObject> {
+    const key = buildUploadKey(input)
+    localObjects.set(key, { bytes: input.bytes.slice(0), mime: input.mime })
+    return { key, size: input.bytes.byteLength, mime: input.mime, etag: `local-${crypto.randomUUID()}` }
+  }
+
+  async get(key: string): Promise<StoredObjectBody | null> {
+    if (!validateStorageKey(key)) throw new Error('Chave de arquivo inválida.')
+    const object = localObjects.get(key)
+    if (!object) return null
+    return {
+      key,
+      size: object.bytes.byteLength,
+      mime: object.mime,
+      async arrayBuffer() {
+        return object.bytes.slice(0)
+      }
+    }
+  }
+
+  async delete(key: string) {
+    if (!validateStorageKey(key)) throw new Error('Chave de arquivo inválida.')
+    localObjects.delete(key)
+  }
+}
+
 class R2PrivateStorage implements PrivateStorage {
   constructor(private readonly bucket: R2Bucket) {}
 
@@ -103,9 +139,16 @@ class R2PrivateStorage implements PrivateStorage {
     return { key, size: input.bytes.byteLength, mime: input.mime, etag: object.etag }
   }
 
-  async get(key: string) {
+  async get(key: string): Promise<StoredObjectBody | null> {
     if (!validateStorageKey(key)) throw new Error('Chave de arquivo inválida.')
-    return this.bucket.get(key)
+    const object = await this.bucket.get(key)
+    if (!object) return null
+    return {
+      key,
+      size: object.size,
+      mime: object.httpMetadata?.contentType || 'application/octet-stream',
+      arrayBuffer: () => object.arrayBuffer()
+    }
   }
 
   async delete(key: string) {
@@ -116,6 +159,9 @@ class R2PrivateStorage implements PrivateStorage {
 
 export function getPrivateStorage(env: Env): PrivateStorage {
   const config = getConfig(env)
-  if (!config.flags.r2Uploads || !env.R2_UPLOADS) return new DisabledStorage()
+  if (!config.flags.r2Uploads) {
+    return config.appEnv === 'production' ? new DisabledStorage() : new LocalStorageProvider()
+  }
+  if (!env.R2_UPLOADS) return new DisabledStorage()
   return new R2PrivateStorage(env.R2_UPLOADS)
 }

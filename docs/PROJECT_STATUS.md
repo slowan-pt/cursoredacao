@@ -447,3 +447,41 @@ Resumo do `git diff --stat`:
 ### Próximos passos
 
 - Continuar com melhorias pequenas de segurança local que não dependam de painel externo nem de deploy.
+
+## Sprint 3 — Uploads e storage — 2026-07-12
+
+### Tarefas concluídas
+
+- Adicionado provider local de desenvolvimento em memória na camada `PrivateStorage`.
+- Ajustada a interface `PrivateStorage.get` para retornar um corpo genérico de objeto armazenado.
+- Mantido bloqueio em produção quando `ENABLE_R2_UPLOADS=false`.
+- Documentado o modo local temporário em `docs/R2.md`.
+
+### Arquivos alterados
+
+- `src/storage.ts`
+- `docs/R2.md`
+- `docs/PROJECT_STATUS.md`
+- `docs/CHANGELOG.md`
+
+### Testes executados
+
+- `npm run typecheck`
+- `npm run security:scan`
+- `npm run check:diff`
+
+### Riscos encontrados
+
+- O provider local usa memória do processo e não é persistente.
+- O fluxo principal de upload ainda usa base64 nos frontends e rotas atuais.
+- R2 real continua dependente de bucket, binding, migration revisada e testes.
+
+### Pendências
+
+- Integrar a camada `PrivateStorage` ao envio real de redações.
+- Criar endpoint autenticado de download/stream.
+- Manter bloqueio de upload em produção quando R2 estiver desativado.
+
+### Próximos passos
+
+- Preparar integrações de pagamento/e-mail apenas em modo desativado por flags.
