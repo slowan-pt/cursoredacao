@@ -5,6 +5,9 @@
   "scripts": {
     "dev": "wrangler dev",
     "deploy": "wrangler deploy",
+    "typecheck": "tsc --noEmit",
+    "check:diff": "git diff --check",
+    "check:all": "npm run typecheck && npm run security:scan && npm run check:diff",
     "setup": "node scripts/setup.mjs",
     "security:scan": "node scripts/scan-secrets.mjs"
   },

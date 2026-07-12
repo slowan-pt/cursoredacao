@@ -4,8 +4,8 @@
 
 - Data da atualização: 2026-07-12.
 - Branch atual: `main`.
-- Relação com remoto: `main...origin/main [ahead 8]`.
-- Último commit local: `a5b1b02 docs: add deploy rollback and test plans`.
+- Relação com remoto: `main...origin/main [ahead 9]` antes da Sprint 1 de higiene atual.
+- Último commit local confirmado antes da Sprint 1 atual: `3f1c91f docs: update autonomous session status`.
 - Estado do working tree: sujo, com 11 arquivos rastreados modificados preexistentes.
 - Versão atual declarada: `1.0.0` em `package.json`.
 - Ambiente atual observado: Cloudflare Workers, URL pública `https://cursoreducao.slowgithub.workers.dev`.
@@ -29,7 +29,7 @@
 
 ### Estado confirmado no último commit
 
-- O último commit local é `a5b1b02 docs: add deploy rollback and test plans`.
+- O último commit local confirmado antes da Sprint 1 atual é `3f1c91f docs: update autonomous session status`.
 - O último commit de segurança base é `7ed95b9 chore: harden initial production settings`.
 - A sessão autônoma criou commits locais adicionais para documentação, scanner de segredos, seed scripts, R2, Asaas, e-mails e planos operacionais.
 - Este status não confirma por si só que credenciais antigas foram rotacionadas nem que o histórico Git foi limpo.
@@ -189,7 +189,7 @@ Resumo do `git diff --stat`:
 
 ### Situação do Git
 
-- Branch `main` está `ahead 8` em relação a `origin/main`.
+- Branch `main` está `ahead 9` em relação a `origin/main` antes da Sprint 1 de higiene atual.
 - Working tree está sujo.
 - Limpeza de histórico ainda não executada neste documento.
 
@@ -320,7 +320,7 @@ Resumo do `git diff --stat`:
 ## Como retomar depois de 30 dias
 
 - Branch: `main`.
-- Último commit confirmado: `a5b1b02 docs: add deploy rollback and test plans`.
+- Último commit confirmado antes da Sprint 1 atual: `3f1c91f docs: update autonomous session status`.
 - Alterações locais: 11 arquivos funcionais modificados preexistentes.
 - Ciclo atual: rotação de credenciais e limpeza segura de histórico Git ainda pendentes.
 - Bloqueio principal: credenciais antigas comprometidas ainda precisam ser tratadas como expostas até rotação e limpeza final.
@@ -346,6 +346,7 @@ Resumo do `git diff --stat`:
 - `e3c6f72 feat: prepare Asaas payment gateway`
 - `17b4fc5 feat: prepare transactional email provider`
 - `a5b1b02 docs: add deploy rollback and test plans`
+- `3f1c91f docs: update autonomous session status`
 
 ### Testes executados
 
@@ -365,3 +366,42 @@ Resumo do `git diff --stat`:
 - Nenhum bucket R2 criado.
 - Nenhuma cobrança Asaas criada.
 - Nenhum e-mail real enviado.
+
+## Sprint 1 — Higiene geral do projeto — 2026-07-12
+
+### Tarefas concluídas
+
+- Centralizados scripts de validação em `package.json`:
+  - `typecheck`
+  - `check:diff`
+  - `check:all`
+- Mantidas intactas as alterações funcionais locais não commitadas.
+- Criado/atualizado changelog local para registrar a evolução controlada.
+
+### Arquivos alterados
+
+- `package.json`
+- `docs/PROJECT_STATUS.md`
+- `docs/CHANGELOG.md`
+
+### Testes executados
+
+- `npm run typecheck`
+- `npm run security:scan`
+- `npm run check:diff`
+
+### Riscos encontrados
+
+- O working tree continua com 11 arquivos funcionais modificados fora desta sprint.
+- A rotação de credenciais e a limpeza de histórico seguem pendentes e bloqueiam qualquer publicação segura.
+
+### Pendências
+
+- Commitar esta sprint após validação.
+- Rotacionar credenciais comprometidas.
+- Limpar histórico Git apenas depois da rotação e com aprovação explícita.
+
+### Próximos passos
+
+- Continuar Sprint 1 com melhorias pequenas em documentação e scripts seguros.
+- Evitar alterações funcionais amplas enquanto houver diffs grandes não revisados.
