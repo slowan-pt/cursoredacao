@@ -633,3 +633,42 @@ Resumo do `git diff --stat`:
 - Revisar e separar os diffs locais por tema.
 - Criar commits pequenos para as alterações de interface já existentes.
 - Retomar as sprints de UX após o working tree estar mais limpo.
+
+## Sprint 13 — Documentação operacional — 2026-07-12
+
+### Tarefas concluídas
+
+- Criada documentação de arquitetura.
+- Criado roadmap.
+- Criado documento de segurança.
+- Criados documentos de backup e restore.
+
+### Arquivos alterados
+
+- `docs/ARCHITECTURE.md`
+- `docs/ROADMAP.md`
+- `docs/SECURITY.md`
+- `docs/BACKUP.md`
+- `docs/RESTORE.md`
+- `docs/PROJECT_STATUS.md`
+- `docs/CHANGELOG.md`
+
+### Testes executados
+
+- `npm run typecheck`
+- `npm run security:scan`
+- `npm run check:diff`
+
+### Riscos encontrados
+
+- Documentação não substitui validação real do ambiente.
+- Procedimentos de backup/restore ainda precisam ser testados com dados controlados.
+
+### Pendências
+
+- Testar processo de restore em ambiente não produtivo.
+- Completar documentação após rotação de credenciais e limpeza de histórico.
+
+### Próximos passos
+
+- Revisar alterações locais funcionais pendentes e separar commits por área.

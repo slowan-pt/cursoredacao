@@ -22,6 +22,12 @@ Todas as mudanças relevantes deste projeto devem ser registradas aqui.
 - Templates puros de e-mail para recibo de checkout e correção disponível.
 - Middleware de observabilidade com `x-request-id`, `server-timing` e log estruturado de erro.
 - Bloqueio documentado para sprints de Professor/Aluno/Admin enquanto houver diffs locais amplos nas telas e rotas.
+- Documentação operacional:
+  - `docs/ARCHITECTURE.md`
+  - `docs/ROADMAP.md`
+  - `docs/SECURITY.md`
+  - `docs/BACKUP.md`
+  - `docs/RESTORE.md`
 
 ### Segurança
 
