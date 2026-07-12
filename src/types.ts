@@ -17,6 +17,8 @@ export interface Env {
   ASAAS_ENV?: string
   ASAAS_API_KEY?: string
   ASAAS_WEBHOOK_TOKEN?: string
+  RESEND_API_KEY?: string
+  EMAIL_FROM?: string
   APP_URL?: string
   APP_ENV?: string
   APP_VERSION?: string
