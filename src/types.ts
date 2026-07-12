@@ -1,5 +1,6 @@
 export interface Env {
   ASSETS: Fetcher
+  R2_UPLOADS?: R2Bucket
   SUPABASE_URL: string
   SUPABASE_ANON_KEY: string
   SUPABASE_SERVICE_KEY: string
@@ -12,6 +13,7 @@ export interface Env {
   ENABLE_OAUTH?: string
   ENABLE_PUBLIC_CHECKOUT_SIMULATED?: string
   MAX_UPLOAD_BYTES?: string
+  R2_UPLOADS_BUCKET?: string
   APP_URL?: string
   APP_ENV?: string
   APP_VERSION?: string
