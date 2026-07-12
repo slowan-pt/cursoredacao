@@ -16,6 +16,7 @@ Todas as mudanças relevantes deste projeto devem ser registradas aqui.
   - `Referrer-Policy`
   - `Permissions-Policy`
   - `Cross-Origin-Opener-Policy`
+- Documento `docs/BLOCKERS.md` com bloqueios críticos e importantes.
 
 ### Segurança
 
@@ -23,6 +24,7 @@ Todas as mudanças relevantes deste projeto devem ser registradas aqui.
 - Nenhuma limpeza de histórico Git foi executada nesta entrada.
 - Nenhum push ou deploy foi executado nesta entrada.
 - A CSP foi definida de forma compatível com o frontend atual, mantendo `unsafe-inline` enquanto houver scripts/estilos inline.
+- Rate limiting efetivo foi documentado como bloqueio porque não deve ser simulado com memória local em Cloudflare Workers.
 
 ### Observações
 

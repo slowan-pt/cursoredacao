@@ -412,6 +412,7 @@ Resumo do `git diff --stat`:
 
 - Adicionado helper `src/securityHeaders.ts` para centralizar headers HTTP complementares.
 - Integrado `appSecurityHeaders` no Worker principal em `src/index.ts`.
+- Criado `docs/BLOCKERS.md` para registrar bloqueios que não devem ser resolvidos automaticamente neste ciclo.
 - Incluídos:
   - `Content-Security-Policy`
   - `Referrer-Policy`
@@ -422,6 +423,7 @@ Resumo do `git diff --stat`:
 
 - `src/securityHeaders.ts`
 - `src/index.ts`
+- `docs/BLOCKERS.md`
 - `docs/PROJECT_STATUS.md`
 - `docs/CHANGELOG.md`
 
@@ -435,6 +437,7 @@ Resumo do `git diff --stat`:
 
 - A CSP ainda precisa permitir `unsafe-inline` porque o frontend atual usa scripts e estilos inline em HTML estático.
 - Remover `unsafe-inline` exige refatoração futura dos arquivos em `public/`.
+- Rate limiting efetivo segue bloqueado por depender de Cloudflare Rate Limiting, Durable Objects ou equivalente.
 
 ### Pendências
 
