@@ -27,13 +27,14 @@
 ## SUPABASE_ANON_KEY ainda legacy
 
 - Prioridade: crítica.
-- Impacto: após desativar as Legacy API Keys do Supabase, login professor/aluno falha porque a autenticação ainda usa `SUPABASE_ANON_KEY` no formato JWT legacy.
-- Situação: a `SUPABASE_SERVICE_KEY` já foi migrada para `sb_secret_...`, mas a anon key precisa ser substituída pela Publishable key `sb_publishable_...`.
-- Solução sugerida:
-  1. Atualizar `SUPABASE_ANON_KEY` em `.dev.vars` com a Publishable key.
-  2. Testar login local/remoto conforme aplicável.
-  3. Atualizar o secret `SUPABASE_ANON_KEY` no Worker `cursoreducao`.
-  4. Repetir os testes de professor e aluno.
+- Status: resolvido em 2026-07-12.
+- Impacto anterior: após desativar as Legacy API Keys do Supabase, login professor/aluno falhava porque a autenticação ainda usava `SUPABASE_ANON_KEY` no formato JWT legacy.
+- Situação atual:
+  - `SUPABASE_SERVICE_KEY` usa `sb_secret_...`.
+  - `SUPABASE_ANON_KEY` usa `sb_publishable_...`.
+  - Worker `cursoreducao` foi atualizado.
+  - Testes professor/aluno passaram localmente e no Worker remoto.
+- Próximo cuidado: o nome `SUPABASE_ANON_KEY` é legado; em ciclo futuro, pode ser renomeado para `SUPABASE_PUBLISHABLE_KEY`.
 
 ## Rate limiting efetivo
 

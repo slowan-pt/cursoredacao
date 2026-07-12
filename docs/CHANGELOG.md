@@ -52,7 +52,8 @@ Todas as mudanças relevantes deste projeto devem ser registradas aqui.
 - Alterações de UX foram adiadas para evitar misturar novas mudanças com arquivos funcionais já modificados.
 - Legacy API keys do Supabase foram desativadas manualmente em 2026-07-12.
 - A nova `SUPABASE_SERVICE_KEY` `sb_secret_...` passou em leitura administrativa.
-- Após a desativação, login professor/aluno falhou com `401`; pendente migrar `SUPABASE_ANON_KEY` para a Publishable key.
+- `SUPABASE_ANON_KEY` foi migrada para valor `sb_publishable_...`, mantendo temporariamente o nome legado da variável.
+- Após atualizar o Worker `cursoreducao`, os fluxos professor/corretor e aluno voltaram a passar com as legacy keys desativadas.
 
 ### Observações
 

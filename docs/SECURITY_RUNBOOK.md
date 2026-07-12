@@ -13,7 +13,7 @@ Este runbook prepara ações manuais de segurança. Não execute etapas destruti
 - Há arquivos locais ignorados de ambiente que podem conter segredos reais e não devem ser commitados.
 - Legacy API keys do Supabase foram desativadas manualmente em 2026-07-12.
 - A nova `SUPABASE_SERVICE_KEY` em formato `sb_secret_...` passou em leitura administrativa.
-- Login professor/aluno falhou após a desativação porque `SUPABASE_ANON_KEY` ainda precisa ser migrada para a Publishable key `sb_publishable_...`.
+- A `SUPABASE_ANON_KEY` foi migrada para valor `sb_publishable_...` e os fluxos professor/aluno passaram localmente e no Worker remoto.
 
 ## Credenciais Que Devem Ser Rotacionadas
 
@@ -21,7 +21,7 @@ Este runbook prepara ações manuais de segurança. Não execute etapas destruti
 2. Supabase service key ou secret key exposta anteriormente.
 3. Secrets correspondentes no Cloudflare Worker.
 4. Qualquer `.dev.vars`, `.env` ou `.env.*` local que tenha usado valores antigos.
-5. `SUPABASE_ANON_KEY`, caso as Legacy API Keys tenham sido desativadas em conjunto.
+5. `SUPABASE_ANON_KEY`, caso as Legacy API Keys tenham sido desativadas em conjunto. Status em 2026-07-12: migrada para publishable key.
 
 ## Ordem Segura de Rotação
 
@@ -38,6 +38,16 @@ Este runbook prepara ações manuais de segurança. Não execute etapas destruti
 6. Invalidar credenciais antigas no provedor.
 7. Confirmar que as credenciais antigas não funcionam mais.
 8. Somente depois limpar histórico Git.
+
+## Estado Pós-Rotação — 2026-07-12
+
+- `SUPABASE_SERVICE_KEY`: migrada para `sb_secret_...`.
+- `SUPABASE_ANON_KEY`: migrada para `sb_publishable_...` mantendo o nome legado da variável.
+- Senha PostgreSQL/Supabase: rotacionada e validada via pooler com consulta somente leitura.
+- Legacy API keys: desativadas no painel Supabase.
+- Worker padrão `cursoreducao`: secrets `SUPABASE_SERVICE_KEY` e `SUPABASE_ANON_KEY` atualizados.
+- Testes professor/corretor e aluno: passaram.
+- Próximo ciclo: limpeza segura do histórico Git.
 
 ## Wrangler Secrets
 

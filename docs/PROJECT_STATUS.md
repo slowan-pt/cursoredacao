@@ -210,7 +210,7 @@ Resumo anterior do `git diff --stat`:
 ### Riscos atuais
 
 - Histórico Git ainda pode expor credenciais antigas.
-- Legacy API keys do Supabase foram desativadas em 2026-07-12; a `SUPABASE_SERVICE_KEY` nova funciona, mas logins falharam porque `SUPABASE_ANON_KEY` ainda está no formato JWT legacy.
+- Legacy API keys do Supabase foram desativadas em 2026-07-12; `SUPABASE_SERVICE_KEY` usa `sb_secret_...` e `SUPABASE_ANON_KEY` usa `sb_publishable_...`.
 - Permissões de professor filho e isolamento por site/aluno são sensíveis e precisam teste.
 - Upload base64 não é solução definitiva.
 - Checkout simulado não deve ser confundido com pagamento real.
@@ -289,8 +289,8 @@ Resumo anterior do `git diff --stat`:
 | Feature flags básicas | concluído |
 | Rotação da senha do banco | não verificado |
 | Rotação da Supabase service key | não verificado |
-| Desativação da service key legacy | parcial |
-| Migração da anon key para publishable key | pendente |
+| Desativação da service key legacy | concluído |
+| Migração da anon key para publishable key | concluído |
 | Limpeza do histórico Git | pendente |
 | Secrets atualizadas no Cloudflare | não verificado |
 | `APP_ENV=production` no ambiente final | não verificado |
@@ -358,24 +358,26 @@ Resumo anterior do `git diff --stat`:
 
 - Legacy API keys do Supabase desativadas manualmente no painel.
 - `SUPABASE_SERVICE_KEY` local e do Worker padrão `cursoreducao` já usam `sb_secret_...`.
+- `SUPABASE_ANON_KEY` local e do Worker padrão `cursoreducao` usam `sb_publishable_...`.
 - Leitura administrativa com a nova secret key passou.
-- `SUPABASE_ANON_KEY` ainda está no formato JWT legacy.
+- Fluxos de login professor/corretor e aluno passaram após migrar a publishable key.
 
 ### Testes após desativação
 
 - `npm run check:all`: passou.
 - `GET /health`: passou.
 - Leitura administrativa com `sb_secret_...`: passou.
-- Login professor: falhou com `401`.
-- Login aluno: falhou com `401`.
-- Painel do aluno: não verificado porque login falhou.
-- Tentativa de acesso do aluno a outro site: não conclusiva porque login falhou antes da regra de autorização.
+- Login professor/corretor: passou.
+- Login aluno: passou.
+- Painel do aluno: passou.
+- Tentativa de acesso do aluno a outro site: bloqueada com `403`, como esperado.
 
 ### Diagnóstico
 
 - A nova `SUPABASE_SERVICE_KEY` está validada.
-- A falha de login é compatível com a desativação da legacy `anon`, pois `src/supabase.ts` ainda usa `SUPABASE_ANON_KEY` para autenticar com `signInWithPassword`.
-- Próxima ação segura: migrar `SUPABASE_ANON_KEY` local e Cloudflare para a Publishable key `sb_publishable_...`, sem alterar código, e repetir os testes.
+- A nova `SUPABASE_ANON_KEY` com valor `sb_publishable_...` está validada.
+- O nome da variável permanece legado para evitar refatoração durante o incidente; renomear para `SUPABASE_PUBLISHABLE_KEY` pode ficar para ciclo futuro.
+- Próxima ação segura: iniciar o ciclo controlado de limpeza do histórico Git, com backup local sensível e validação antes de qualquer force push.
 
 ## Próxima ação recomendada
 
