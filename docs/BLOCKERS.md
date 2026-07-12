@@ -48,3 +48,22 @@
   - Extrair scripts inline para arquivos `.js`.
   - Extrair estilos inline para CSS.
   - Só então remover `unsafe-inline` da política.
+
+## Sprints de interface com working tree sujo
+
+- Prioridade: importante.
+- Impacto: as sprints de Professor, Aluno e Administrador exigem editar arquivos que já possuem alterações locais amplas não commitadas.
+- Arquivos afetados:
+  - `public/professor/index.html`
+  - `public/aluno/index.html`
+  - `public/login.html`
+  - `public/css/style.css`
+  - `src/routes/admin.ts`
+  - `src/routes/aluno.ts`
+  - `src/routes/auth.ts`
+  - `src/routes/site.ts`
+- Situação: modificar esses arquivos agora aumentaria o risco de misturar trabalho pendente com novas mudanças.
+- Solução sugerida:
+  1. Revisar os diffs locais por área funcional.
+  2. Separar commits temáticos pequenos.
+  3. Só depois continuar as sprints de UX/Professor/Aluno/Admin.

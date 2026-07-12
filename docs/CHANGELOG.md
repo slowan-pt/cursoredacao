@@ -21,6 +21,7 @@ Todas as mudanças relevantes deste projeto devem ser registradas aqui.
 - Utilitários de webhook Asaas para normalização de payload e chave de idempotência.
 - Templates puros de e-mail para recibo de checkout e correção disponível.
 - Middleware de observabilidade com `x-request-id`, `server-timing` e log estruturado de erro.
+- Bloqueio documentado para sprints de Professor/Aluno/Admin enquanto houver diffs locais amplos nas telas e rotas.
 
 ### Segurança
 
@@ -33,6 +34,7 @@ Todas as mudanças relevantes deste projeto devem ser registradas aqui.
 - A normalização de webhook Asaas não libera matrícula; ela apenas prepara dados para uma rota futura idempotente.
 - Templates de e-mail não enviam mensagens por conta própria; envio real continua atrás de `ENABLE_EMAILS`.
 - Logs de erro não registram payloads, tokens ou dados de arquivos.
+- Alterações de UX foram adiadas para evitar misturar novas mudanças com arquivos funcionais já modificados.
 
 ### Observações
 

@@ -601,3 +601,35 @@ Resumo do `git diff --stat`:
 ### Próximos passos
 
 - Antes de mexer nas telas de professor/aluno/admin, revisar o alto volume de alterações locais não commitadas.
+
+## Sprints 7, 8 e 9 — Professor, Aluno e Administrador — 2026-07-12
+
+### Status
+
+- Status: bloqueado temporariamente para alterações diretas.
+
+### Motivo
+
+- As áreas de Professor, Aluno e Administrador dependem dos arquivos que já estão com grandes alterações locais não commitadas.
+- Para preservar estabilidade e rastreabilidade, nenhuma nova mudança funcional foi aplicada nesses arquivos nesta passagem.
+
+### Arquivos afetados
+
+- `public/professor/index.html`
+- `public/aluno/index.html`
+- `public/login.html`
+- `public/css/style.css`
+- `src/routes/admin.ts`
+- `src/routes/aluno.ts`
+- `src/routes/auth.ts`
+- `src/routes/site.ts`
+
+### Ação tomada
+
+- Bloqueio documentado em `docs/BLOCKERS.md`.
+
+### Próximos passos
+
+- Revisar e separar os diffs locais por tema.
+- Criar commits pequenos para as alterações de interface já existentes.
+- Retomar as sprints de UX após o working tree estar mais limpo.
