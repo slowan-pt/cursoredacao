@@ -2,6 +2,8 @@ import { Hono } from 'hono'
 import type { Env } from '../types'
 import { getAdmin } from '../supabase'
 import { requireAuth, requireRole } from '../middleware'
+import { dataUrlFromBytes } from '../uploads'
+import { getPrivateStorage, keyFromStoredObjectRef } from '../storage'
 
 const app = new Hono<{ Bindings: Env }>()
 
@@ -100,6 +102,18 @@ function withCmsOrigins(origins: string[] | null | undefined, cms: unknown) {
 
 function missingTurmaAlunos(error: any) {
   return /turma_alunos|relation .* does not exist|schema cache/i.test(String(error?.message || ''))
+}
+
+async function hydrateArquivoUrl(env: Env, correcao: any) {
+  const key = keyFromStoredObjectRef(correcao?.arquivo_url)
+  if (!key) return correcao
+  const object = await getPrivateStorage(env).get(key)
+  if (!object) return { ...correcao, arquivo_url: '' }
+  return {
+    ...correcao,
+    arquivo_url: dataUrlFromBytes(object.mime, await object.arrayBuffer()),
+    storage_key: key
+  }
 }
 
 async function resolveSiteId(sb: ReturnType<typeof getAdmin>, user: any) {
@@ -438,8 +452,9 @@ app.get('/correcoes/:id', async (c) => {
 
   const assigned = assignedChildFor(access.cms, data)
   const meta = assigned ? assignmentMetaFor(assigned, data) : null
+  const hydrated = await hydrateArquivoUrl(c.env, data)
   return c.json({
-    ...data,
+    ...hydrated,
     aluno_nome: aluno?.nome ?? 'Aluno',
     turma_nome: turma?.nome ?? null,
     assigned_child_id: assigned?.id || null,

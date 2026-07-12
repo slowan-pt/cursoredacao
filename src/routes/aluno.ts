@@ -5,7 +5,8 @@ import { getAdmin } from '../supabase'
 import { createToken } from '../auth'
 import { requireAuth, requireRole } from '../middleware'
 import { getConfig, sessionCookieOptions } from '../config'
-import { validateIncomingArquivo } from '../uploads'
+import { dataUrlFromBytes, validateIncomingArquivo } from '../uploads'
+import { getPrivateStorage, keyFromStoredObjectRef, storedObjectRef } from '../storage'
 
 const app = new Hono<{ Bindings: Env }>()
 
@@ -77,6 +78,71 @@ function missingTurmaAlunos(error: any) {
   return /turma_alunos|relation .* does not exist|schema cache/i.test(String(error?.message || ''))
 }
 
+function missingStorageFiles(error: any) {
+  return /storage_files|relation .* does not exist|schema cache/i.test(String(error?.message || ''))
+}
+
+function exactArrayBuffer(bytes: Uint8Array) {
+  const copy = new Uint8Array(bytes.byteLength)
+  copy.set(bytes)
+  return copy.buffer
+}
+
+async function hydrateArquivoUrl(env: Env, correcao: any) {
+  const key = keyFromStoredObjectRef(correcao?.arquivo_url)
+  if (!key) return correcao
+  const object = await getPrivateStorage(env).get(key)
+  if (!object) return { ...correcao, arquivo_url: '' }
+  return {
+    ...correcao,
+    arquivo_url: dataUrlFromBytes(object.mime, await object.arrayBuffer()),
+    storage_key: key
+  }
+}
+
+async function storeCorrectionFile(
+  env: Env,
+  sb: ReturnType<typeof getAdmin>,
+  input: {
+    siteId: string
+    turmaId: string
+    alunoId: string
+    correcaoId: string
+    upload: { mime?: string; bytes?: Uint8Array }
+    originalName?: string
+  }
+) {
+  if (!input.upload.bytes || !input.upload.mime) return null
+  const stored = await getPrivateStorage(env).put({
+    siteId: input.siteId,
+    turmaId: input.turmaId,
+    alunoId: input.alunoId,
+    correcaoId: input.correcaoId,
+    mime: input.upload.mime,
+    bytes: exactArrayBuffer(input.upload.bytes),
+    originalName: input.originalName
+  })
+  const { error } = await sb.from('storage_files').insert({
+    site_id: input.siteId,
+    turma_id: input.turmaId,
+    aluno_id: input.alunoId,
+    correcao_id: input.correcaoId,
+    object_key: stored.key,
+    original_name: input.originalName || null,
+    mime_type: stored.mime,
+    size_bytes: stored.size,
+    storage_provider: 'R2'
+  })
+  if (error) {
+    await getPrivateStorage(env).delete(stored.key)
+    if (missingStorageFiles(error)) {
+      throw new Error('Rode a migration 004 no Supabase para ativar uploads privados.')
+    }
+    throw new Error(error.message)
+  }
+  return stored
+}
+
 function cmsEnrollmentActive(cms: ReturnType<typeof parseCms>, turmaId: string, alunoId: string) {
   return cms.enrollments?.[turmaId]?.[alunoId]?.ativo !== false && !!cms.enrollments?.[turmaId]?.[alunoId]
 }
@@ -145,7 +211,7 @@ app.get('/correcoes/:id', async (c) => {
     .neq('status', 'EXCLUIDA_PELO_PROFESSOR')
     .single()
   if (error || !data) return c.json({ error: 'Correção não encontrada para este aluno.' }, 404)
-  return c.json(data)
+  return c.json(await hydrateArquivoUrl(c.env, data))
 })
 
 app.post('/correcoes', async (c) => {
@@ -210,17 +276,47 @@ app.post('/correcoes', async (c) => {
     return c.json({ error: 'Você não possui créditos disponíveis para enviar redações.' }, 403)
   }
 
+  const shouldStorePrivately = getConfig(c.env).flags.r2Uploads && !!upload.bytes && !!upload.mime
   const { data, error } = await sb.from('correcoes').insert({
     titulo,
     turma_id,
     aluno_id: user.sub,
     site_id: profile.site_id,
-    arquivo_url: arquivo_url || '',
+    arquivo_url: shouldStorePrivately ? '' : (arquivo_url || ''),
     tipo_arq: tipo_arq || upload.tipoArq || 'PDF',
     status: 'AGUARDANDO'
   }).select().single()
 
   if (error) return c.json({ error: error.message }, 500)
+
+  if (shouldStorePrivately) {
+    let storedKey: string | null = null
+    try {
+      const stored = await storeCorrectionFile(c.env, sb, {
+        siteId: profile.site_id,
+        turmaId: turma_id,
+        alunoId: user.sub,
+        correcaoId: data.id,
+        upload,
+        originalName: typeof titulo === 'string' ? titulo : undefined
+      })
+      if (stored) {
+        storedKey = stored.key
+        const { data: updated, error: updateErr } = await sb.from('correcoes')
+          .update({ arquivo_url: storedObjectRef(stored.key), updated_at: new Date().toISOString() })
+          .eq('id', data.id)
+          .select()
+          .single()
+        if (updateErr) throw new Error(updateErr.message)
+        Object.assign(data, updated)
+      }
+    } catch (err: any) {
+      if (storedKey) await getPrivateStorage(c.env).delete(storedKey)
+      await sb.from('correcoes').delete().eq('id', data.id)
+      return c.json({ error: err?.message || 'Não foi possível armazenar o arquivo enviado.' }, 500)
+    }
+  }
+
   cms.student_credits = {
     ...(cms.student_credits || {}),
     [user.sub]: {
@@ -246,7 +342,7 @@ app.patch('/correcoes/:id', async (c) => {
   const sb = getAdmin(c.env)
 
   const { data: atual, error: atualErr } = await sb.from('correcoes')
-    .select('id, aluno_id, site_id, status')
+    .select('id, aluno_id, site_id, turma_id, arquivo_url, status')
     .eq('id', c.req.param('id'))
     .eq('aluno_id', user.sub)
     .single()
@@ -291,10 +387,31 @@ app.patch('/correcoes/:id', async (c) => {
     }
     patch.turma_id = body.turma_id
   }
+  let newStoredKey: string | null = null
   if (typeof body.arquivo_url === 'string' && body.arquivo_url) {
     const upload = validateIncomingArquivo(c.env, body.arquivo_url)
     if (!upload.ok) return c.json({ error: upload.error }, 400)
-    patch.arquivo_url = body.arquivo_url
+    const targetTurmaId = String(patch.turma_id || atual.turma_id || '')
+    if (getConfig(c.env).flags.r2Uploads && upload.bytes && upload.mime) {
+      try {
+        const stored = await storeCorrectionFile(c.env, sb, {
+          siteId: atual.site_id,
+          turmaId: targetTurmaId,
+          alunoId: user.sub,
+          correcaoId: atual.id,
+          upload,
+          originalName: typeof patch.titulo === 'string' ? patch.titulo : undefined
+        })
+        if (stored) {
+          newStoredKey = stored.key
+          patch.arquivo_url = storedObjectRef(stored.key)
+        }
+      } catch (err: any) {
+        return c.json({ error: err?.message || 'Não foi possível armazenar o arquivo enviado.' }, 500)
+      }
+    } else {
+      patch.arquivo_url = body.arquivo_url
+    }
     patch.tipo_arq = body.tipo_arq || upload.tipoArq
   }
 
@@ -306,7 +423,17 @@ app.patch('/correcoes/:id', async (c) => {
     .select()
     .single()
 
-  if (error) return c.json({ error: error.message }, 500)
+  if (error) {
+    if (newStoredKey) await getPrivateStorage(c.env).delete(newStoredKey)
+    return c.json({ error: error.message }, 500)
+  }
+  const oldStoredKey = keyFromStoredObjectRef(atual.arquivo_url)
+  if (newStoredKey && oldStoredKey && oldStoredKey !== newStoredKey) {
+    await getPrivateStorage(c.env).delete(oldStoredKey)
+    await sb.from('storage_files')
+      .update({ status: 'DELETED', deleted_at: new Date().toISOString() })
+      .eq('object_key', oldStoredKey)
+  }
   return c.json(data)
 })
 

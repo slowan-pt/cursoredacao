@@ -80,13 +80,15 @@ Resumo anterior do `git diff --stat`:
 ### Uploads
 
 - Evidências locais:
-  - `src/uploads.ts` existe e valida base64 por MIME/tamanho.
-  - `src/routes/aluno.ts` chama `validateIncomingArquivo`.
-  - `public/aluno/index.html` e `public/professor/index.html` ainda têm trechos de leitura base64 no frontend.
-- Status: parcial.
-- Commitado: parte pode estar no último commit; alterações em `src/routes/aluno.ts` e frontends estão locais.
-- Testado: não verificado neste documento.
-- Risco: base64 continua sendo solução temporária; R2 ainda não implementado.
+  - `src/uploads.ts` valida data URL por MIME, magic bytes e tamanho, devolvendo bytes validados.
+  - `src/storage.ts` possui referência privada `r2:<object_key>`.
+  - `src/routes/aluno.ts` grava envio/edição em storage privado quando `ENABLE_R2_UPLOADS=true`.
+  - `src/routes/admin.ts` hidrata arquivo privado em data URL ao abrir a correção.
+  - `public/aluno/index.html` e `public/professor/index.html` ainda consomem data URL no editor/visualizador.
+- Status: parcial, implementado localmente.
+- Commitado: aguardando commit deste ciclo.
+- Testado: `npm run check:all` passou.
+- Risco: bucket R2 e migration `004_storage_files.sql` ainda não foram aplicados; endpoint autenticado/streaming ainda pendente.
 
 ### Pagamentos
 
@@ -156,7 +158,7 @@ Resumo anterior do `git diff --stat`:
 | Correção de redação | implementado localmente, aguardando revisão | `public/professor/index.html`, `public/css/style.css`, `src/routes/admin.ts` | não | parcial | Toolbar e bloqueios precisam regressão visual. |
 | Pré-comentários | implementado localmente, aguardando revisão | `public/professor/index.html`, `src/routes/admin.ts` | não | não verificado | Seeds/listagens precisam confirmação. |
 | Professores filhos/corretores | implementado localmente, aguardando revisão | `src/routes/admin.ts`, `public/professor/index.html` | não | não verificado | Controle de permissão é área sensível. |
-| R2 privado | parcial | `src/storage.ts`, `migrations/004_storage_files.sql`, `docs/R2.md` | sim | parcial | Não integrado ao fluxo de upload existente. |
+| R2 privado | parcial | `src/storage.ts`, `src/uploads.ts`, `src/routes/aluno.ts`, `src/routes/admin.ts`, `migrations/004_storage_files.sql`, `docs/R2.md` | aguardando commit | parcial | Depende de bucket, migration e endpoint autenticado/streaming. |
 | Checkout simulado | parcial | `src/routes/site.ts`, `src/routes/auth.ts`, `public/login.html` | não | não verificado | Não substitui Asaas real. |
 | Gateway Asaas | parcial | `src/payments.ts`, `migrations/005_payments.sql`, `docs/ASAAS.md` | sim | parcial | Webhook e checkout real ainda pendentes. |
 | E-mails de transação | parcial | `src/email.ts`, `docs/EMAILS.md` | sim | parcial | Resend não configurado/validado; flag desligada. |
@@ -417,6 +419,27 @@ Resumo anterior do `git diff --stat`:
 - Commitar esta documentação.
 - Fazer push com `git push --force-with-lease` para publicar a sequência local e substituir o remoto antigo com segurança.
 - Clonar/validar o remoto após o push.
+
+## Ciclo 2 — Integração R2 incremental — 2026-07-12
+
+### Implementado localmente
+
+- Novos envios e edições de redação usam storage privado quando `ENABLE_R2_UPLOADS=true`.
+- O banco guarda referência interna `r2:<object_key>` em vez de base64 quando R2 está ativo.
+- Metadados são inseridos em `storage_files`.
+- Se a gravação no storage/metadados falhar, o envio recém-criado é revertido.
+- As rotas de detalhe do professor e do aluno hidratam o arquivo privado para data URL para manter compatibilidade com o editor atual.
+
+### Testes
+
+- `npm run check:all`: passou.
+
+### Pendências
+
+- Aplicar `migrations/004_storage_files.sql` no Supabase após backup/revisão.
+- Criar bucket R2 privado `redacao-uploads`.
+- Configurar `ENABLE_R2_UPLOADS=true` somente depois do bucket e da migration.
+- Criar endpoint autenticado/streaming para substituir a hidratação temporária por data URL.
 
 ## Próxima ação recomendada
 

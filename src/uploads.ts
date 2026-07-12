@@ -3,6 +3,10 @@ import type { Env } from './types'
 
 const ALLOWED_MIME = new Set(['application/pdf', 'image/jpeg', 'image/png'])
 
+type ValidatedUpload =
+  | { ok: false; error: string }
+  | { ok: true; tipoArq: 'PDF' | 'IMAGEM'; mime?: string; bytes?: Uint8Array }
+
 function decodedBytesFromBase64(base64: string) {
   const binary = atob(base64)
   const bytes = new Uint8Array(binary.length)
@@ -33,7 +37,17 @@ function detectMime(bytes: Uint8Array) {
   return null
 }
 
-export function validateIncomingArquivo(env: Env, arquivoUrl: unknown) {
+export function dataUrlFromBytes(mime: string, buffer: ArrayBuffer) {
+  const bytes = new Uint8Array(buffer)
+  let binary = ''
+  const chunkSize = 0x8000
+  for (let i = 0; i < bytes.length; i += chunkSize) {
+    binary += String.fromCharCode(...bytes.subarray(i, i + chunkSize))
+  }
+  return `data:${mime};base64,${btoa(binary)}`
+}
+
+export function validateIncomingArquivo(env: Env, arquivoUrl: unknown): ValidatedUpload {
   const config = getConfig(env)
   const value = String(arquivoUrl || '')
   if (!value) return { ok: false as const, error: 'Arquivo obrigatório.' }
@@ -73,5 +87,10 @@ export function validateIncomingArquivo(env: Env, arquivoUrl: unknown) {
     return { ok: false as const, error: 'O conteúdo do arquivo não corresponde ao tipo informado.' }
   }
 
-  return { ok: true as const, tipoArq: detectedMime === 'application/pdf' ? 'PDF' : 'IMAGEM' }
+  return {
+    ok: true as const,
+    tipoArq: detectedMime === 'application/pdf' ? 'PDF' : 'IMAGEM',
+    mime: detectedMime,
+    bytes
+  }
 }

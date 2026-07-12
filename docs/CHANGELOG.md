@@ -31,6 +31,11 @@ Todas as mudanças relevantes deste projeto devem ser registradas aqui.
 - Templates puros de e-mail para recibo de checkout e correção disponível.
 - Middleware de observabilidade com `x-request-id`, `server-timing` e log estruturado de erro.
 - Bloqueio documentado para sprints de Professor/Aluno/Admin enquanto houver diffs locais amplos nas telas e rotas.
+- Integração incremental de upload privado:
+  - validação de bytes/MIME em `src/uploads.ts`;
+  - referência interna `r2:<object_key>`;
+  - gravação em storage privado quando `ENABLE_R2_UPLOADS=true`;
+  - hidratação temporária para data URL nas rotas de detalhe de correção.
 - Documentação operacional:
   - `docs/ARCHITECTURE.md`
   - `docs/ROADMAP.md`

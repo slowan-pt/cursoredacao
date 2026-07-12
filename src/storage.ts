@@ -75,6 +75,20 @@ export function validateStorageKey(key: string) {
   )
 }
 
+const STORED_OBJECT_PREFIX = 'r2:'
+
+export function storedObjectRef(key: string) {
+  if (!validateStorageKey(key)) throw new Error('Chave de arquivo inválida.')
+  return `${STORED_OBJECT_PREFIX}${key}`
+}
+
+export function keyFromStoredObjectRef(value: string | null | undefined) {
+  const raw = String(value || '')
+  if (!raw.startsWith(STORED_OBJECT_PREFIX)) return null
+  const key = raw.slice(STORED_OBJECT_PREFIX.length)
+  return validateStorageKey(key) ? key : null
+}
+
 class DisabledStorage implements PrivateStorage {
   async put(): Promise<StoredObject> {
     throw new Error('Uploads R2 temporariamente indisponíveis.')
