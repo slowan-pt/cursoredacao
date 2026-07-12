@@ -8,6 +8,17 @@
     "enabled": true,
     "head_sampling_rate": 1
   },
+  "vars": {
+    "APP_ENV": "production",
+    "APP_URL": "https://redacaocomestrategia.com.br",
+    "APP_VERSION": "1.0.0",
+    "ENABLE_PAYMENTS": "false",
+    "ENABLE_R2_UPLOADS": "true",
+    "ENABLE_EMAILS": "false",
+    "ENABLE_OAUTH": "false",
+    "ENABLE_PUBLIC_CHECKOUT_SIMULATED": "false",
+    "MAX_UPLOAD_BYTES": "8388608"
+  },
   "assets": {
     "directory": "./public",
     "binding": "ASSETS",

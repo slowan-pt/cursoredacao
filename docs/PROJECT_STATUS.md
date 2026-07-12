@@ -88,7 +88,7 @@ Resumo anterior do `git diff --stat`:
 - Status: parcial, implementado localmente.
 - Commitado: aguardando commit deste ciclo.
 - Testado: `npm run check:all` passou.
-- Risco: bucket R2 e migration `004_storage_files.sql` ainda não foram aplicados; endpoint autenticado/streaming ainda pendente.
+- Risco: endpoint autenticado/streaming ainda pendente; hidratação temporária por data URL precisa validação com upload real.
 
 ### Pagamentos
 
@@ -298,8 +298,8 @@ Resumo anterior do `git diff --stat`:
 | `APP_ENV=production` no ambiente final | não verificado |
 | Domínio `redacaocomestrategia.com.br` configurado | pendente |
 | `www` redirecionando para domínio principal | pendente |
-| R2 configurado | pendente |
-| Camada R2 local preparada | parcial |
+| R2 configurado | parcial |
+| Camada R2 local preparada | concluído |
 | Upload base64 bloqueado em produção | parcial |
 | Asaas sandbox | parcial |
 | Asaas produção | pendente |
@@ -429,17 +429,20 @@ Resumo anterior do `git diff --stat`:
 - Metadados são inseridos em `storage_files`.
 - Se a gravação no storage/metadados falhar, o envio recém-criado é revertido.
 - As rotas de detalhe do professor e do aluno hidratam o arquivo privado para data URL para manter compatibilidade com o editor atual.
+- Bucket R2 privado `redacao-uploads` criado na Cloudflare.
+- Backup local de metadados do schema criado em `C:\Users\adm.sloannascimento\Downloads\puppin\_db_backups`.
+- Migration `004_storage_files.sql` aplicada no Supabase.
+- `wrangler.jsonc` configurado com `APP_ENV=production`, `ENABLE_R2_UPLOADS=true` e integrações incompletas desligadas.
 
 ### Testes
 
 - `npm run check:all`: passou.
+- `npx wrangler deploy --dry-run`: passou e reconheceu `env.R2_UPLOADS`.
 
 ### Pendências
 
-- Aplicar `migrations/004_storage_files.sql` no Supabase após backup/revisão.
-- Criar bucket R2 privado `redacao-uploads`.
-- Configurar `ENABLE_R2_UPLOADS=true` somente depois do bucket e da migration.
 - Criar endpoint autenticado/streaming para substituir a hidratação temporária por data URL.
+- Fazer deploy real e validar upload/leitura com arquivo de teste.
 
 ## Próxima ação recomendada
 

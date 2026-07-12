@@ -36,6 +36,9 @@ Todas as mudanças relevantes deste projeto devem ser registradas aqui.
   - referência interna `r2:<object_key>`;
   - gravação em storage privado quando `ENABLE_R2_UPLOADS=true`;
   - hidratação temporária para data URL nas rotas de detalhe de correção.
+- Bucket R2 privado `redacao-uploads` criado.
+- Migration `004_storage_files.sql` aplicada no Supabase após backup de metadados do schema.
+- Variáveis explícitas de produção adicionadas ao `wrangler.jsonc`, mantendo pagamentos, e-mails, OAuth e checkout simulado desligados.
 - Documentação operacional:
   - `docs/ARCHITECTURE.md`
   - `docs/ROADMAP.md`
