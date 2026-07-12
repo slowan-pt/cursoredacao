@@ -10,6 +10,24 @@ import { validateIncomingArquivo } from '../uploads'
 const app = new Hono<{ Bindings: Env }>()
 
 app.use('*', requireAuth, requireRole('ALUNO', 'ADMIN', 'SUPERADMIN'))
+app.use('*', async (c, next) => {
+  const user = c.get('user')
+  if (user.role !== 'ALUNO') {
+    await next()
+    return
+  }
+  const sb = getAdmin(c.env)
+  const { data: profile } = await sb.from('profiles').select('ativo, site_id').eq('id', user.sub).maybeSingle()
+  if (!profile || profile.ativo === false) return c.json({ error: 'Acesso bloqueado. Fale com o professor responsável pelo site.' }, 403)
+  if (profile.site_id) {
+    const { data: site } = await sb.from('sites').select('allowed_origins').eq('id', profile.site_id).maybeSingle()
+    const cms = parseCms(site)
+    if (cms.blocked_students?.[user.sub] || cms.deleted_students?.[user.sub]) {
+      return c.json({ error: 'Acesso bloqueado. Fale com o professor responsável pelo site.' }, 403)
+    }
+  }
+  await next()
+})
 
 const CMS_PREFIX = 'CMS:'
 
@@ -18,7 +36,9 @@ function defaultCms() {
     turma_settings: {} as Record<string, { matriculas_abertas?: boolean; envios_abertos?: boolean }>,
     themes: [] as any[],
     student_credits: {} as Record<string, { creditos?: number; vence_em?: string | null; updated_at?: string }>,
-    enrollments: {} as Record<string, Record<string, { ativo?: boolean; origem?: string; created_at?: string; updated_at?: string }>>
+    enrollments: {} as Record<string, Record<string, { ativo?: boolean; origem?: string; created_at?: string; updated_at?: string }>>,
+    blocked_students: {} as Record<string, any>,
+    deleted_students: {} as Record<string, any>
   }
 }
 
@@ -33,7 +53,9 @@ function parseCms(site: any) {
       turma_settings: cms.turma_settings && typeof cms.turma_settings === 'object' ? cms.turma_settings : {},
       themes: Array.isArray(cms.themes) ? cms.themes : [],
       student_credits: cms.student_credits && typeof cms.student_credits === 'object' ? cms.student_credits : {},
-      enrollments: cms.enrollments && typeof cms.enrollments === 'object' ? cms.enrollments : {}
+      enrollments: cms.enrollments && typeof cms.enrollments === 'object' ? cms.enrollments : {},
+      blocked_students: cms.blocked_students && typeof cms.blocked_students === 'object' ? cms.blocked_students : {},
+      deleted_students: cms.deleted_students && typeof cms.deleted_students === 'object' ? cms.deleted_students : {}
     }
   } catch {
     return defaultCms()
@@ -74,7 +96,7 @@ app.get('/stats', async (c) => {
   const sb = getAdmin(c.env)
 
   const [enviadas, corrigidas, profileRes] = await Promise.all([
-    sb.from('correcoes').select('id', { count: 'exact', head: true }).eq('aluno_id', user.sub),
+    sb.from('correcoes').select('id', { count: 'exact', head: true }).eq('aluno_id', user.sub).neq('status', 'EXCLUIDA_PELO_PROFESSOR'),
     sb.from('correcoes').select('id', { count: 'exact', head: true })
       .eq('aluno_id', user.sub).eq('status', 'FINALIZADA'),
     sb.from('profiles').select('site_id').eq('id', user.sub).maybeSingle()
@@ -107,6 +129,7 @@ app.get('/correcoes', async (c) => {
   const { data, error } = await sb.from('correcoes')
     .select('id, titulo, status, nota, nota_max, created_at, finalizada_em')
     .eq('aluno_id', user.sub)
+    .neq('status', 'EXCLUIDA_PELO_PROFESSOR')
     .order('created_at', { ascending: false })
   if (error) return c.json({ error: error.message }, 500)
   return c.json({ data })
@@ -119,6 +142,7 @@ app.get('/correcoes/:id', async (c) => {
     .select('*, anotacoes(*)')
     .eq('id', c.req.param('id'))
     .eq('aluno_id', user.sub)
+    .neq('status', 'EXCLUIDA_PELO_PROFESSOR')
     .single()
   if (error || !data) return c.json({ error: 'Correção não encontrada para este aluno.' }, 404)
   return c.json(data)
@@ -459,6 +483,7 @@ app.post('/matriculas/pagar', async (c) => {
   if (save.error) return c.json({ error: save.error.message }, 500)
 
   await sb.from('profiles').update({ ativo: true }).eq('id', user.sub).eq('role', 'ALUNO')
+  const config = getConfig(c.env)
   const token = await createToken(
     {
       sub: user.sub,
@@ -468,7 +493,8 @@ app.post('/matriculas/pagar', async (c) => {
       nome: user.nome,
       ativo: true
     },
-    getConfig(c.env).sessionSecret
+    config.sessionSecret,
+    config.sessionTtlSeconds
   )
   setCookie(c, 'auth_token', token, sessionCookieOptions(c.env))
 

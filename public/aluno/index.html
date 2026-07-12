@@ -367,7 +367,7 @@ async function loadTurmas() {
       <div style="font-size:12px;color:var(--ink3);margin-top:2px">${t.concurso}</div>
       ${t.descricao ? `<div style="font-size:12px;color:var(--ink2);margin-top:8px">${t.descricao}</div>` : ''}
       <div style="margin-top:10px;display:flex;align-items:center;justify-content:space-between">
-        <span style="font-size:13px;font-weight:700;color:var(--brand)">${t.preco > 0 ? 'R$ ' + t.preco.toFixed(2) : 'Gratuito'}</span>
+        <span style="font-size:13px;font-weight:700;color:var(--brand)">${moneyBR(t.preco)}</span>
         <span class="tag ${t.envios_abertos === false ? 'tag-pend' : 'tag-done'}">${t.envios_abertos === false ? 'Envio fechado' : t.status}</span>
       </div>
     </div>`).join('')
@@ -395,7 +395,7 @@ function renderTurmasDisponiveis() {
           ${t.descricao ? `<div style="font-size:12px;color:var(--ink2);margin-top:6px">${escAl(t.descricao)}</div>` : ''}
         </div>
         <div style="text-align:right">
-          <div style="font-weight:900;color:var(--brand)">${price > 0 ? 'R$ ' + price.toFixed(2).replace('.', ',') : 'Grátis'}</div>
+          <div style="font-weight:900;color:var(--brand)">${moneyBR(price)}</div>
           <span class="tag ${t.matriculado ? 'tag-done' : disabled ? 'tag-pend' : 'tag-prog'}">${t.matriculado ? 'Matriculado' : t.matriculas_abertas === false ? 'Fechada' : 'Aberta'}</span>
         </div>
       </label>
@@ -412,7 +412,7 @@ function updateMatriculaTotal() {
   const total = Array.from(document.querySelectorAll('.turma-pay-check:checked'))
     .reduce((sum, ch) => sum + Number(ch.dataset.price || 0), 0)
   const el = document.getElementById('matricula-total')
-  if (el) el.textContent = 'R$ ' + total.toFixed(2).replace('.', ',')
+  if (el) el.textContent = total > 0 ? moneyBR(total) : 'R$ 0,00'
 }
 
 async function pagarTurmasSelecionadas() {
@@ -616,6 +616,10 @@ function escAl(s) {
   return String(s == null ? '' : s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]))
 }
 function numPt(n) { return Number(n || 0).toLocaleString('pt-BR', { maximumFractionDigits: 2 }) }
+function moneyBR(value) {
+  const n = Number(value || 0)
+  return n > 0 ? `R$ ${n.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}` : 'Gratuito'
+}
 function hexToRgba(hex, alpha) {
   const clean = String(hex || '#EF4444').replace('#', '')
   const value = clean.length === 3 ? clean.split('').map(x => x + x).join('') : clean
