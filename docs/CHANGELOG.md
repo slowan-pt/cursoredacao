@@ -11,12 +11,18 @@ Todas as mudanças relevantes deste projeto devem ser registradas aqui.
   - `npm run check:diff`
   - `npm run check:all`
 - Registro da Sprint 1 de higiene geral em `docs/PROJECT_STATUS.md`.
+- Helper `src/securityHeaders.ts` com headers complementares:
+  - `Content-Security-Policy`
+  - `Referrer-Policy`
+  - `Permissions-Policy`
+  - `Cross-Origin-Opener-Policy`
 
 ### Segurança
 
 - Nenhuma rotação de credenciais foi executada nesta entrada.
 - Nenhuma limpeza de histórico Git foi executada nesta entrada.
 - Nenhum push ou deploy foi executado nesta entrada.
+- A CSP foi definida de forma compatível com o frontend atual, mantendo `unsafe-inline` enquanto houver scripts/estilos inline.
 
 ### Observações
 

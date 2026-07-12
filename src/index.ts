@@ -7,6 +7,7 @@ import { adminRoutes } from './routes/admin'
 import { alunoRoutes } from './routes/aluno'
 import { siteRoutes } from './routes/site'
 import { getConfig } from './config'
+import { appSecurityHeaders } from './securityHeaders'
 
 const app = new Hono<{ Bindings: Env }>()
 
@@ -19,6 +20,7 @@ app.use('*', secureHeaders({
   xFrameOptions: 'DENY',
   xContentTypeOptions: 'nosniff'
 }))
+app.use('*', appSecurityHeaders)
 
 app.get('/health', (c) => c.json({
   ok: true,

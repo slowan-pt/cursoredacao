@@ -405,3 +405,42 @@ Resumo do `git diff --stat`:
 
 - Continuar Sprint 1 com melhorias pequenas em documentação e scripts seguros.
 - Evitar alterações funcionais amplas enquanto houver diffs grandes não revisados.
+
+## Sprint 2 — Segurança local — 2026-07-12
+
+### Tarefas concluídas
+
+- Adicionado helper `src/securityHeaders.ts` para centralizar headers HTTP complementares.
+- Integrado `appSecurityHeaders` no Worker principal em `src/index.ts`.
+- Incluídos:
+  - `Content-Security-Policy`
+  - `Referrer-Policy`
+  - `Permissions-Policy`
+  - `Cross-Origin-Opener-Policy`
+
+### Arquivos alterados
+
+- `src/securityHeaders.ts`
+- `src/index.ts`
+- `docs/PROJECT_STATUS.md`
+- `docs/CHANGELOG.md`
+
+### Testes executados
+
+- `npm run typecheck`
+- `npm run security:scan`
+- `npm run check:diff`
+
+### Riscos encontrados
+
+- A CSP ainda precisa permitir `unsafe-inline` porque o frontend atual usa scripts e estilos inline em HTML estático.
+- Remover `unsafe-inline` exige refatoração futura dos arquivos em `public/`.
+
+### Pendências
+
+- Validar manualmente páginas públicas, login, painel do aluno e painel do professor com os headers ativos.
+- Evoluir CSP para política mais restrita após separar scripts e estilos inline.
+
+### Próximos passos
+
+- Continuar com melhorias pequenas de segurança local que não dependam de painel externo nem de deploy.
