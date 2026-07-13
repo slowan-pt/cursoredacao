@@ -2,18 +2,20 @@
 
 ## Módulo financeiro interno — Endurecimento transacional — 2026-07-13
 
-- Status: implementado localmente, migration aplicada no Supabase, `npm run check:all` validado.
+- Status: implementado, publicado no Worker `cursoredacao`, migration aplicada no Supabase, `npm run check:all` validado.
 - Migration aplicada: `009_financial_transactions.sql`.
 - RPCs transacionais criadas: `create_teacher_closing`, `approve_teacher_closing`, `add_teacher_closing_adjustment`, `register_teacher_payout`, `cancel_teacher_closing`, `reverse_teacher_payout`.
 - Idempotência: tabela `financial_idempotency_keys` com unicidade por `site_id`, operação e chave.
 - Operações movidas para o banco: criação de fechamento, aprovação, ajuste, pagamento, cancelamento e estorno.
 - Backend: rotas `/api/admin/financial/closings*` e `/api/admin/financial/payouts/:id/reverse` passaram a chamar RPCs.
-- Interface: telas `Meus Ganhos` e `Financeiro` exibem aviso de "Módulo financeiro em homologação"; exportações e gráficos seguem desligados.
-- Flags preparadas para ativação controlada no Worker: `ENABLE_FINANCIAL_MODULE=true` e `ENABLE_TEACHER_COMPENSATION=true`; `ENABLE_FINANCIAL_EXPORTS=false` e `ENABLE_FINANCIAL_CHARTS=false`.
+- Interface: telas `Meus Ganhos` e `Financeiro` exibem aviso de "Módulo financeiro em homologação" e já possuem abas operacionais.
+- Flags financeiras ativas no Worker de homologação: `ENABLE_FINANCIAL_MODULE=true`, `ENABLE_TEACHER_COMPENSATION=true`, `ENABLE_FINANCIAL_EXPORTS=true` e `ENABLE_FINANCIAL_CHARTS=true`.
 - Backfill: apenas dry-run executado, sem criação retroativa de dívidas; resultado atual: `0` lançamentos pendentes.
 - Testes: `npm run check:all` passou; validação de existência das 6 RPCs passou; `npm run financial:smoke` passou com dados fictícios.
 - Validação remota: professor pai, professor filho e superadmin acessaram endpoints financeiros; fluxo via API criou fechamento, aprovou, registrou pagamento fictício e gerou notificação interna.
-- Risco pendente: ainda falta UI completa para seleção múltipla, ajuste, cancelamento e estorno; por enquanto essas operações estão seguras no backend/RPC, mas não plenamente confortáveis na tela.
+- Publicação mais recente do módulo financeiro: Worker `cursoredacao` versão `a2d20590-c8dd-4cab-a195-a2ab7cabdce3`.
+- UI financeira: seleção múltipla, criação de fechamento, aprovação, ajuste, pagamento manual, cancelamento, estorno, contestação, consolidado por corretor e CSV implementados.
+- Risco pendente: as ações financeiras usam `prompt/confirm` simples; próximo ciclo deve converter para modais dedicadas antes de uso intensivo por professores.
 
 ## Módulo financeiro interno — Ciclo A — 2026-07-13
 

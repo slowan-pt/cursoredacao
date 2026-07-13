@@ -6,6 +6,15 @@ Todas as mudanças relevantes deste projeto devem ser registradas aqui.
 
 ### Adicionado
 
+- Módulo financeiro operacional:
+  - painel do professor pai ganhou abas de resumo, corretores, contas a pagar, fechamentos, pagamentos e auditoria;
+  - painel do corretor filho ganhou abas de resumo, correções, fechamentos, pagamentos e contestações;
+  - seleção múltipla de lançamentos para criar fechamento;
+  - ações de aprovar fechamento, ajustar valor, registrar pagamento manual, cancelar fechamento, estornar pagamento e contestar lançamento;
+  - endpoint `/api/admin/financial/teachers` com consolidado por corretor filho;
+  - endpoint `/api/admin/financial/export.csv` para lançamentos, contas a pagar, fechamentos, pagamentos e auditoria;
+  - flags `ENABLE_FINANCIAL_EXPORTS` e `ENABLE_FINANCIAL_CHARTS` ativadas no Worker de homologação;
+  - deploy publicado no Worker `cursoredacao`: `a2d20590-c8dd-4cab-a195-a2ab7cabdce3`.
 - Endurecimento transacional do módulo financeiro:
   - criada migration `009_financial_transactions.sql`;
   - adicionada tabela `financial_idempotency_keys`;

@@ -52,14 +52,20 @@ Atualizado em: 2026-07-13.
   - `/api/superadmin/financial` HTTP 200;
   - fechamento/aprovação/pagamento manual fictício via API HTTP 201/200/201;
   - `/api/admin/notifications` HTTP 200 após pagamento fictício.
+- Smoke remoto do painel financeiro operacional:
+  - `npm run smoke:prod -- --base=https://cursoredacao.slowgithub.workers.dev`: passou;
+  - professor pai: `/api/admin/financial/summary`, `/api/admin/financial/teachers` e `/api/admin/financial/export.csv?type=payables` retornaram HTTP 200;
+  - CSV financeiro retornou `text/csv; charset=utf-8`;
+  - professor filho: `/api/admin/financial/summary` e `/api/admin/financial/compensations` retornaram HTTP 200;
+  - professor filho tentando `/api/admin/financial/payables` recebeu HTTP 403, comportamento esperado.
 - Não foi executado backfill real.
 - Não foi usado Asaas produção.
-- Pendente: cenário visual completo no painel para seleção múltipla, ajuste, cancelamento e estorno.
+- Pendente: trocar prompts/confirms das ações financeiras por modais dedicadas e adicionar teste visual automatizado.
 
 ## Não Verificado Automaticamente Neste Ciclo
 
 - Fluxo financeiro visual completo com botões de ajuste, cancelamento e estorno.
-- Exportação CSV do módulo financeiro.
+- Exportação CSV do módulo financeiro: verificada remotamente para contas a pagar; ainda falta varrer todos os tipos em teste automatizado.
 - Criação de fechamento por RPC SQL transacional em fluxo visual real.
 - Corretor filho acessando somente correções atribuídas em cenário com dados reais suficientes.
 - Custom domain `redacaocomestrategia.com.br`.

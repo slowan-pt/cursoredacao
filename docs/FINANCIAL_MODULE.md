@@ -35,6 +35,26 @@ Organizar o financeiro operacional da plataforma sem trocar a arquitetura atual.
   - fluxo remoto via `/api/admin/financial/*` validou fechamento, aprovação, pagamento manual fictício e notificação interna;
   - professor pai, professor filho e superadmin acessaram endpoints financeiros com HTTP 200 no Worker publicado.
 
+## Painel operacional e exportações — 2026-07-13
+
+- `ENABLE_FINANCIAL_EXPORTS=true` e `ENABLE_FINANCIAL_CHARTS=true` no Worker `cursoredacao`.
+- Professor pai:
+  - visualiza resumo, corretores, contas a pagar, fechamentos, pagamentos e auditoria;
+  - seleciona lançamentos de um mesmo corretor para criar fechamento;
+  - aprova fechamento, registra ajuste, registra pagamento manual, cancela fechamento e estorna pagamento;
+  - exporta CSV de contas a pagar, fechamentos, pagamentos e auditoria.
+- Professor filho:
+  - visualiza seus ganhos, lançamentos, fechamentos e pagamentos;
+  - pode contestar lançamento ainda aguardando fechamento;
+  - continua sem acesso às contas a pagar do professor pai.
+- Novos endpoints:
+  - `GET /api/admin/financial/teachers`;
+  - `GET /api/admin/financial/export.csv?type=compensations|payables|closings|payouts|audit`.
+- CSV usa `;`, UTF-8 com BOM e respeita `site_id`, papel do usuário e escopo do corretor filho.
+- Validação remota:
+  - professor pai: login, resumo, consolidado por corretor e CSV com HTTP 200;
+  - professor filho: login, resumo e lançamentos com HTTP 200; contas a pagar bloqueadas com HTTP 403.
+
 ## Ciclo A implementado
 
 - Feature flags adicionadas:
@@ -88,9 +108,9 @@ Todos os valores monetários são armazenados em centavos.
 
 ## Próximos ciclos
 
-1. Criar tela completa de seleção múltipla de lançamentos e ações de ajuste/cancelamento/estorno.
+1. Trocar `prompt/confirm` das ações financeiras por modais dedicadas com validação visual.
 2. Criar upload de comprovante de pagamento manual em R2.
-3. Adicionar exportação CSV e alertas superadmin de divergência.
+3. Criar tela superadmin de divergências e reprocessamento de webhooks órfãos.
 4. Ampliar testes automatizados de integração com login HTTP e cenários visuais.
 
 ## Rollback

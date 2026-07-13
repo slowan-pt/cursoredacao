@@ -1641,6 +1641,71 @@ function financialRpcError(error: any) {
   return { error: message.replace(/^ERROR:\s*/i, '') }
 }
 
+function csvCell(value: unknown) {
+  const text = String(value == null ? '' : value)
+  return `"${text.replace(/"/g, '""')}"`
+}
+
+function csvResponse(filename: string, rows: unknown[][]) {
+  const csv = '\ufeff' + rows.map((row) => row.map(csvCell).join(';')).join('\r\n')
+  return new Response(csv, {
+    headers: {
+      'content-type': 'text/csv; charset=utf-8',
+      'content-disposition': `attachment; filename="${filename}"`
+    }
+  })
+}
+
+async function mapProfileNames(sb: ReturnType<typeof getAdmin>, siteId: string, ids: string[]) {
+  const uniqueIds = [...new Set(ids.filter(Boolean))]
+  if (!uniqueIds.length) return new Map<string, string>()
+  const { data } = await sb.from('profiles').select('id, nome, email').eq('site_id', siteId).in('id', uniqueIds)
+  return new Map((data || []).map((item: any) => [item.id, item.nome || item.email || 'Professor']))
+}
+
+async function listFinancialClosings(ctx: Awaited<ReturnType<typeof financialContext>>) {
+  if ('error' in ctx) return { error: ctx.error }
+  let query = ctx.sb.from('teacher_payment_closings')
+    .select('id, site_id, child_professor_id, parent_professor_id, period_start, period_end, status, entries_count, gross_amount_cents, adjustments_amount_cents, final_amount_cents, currency, approved_at, paid_at, notes, created_at, updated_at')
+    .eq('site_id', ctx.siteId)
+    .order('created_at', { ascending: false })
+    .limit(100)
+  if (ctx.child) query = query.eq('child_professor_id', ctx.child.user_id)
+  const { data, error } = await query
+  if (error) return { error }
+  const nameMap = await mapProfileNames(ctx.sb, ctx.siteId, (data || []).map((row: any) => row.child_professor_id))
+  return {
+    data: (data || []).map((row: any) => ({
+      ...row,
+      child_professor_nome: nameMap.get(row.child_professor_id) || null,
+      gross_amount: centsToMoney(row.gross_amount_cents),
+      adjustments_amount: centsToMoney(row.adjustments_amount_cents),
+      final_amount: centsToMoney(row.final_amount_cents)
+    }))
+  }
+}
+
+async function listFinancialPayouts(ctx: Awaited<ReturnType<typeof financialContext>>) {
+  if ('error' in ctx) return { error: ctx.error }
+  let query = ctx.sb.from('teacher_payouts')
+    .select('id, closing_id, child_professor_id, amount_cents, status, payment_method, paid_at, reference, notes, created_at')
+    .eq('site_id', ctx.siteId)
+    .order('created_at', { ascending: false })
+    .limit(100)
+  if (ctx.child) query = query.eq('child_professor_id', ctx.child.user_id)
+  const { data, error } = await query
+  if (error) return { error }
+  const nameMap = await mapProfileNames(ctx.sb, ctx.siteId, (data || []).map((row: any) => row.child_professor_id))
+  return {
+    data: (data || []).map((row: any) => ({
+      ...row,
+      child_professor_nome: nameMap.get(row.child_professor_id) || null,
+      amount: centsToMoney(row.amount_cents),
+      reference: row.reference ? `...${String(row.reference).slice(-6)}` : null
+    }))
+  }
+}
+
 app.get('/financial/summary', async (c) => {
   if (financialUnavailable(c.env)) return c.json({ error: 'Módulo financeiro desativado.' }, 503)
   const ctx = await financialContext(c)
@@ -1684,19 +1749,93 @@ app.get('/financial/payables', async (c) => {
   return c.json({ data: entries.data })
 })
 
+app.get('/financial/teachers', async (c) => {
+  if (financialUnavailable(c.env)) return c.json({ error: 'Módulo financeiro desativado.' }, 503)
+  const ctx = await financialContext(c)
+  if ('error' in ctx) return c.json({ error: ctx.error }, ctx.status)
+  if (ctx.child) return c.json({ error: 'Corretores filhos não acessam consolidação do professor.' }, 403)
+  const entries = await listFinancialEntries(ctx.sb, ctx.siteId)
+  if ('error' in entries) return c.json(dbError(), 500)
+  const payouts = await listFinancialPayouts(ctx)
+  if ('error' in payouts) return c.json(dbError(), 500)
+  const children = normalizeChildTeachers(ctx.cms).map((child: any) => ({
+    id: child.user_id || child.id,
+    nome: child.nome || child.email || 'Corretor',
+    email: child.email || null,
+    ativo: child.ativo !== false,
+    valor_correcao: Number(child.valor_correcao || child.valor_por_redacao || 0),
+    valor_revisao: Number(child.valor_revisao || child.valor_por_revisao || 0)
+  })).filter((child: any) => child.id)
+  const byChild = new Map<string, any>(children.map((child: any) => [child.id, {
+    ...child,
+    corrections_count: 0,
+    amount_total_cents: 0,
+    awaiting_closing_cents: 0,
+    in_closing_cents: 0,
+    paid_cents: 0,
+    disputed_count: 0,
+    payouts_count: 0,
+    payouts_total_cents: 0,
+    last_payment_at: null as string | null
+  }]))
+  for (const entry of entries.data || []) {
+    const id = entry.child_professor_id
+    if (!id) continue
+    if (!byChild.has(id)) {
+      byChild.set(id, {
+        id,
+        nome: entry.child_professor_nome || 'Corretor',
+        email: null,
+        ativo: true,
+        valor_correcao: 0,
+        valor_revisao: 0,
+        corrections_count: 0,
+        amount_total_cents: 0,
+        awaiting_closing_cents: 0,
+        in_closing_cents: 0,
+        paid_cents: 0,
+        disputed_count: 0,
+        payouts_count: 0,
+        payouts_total_cents: 0,
+        last_payment_at: null
+      })
+    }
+    const row = byChild.get(id)
+    const amount = Number(entry.amount_cents || 0)
+    row.corrections_count += 1
+    row.amount_total_cents += amount
+    if (entry.status === FINANCIAL_ENTRY_STATUS.AWAITING_CLOSING) row.awaiting_closing_cents += amount
+    if ([FINANCIAL_ENTRY_STATUS.IN_CLOSING, FINANCIAL_ENTRY_STATUS.APPROVED, FINANCIAL_ENTRY_STATUS.PARTIALLY_PAID].includes(entry.status)) row.in_closing_cents += amount
+    if (entry.status === FINANCIAL_ENTRY_STATUS.PAID) row.paid_cents += amount
+    if (entry.status === FINANCIAL_ENTRY_STATUS.DISPUTED) row.disputed_count += 1
+  }
+  for (const payout of payouts.data || []) {
+    const id = payout.child_professor_id
+    const row = byChild.get(id)
+    if (!row) continue
+    row.payouts_count += 1
+    row.payouts_total_cents += Number(payout.amount_cents || 0)
+    row.last_payment_at = row.last_payment_at || payout.paid_at || payout.created_at || null
+  }
+  return c.json({
+    data: [...byChild.values()].map((row: any) => ({
+      ...row,
+      amount_total: centsToMoney(row.amount_total_cents),
+      awaiting_closing: centsToMoney(row.awaiting_closing_cents),
+      in_closing: centsToMoney(row.in_closing_cents),
+      paid: centsToMoney(row.paid_cents),
+      payouts_total: centsToMoney(row.payouts_total_cents)
+    }))
+  })
+})
+
 app.get('/financial/closings', async (c) => {
   if (financialUnavailable(c.env)) return c.json({ error: 'Módulo financeiro desativado.' }, 503)
   const ctx = await financialContext(c)
   if ('error' in ctx) return c.json({ error: ctx.error }, ctx.status)
-  let query = ctx.sb.from('teacher_payment_closings')
-    .select('id, site_id, child_professor_id, parent_professor_id, period_start, period_end, status, entries_count, gross_amount_cents, adjustments_amount_cents, final_amount_cents, currency, approved_at, paid_at, notes, created_at, updated_at')
-    .eq('site_id', ctx.siteId)
-    .order('created_at', { ascending: false })
-    .limit(100)
-  if (ctx.child) query = query.eq('child_professor_id', ctx.child.user_id)
-  const { data, error } = await query
-  if (error) return c.json(dbError(), 500)
-  return c.json({ data: (data || []).map((row: any) => ({ ...row, gross_amount: centsToMoney(row.gross_amount_cents), final_amount: centsToMoney(row.final_amount_cents) })) })
+  const closings = await listFinancialClosings(ctx)
+  if ('error' in closings) return c.json(dbError(), 500)
+  return c.json({ data: closings.data })
 })
 
 app.post('/financial/closings', async (c) => {
@@ -1837,15 +1976,70 @@ app.get('/financial/payouts', async (c) => {
   if (financialUnavailable(c.env)) return c.json({ error: 'Módulo financeiro desativado.' }, 503)
   const ctx = await financialContext(c)
   if ('error' in ctx) return c.json({ error: ctx.error }, ctx.status)
-  let query = ctx.sb.from('teacher_payouts')
-    .select('id, closing_id, child_professor_id, amount_cents, status, payment_method, paid_at, reference, notes, created_at')
-    .eq('site_id', ctx.siteId)
-    .order('created_at', { ascending: false })
-    .limit(100)
-  if (ctx.child) query = query.eq('child_professor_id', ctx.child.user_id)
-  const { data, error } = await query
-  if (error) return c.json(dbError(), 500)
-  return c.json({ data: (data || []).map((row: any) => ({ ...row, amount: centsToMoney(row.amount_cents), reference: row.reference ? `...${String(row.reference).slice(-6)}` : null })) })
+  const payouts = await listFinancialPayouts(ctx)
+  if ('error' in payouts) return c.json(dbError(), 500)
+  return c.json({ data: payouts.data })
+})
+
+app.get('/financial/export.csv', async (c) => {
+  if (financialUnavailable(c.env)) return c.json({ error: 'Módulo financeiro desativado.' }, 503)
+  if (!getConfig(c.env).flags.financialExports) return c.json({ error: 'Exportação financeira desativada.' }, 503)
+  const ctx = await financialContext(c)
+  if ('error' in ctx) return c.json({ error: ctx.error }, ctx.status)
+  const type = String(c.req.query('type') || 'compensations').trim().toLowerCase()
+  const now = new Date().toISOString().slice(0, 10)
+
+  if (type === 'payables') {
+    if (ctx.child) return c.json({ error: 'Corretores filhos não exportam contas a pagar.' }, 403)
+    const entries = await listFinancialEntries(ctx.sb, ctx.siteId, c.req.query('child_professor_id') || null, c.req.query('status') || FINANCIAL_ENTRY_STATUS.AWAITING_CLOSING)
+    if ('error' in entries) return c.json(dbError(), 500)
+    return csvResponse(`financeiro-contas-a-pagar-${now}.csv`, [
+      ['Corretor', 'Turma', 'Aluno', 'Redação', 'Concluída em', 'Valor', 'Status', 'Regra'],
+      ...(entries.data || []).map((row: any) => [row.child_professor_nome, row.turma_nome, row.aluno_nome, row.correcao_titulo, row.corrected_at, centsToMoney(row.amount_cents), row.status, row.rule_source])
+    ])
+  }
+
+  if (type === 'closings') {
+    const closings = await listFinancialClosings(ctx)
+    if ('error' in closings) return c.json(dbError(), 500)
+    return csvResponse(`financeiro-fechamentos-${now}.csv`, [
+      ['Corretor', 'Período início', 'Período fim', 'Qtd.', 'Bruto', 'Ajustes', 'Final', 'Status', 'Aprovado em', 'Pago em', 'Criado em'],
+      ...(closings.data || []).map((row: any) => [row.child_professor_nome, row.period_start, row.period_end, row.entries_count, row.gross_amount, row.adjustments_amount, row.final_amount, row.status, row.approved_at, row.paid_at, row.created_at])
+    ])
+  }
+
+  if (type === 'payouts') {
+    const payouts = await listFinancialPayouts(ctx)
+    if ('error' in payouts) return c.json(dbError(), 500)
+    return csvResponse(`financeiro-pagamentos-${now}.csv`, [
+      ['Corretor', 'Fechamento', 'Valor', 'Status', 'Método', 'Referência', 'Pago em', 'Criado em'],
+      ...(payouts.data || []).map((row: any) => [row.child_professor_nome, row.closing_id, row.amount, row.status, row.payment_method, row.reference, row.paid_at, row.created_at])
+    ])
+  }
+
+  if (type === 'audit') {
+    if (ctx.child) return c.json({ error: 'Corretores filhos não exportam auditoria financeira.' }, 403)
+    const { data, error } = await ctx.sb.from('financial_audit_logs')
+      .select('id, target_table, target_id, action, metadata, created_at')
+      .eq('site_id', ctx.siteId)
+      .order('created_at', { ascending: false })
+      .limit(500)
+    if (error) return c.json(dbError(), 500)
+    return csvResponse(`financeiro-auditoria-${now}.csv`, [
+      ['Ação', 'Tabela', 'Registro', 'Detalhes', 'Criado em'],
+      ...(data || []).map((row: any) => [row.action, row.target_table, row.target_id, JSON.stringify(row.metadata || {}), row.created_at])
+    ])
+  }
+
+  const status = c.req.query('status')?.trim().toUpperCase() || null
+  const childId = ctx.child?.user_id || c.req.query('child_professor_id') || null
+  if (ctx.child && childId !== ctx.child.user_id) return c.json({ error: 'Acesso negado.' }, 403)
+  const entries = await listFinancialEntries(ctx.sb, ctx.siteId, childId, status)
+  if ('error' in entries) return c.json(dbError(), 500)
+  return csvResponse(`financeiro-lancamentos-${now}.csv`, [
+    ['Corretor', 'Turma', 'Aluno', 'Redação', 'Tipo', 'Atribuída em', 'Concluída em', 'Valor', 'Status', 'Regra'],
+    ...(entries.data || []).map((row: any) => [row.child_professor_nome, row.turma_nome, row.aluno_nome, row.correcao_titulo, row.correction_type, row.assigned_at, row.corrected_at, centsToMoney(row.amount_cents), row.status, row.rule_source])
+  ])
 })
 
 app.get('/financial/audit', async (c) => {

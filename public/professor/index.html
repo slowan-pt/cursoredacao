@@ -6566,7 +6566,91 @@ function brl(value) {
   return `R$ ${formatMoneyBR(Number(value || 0))}`
 }
 
-async function loadMeusGanhos() {
+const financialState = {
+  tab: 'overview',
+  childTab: 'overview',
+  selectedPayables: new Set(),
+  payables: [],
+  closings: [],
+  payouts: [],
+  compensations: [],
+  audit: [],
+  teachers: [],
+  summary: null
+}
+
+function financialTabs(active, items, target) {
+  return `<div class="alunos-tabs" style="margin-bottom:14px">${items.map(item => `
+    <button class="alunos-tab ${active === item.id ? 'active' : ''}" type="button" onclick="${target}('${item.id}')">${esc(item.label)}</button>
+  `).join('')}</div>`
+}
+
+function financialApi(path, options = {}) {
+  const headers = { ...(options.headers || {}) }
+  if (options.body && !headers['Content-Type']) headers['Content-Type'] = 'application/json'
+  return fetch(path, { ...options, headers })
+}
+
+function newIdempotencyKey(prefix) {
+  return `${prefix}:${crypto.randomUUID()}`
+}
+
+function rowAmountCents(row) {
+  return Number(row.amount_cents || Math.round(Number(row.amount || 0) * 100) || 0)
+}
+
+function canExportFinancial() {
+  return currentSite?.feature_flags?.financial_exports === true
+}
+
+function canChartFinancial() {
+  return currentSite?.feature_flags?.financial_charts === true
+}
+
+function downloadFinancialCsv(type) {
+  window.open(`/api/admin/financial/export.csv?type=${encodeURIComponent(type)}`, '_blank')
+}
+
+function renderExportButtons(types) {
+  if (!canExportFinancial()) return ''
+  return `<div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:12px">${types.map(t => `
+    <button class="btn btn-sec btn-sm" type="button" onclick="downloadFinancialCsv('${t.id}')">⬇ ${esc(t.label)}</button>
+  `).join('')}</div>`
+}
+
+function renderFinancialMiniChart(rows) {
+  if (!canChartFinancial() || !rows.length) return ''
+  const totals = rows.reduce((acc, row) => {
+    const key = row.status || 'OUTROS'
+    acc[key] = (acc[key] || 0) + rowAmountCents(row)
+    return acc
+  }, {})
+  const max = Math.max(1, ...Object.values(totals))
+  return `<div class="card-soft" style="margin-bottom:14px">
+    <strong>Distribuição por status</strong>
+    <div style="display:grid;gap:8px;margin-top:10px">
+      ${Object.entries(totals).map(([status, cents]) => `
+        <div>
+          <div style="display:flex;justify-content:space-between;font-size:12px"><span>${financialBadge(status)}</span><strong>${brl(Number(cents) / 100)}</strong></div>
+          <div style="height:8px;background:#eef0f4;border-radius:99px;overflow:hidden;margin-top:5px"><div style="height:100%;width:${Math.max(4, Math.round(Number(cents) / max * 100))}%;background:var(--accent)"></div></div>
+        </div>
+      `).join('')}
+    </div>
+  </div>`
+}
+
+function setFinanceiroTab(tab) {
+  financialState.tab = tab
+  renderFinanceiro()
+}
+
+function setGanhosTab(tab) {
+  financialState.childTab = tab
+  renderGanhos()
+}
+
+async function loadMeusGanhos(tab = financialState.childTab) {
+  financialState.childTab = tab || 'overview'
   const box = document.getElementById('ganhos-content')
   if (!box) return
   box.innerHTML = '<div class="empty">Carregando ganhos...</div>'
@@ -6582,101 +6666,303 @@ async function loadMeusGanhos() {
       box.innerHTML = `<div class="empty">${data.error || 'Financeiro indisponível.'}</div>`
       return
     }
-    const summary = await summaryRes.json()
-    const comps = compRes.ok ? await compRes.json() : { data: [] }
-    const closings = closingsRes.ok ? await closingsRes.json() : { data: [] }
-    const payouts = payoutsRes.ok ? await payoutsRes.json() : { data: [] }
-    document.getElementById('ganhos-env').style.display = summary.sandbox ? '' : 'none'
-    const s = summary.summary || {}
-    box.innerHTML = `
-      <div class="grid-3" style="margin-bottom:16px">
-        <div class="kpi-card"><div class="kpi-label">Hoje</div><div class="kpi-value">${brl(s.amount_today)}</div><div class="kpi-sub">${s.corrections_today || 0} correções</div></div>
-        <div class="kpi-card"><div class="kpi-label">No mês</div><div class="kpi-value">${brl(s.amount_month)}</div><div class="kpi-sub">${s.corrections_month || 0} correções</div></div>
-        <div class="kpi-card"><div class="kpi-label">Pendente</div><div class="kpi-value">${brl(s.pending)}</div><div class="kpi-sub">aguardando pagamento</div></div>
-      </div>
-      <div class="grid-2" style="margin-bottom:16px">
-        <div class="card-soft"><strong>Aguardando fechamento</strong><p>${brl(s.awaiting_closing)}</p></div>
-        <div class="card-soft"><strong>Pago</strong><p>${brl(s.paid)}</p></div>
-      </div>
-      <h3 style="font-size:15px;margin:18px 0 10px">Correções remuneradas</h3>
-      ${renderFinancialRows(comps.data || [], true)}
-      <h3 style="font-size:15px;margin:18px 0 10px">Fechamentos</h3>
-      ${renderClosingRows(closings.data || [])}
-      <h3 style="font-size:15px;margin:18px 0 10px">Pagamentos recebidos</h3>
-      ${renderPayoutRows(payouts.data || [])}
-    `
+    financialState.summary = await summaryRes.json()
+    financialState.compensations = compRes.ok ? (await compRes.json()).data || [] : []
+    financialState.closings = closingsRes.ok ? (await closingsRes.json()).data || [] : []
+    financialState.payouts = payoutsRes.ok ? (await payoutsRes.json()).data || [] : []
+    document.getElementById('ganhos-env').style.display = financialState.summary.sandbox ? '' : 'none'
+    renderGanhos()
   } catch {
     box.innerHTML = '<div class="empty">Não foi possível carregar o financeiro.</div>'
   }
 }
 
-function renderFinancialRows(rows, compact = false) {
+function renderGanhos() {
+  const box = document.getElementById('ganhos-content')
+  if (!box) return
+  const s = financialState.summary?.summary || {}
+  const tabs = financialTabs(financialState.childTab, [
+    { id: 'overview', label: 'Resumo' },
+    { id: 'compensations', label: 'Correções' },
+    { id: 'closings', label: 'Fechamentos' },
+    { id: 'payouts', label: 'Pagamentos' },
+    { id: 'disputes', label: 'Contestações' }
+  ], 'setGanhosTab')
+  const cards = `<div class="grid-3" style="margin-bottom:16px">
+    <div class="kpi-card"><div class="kpi-label">Hoje</div><div class="kpi-value">${brl(s.amount_today)}</div><div class="kpi-sub">${s.corrections_today || 0} correções</div></div>
+    <div class="kpi-card"><div class="kpi-label">No mês</div><div class="kpi-value">${brl(s.amount_month)}</div><div class="kpi-sub">${s.corrections_month || 0} correções</div></div>
+    <div class="kpi-card"><div class="kpi-label">Pendente</div><div class="kpi-value">${brl(s.pending)}</div><div class="kpi-sub">aguardando pagamento</div></div>
+  </div>`
+  let content = ''
+  if (financialState.childTab === 'closings') content = renderClosingRows(financialState.closings, true)
+  else if (financialState.childTab === 'payouts') content = renderPayoutRows(financialState.payouts, true)
+  else if (financialState.childTab === 'disputes') content = renderFinancialRows(financialState.compensations.filter(r => r.status === 'DISPUTED'), true, { childActions: true })
+  else if (financialState.childTab === 'compensations') content = renderFinancialRows(financialState.compensations, true, { childActions: true })
+  else content = `${cards}<div class="grid-2" style="margin-bottom:16px"><div class="card-soft"><strong>Aguardando fechamento</strong><p>${brl(s.awaiting_closing)}</p></div><div class="card-soft"><strong>Pago</strong><p>${brl(s.paid)}</p></div></div>${renderFinancialMiniChart(financialState.compensations)}<h3 style="font-size:15px;margin:18px 0 10px">Últimas correções remuneradas</h3>${renderFinancialRows(financialState.compensations.slice(0, 8), true, { childActions: true })}`
+  box.innerHTML = `${tabs}${renderExportButtons([{ id:'compensations', label:'CSV lançamentos' }, { id:'closings', label:'CSV fechamentos' }, { id:'payouts', label:'CSV pagamentos' }])}${financialState.childTab === 'overview' ? content : cards + content}`
+}
+
+function renderFinancialRows(rows, compact = false, options = {}) {
   if (!rows.length) return '<div class="empty">Nenhum lançamento financeiro ainda.</div>'
   return `<div style="overflow:auto"><table class="table"><thead><tr>
-    ${compact ? '' : '<th>Corretor</th>'}<th>Turma</th><th>Aluno</th><th>Redação</th><th>Concluída</th><th>Valor</th><th>Status</th><th>Regra</th>
+    ${options.selectable ? '<th></th>' : ''}${compact ? '' : '<th>Corretor</th>'}<th>Turma</th><th>Aluno</th><th>Redação</th><th>Concluída</th><th>Valor</th><th>Status</th><th>Regra</th>${options.childActions ? '<th>Ações</th>' : ''}
   </tr></thead><tbody>${rows.map(row => `<tr>
-    ${compact ? '' : `<td>${row.child_professor_nome || '—'}</td>`}
-    <td>${row.turma_nome || '—'}</td>
-    <td>${row.aluno_nome || 'Aluno'}</td>
-    <td>${row.correcao_titulo || 'Redação'}</td>
+    ${options.selectable ? `<td><input type="checkbox" ${financialState.selectedPayables.has(row.id) ? 'checked' : ''} onchange="togglePayableSelection('${esc(row.id)}', this.checked)"></td>` : ''}
+    ${compact ? '' : `<td>${esc(row.child_professor_nome || '—')}</td>`}
+    <td>${esc(row.turma_nome || '—')}</td>
+    <td>${esc(row.aluno_nome || 'Aluno')}</td>
+    <td>${esc(row.correcao_titulo || 'Redação')}</td>
     <td>${fmtDate(row.corrected_at)}</td>
     <td><strong>${brl(row.amount)}</strong></td>
     <td>${financialBadge(row.status)}</td>
-    <td>${row.rule_source || '—'}</td>
+    <td>${esc(row.rule_source || '—')}</td>
+    ${options.childActions ? `<td>${row.status === 'AWAITING_CLOSING' ? `<button class="btn btn-sec btn-sm" type="button" onclick="disputeCompensation('${esc(row.id)}')">Contestar</button>` : '—'}</td>` : ''}
   </tr>`).join('')}</tbody></table></div>`
 }
 
-function renderClosingRows(rows) {
+function renderClosingRows(rows, compact = false) {
   if (!rows.length) return '<div class="empty">Nenhum fechamento criado.</div>'
-  return `<div style="overflow:auto"><table class="table"><thead><tr><th>Período</th><th>Qtd.</th><th>Total</th><th>Status</th><th>Criado</th></tr></thead><tbody>
-    ${rows.map(row => `<tr><td>${fmtDate(row.period_start)} a ${fmtDate(row.period_end)}</td><td>${row.entries_count || 0}</td><td><strong>${brl(row.final_amount)}</strong></td><td>${financialBadge(row.status)}</td><td>${fmtDate(row.created_at)}</td></tr>`).join('')}
+  return `<div style="overflow:auto"><table class="table"><thead><tr>${compact ? '' : '<th>Corretor</th>'}<th>Período</th><th>Qtd.</th><th>Bruto</th><th>Ajustes</th><th>Total</th><th>Status</th><th>Criado</th>${compact ? '' : '<th>Ações</th>'}</tr></thead><tbody>
+    ${rows.map(row => `<tr>${compact ? '' : `<td>${esc(row.child_professor_nome || '—')}</td>`}<td>${fmtDate(row.period_start)} a ${fmtDate(row.period_end)}</td><td>${row.entries_count || 0}</td><td>${brl(row.gross_amount)}</td><td>${brl(row.adjustments_amount)}</td><td><strong>${brl(row.final_amount)}</strong></td><td>${financialBadge(row.status)}</td><td>${fmtDate(row.created_at)}</td>${compact ? '' : `<td>${renderClosingActions(row)}</td>`}</tr>`).join('')}
   </tbody></table></div>`
 }
 
-function renderPayoutRows(rows) {
+function renderClosingActions(row) {
+  const actions = []
+  if (row.status === 'IN_CLOSING') actions.push(`<button class="btn btn-accent btn-sm" type="button" onclick="approveClosing('${esc(row.id)}')">Aprovar</button>`)
+  if (['IN_CLOSING','APPROVED','PARTIALLY_PAID'].includes(row.status)) actions.push(`<button class="btn btn-sec btn-sm" type="button" onclick="addClosingAdjustment('${esc(row.id)}')">Ajuste</button>`)
+  if (['APPROVED','PARTIALLY_PAID'].includes(row.status)) actions.push(`<button class="btn btn-brand btn-sm" type="button" onclick="registerPayout('${esc(row.id)}', ${Number(row.final_amount || 0)})">Pagar</button>`)
+  if (row.status === 'IN_CLOSING') actions.push(`<button class="btn btn-danger btn-sm" type="button" onclick="cancelClosing('${esc(row.id)}')">Cancelar</button>`)
+  return actions.length ? `<div style="display:flex;gap:6px;flex-wrap:wrap">${actions.join('')}</div>` : '—'
+}
+
+function renderPayoutRows(rows, compact = false) {
   if (!rows.length) return '<div class="empty">Nenhum pagamento registrado.</div>'
-  return `<div style="overflow:auto"><table class="table"><thead><tr><th>Data</th><th>Valor</th><th>Método</th><th>Referência</th><th>Status</th></tr></thead><tbody>
-    ${rows.map(row => `<tr><td>${fmtDate(row.paid_at || row.created_at)}</td><td><strong>${brl(row.amount)}</strong></td><td>${row.payment_method || 'Manual'}</td><td>${row.reference || '—'}</td><td>${financialBadge(row.status)}</td></tr>`).join('')}
+  return `<div style="overflow:auto"><table class="table"><thead><tr>${compact ? '' : '<th>Corretor</th>'}<th>Data</th><th>Valor</th><th>Método</th><th>Referência</th><th>Status</th>${compact ? '' : '<th>Ações</th>'}</tr></thead><tbody>
+    ${rows.map(row => `<tr>${compact ? '' : `<td>${esc(row.child_professor_nome || '—')}</td>`}<td>${fmtDate(row.paid_at || row.created_at)}</td><td><strong>${brl(row.amount)}</strong></td><td>${esc(row.payment_method || 'Manual')}</td><td>${esc(row.reference || '—')}</td><td>${financialBadge(row.status)}</td>${compact ? '' : `<td>${row.status !== 'REVERSED' ? `<button class="btn btn-danger btn-sm" type="button" onclick="reversePayout('${esc(row.id)}')">Estornar</button>` : '—'}</td>`}</tr>`).join('')}
   </tbody></table></div>`
 }
 
-async function loadFinanceiro() {
+async function loadFinanceiro(tab = financialState.tab) {
+  financialState.tab = tab || 'overview'
   const box = document.getElementById('financeiro-content')
   if (!box) return
   box.innerHTML = '<div class="empty">Carregando financeiro...</div>'
   try {
-    const [summaryRes, payablesRes, closingsRes, payoutsRes] = await Promise.all([
+    const [summaryRes, payablesRes, closingsRes, payoutsRes, teachersRes, auditRes] = await Promise.all([
       fetch('/api/admin/financial/summary'),
       fetch('/api/admin/financial/payables'),
       fetch('/api/admin/financial/closings'),
-      fetch('/api/admin/financial/payouts')
+      fetch('/api/admin/financial/payouts'),
+      fetch('/api/admin/financial/teachers'),
+      fetch('/api/admin/financial/audit')
     ])
     if (!summaryRes.ok) {
       const data = await summaryRes.json().catch(() => ({}))
       box.innerHTML = `<div class="empty">${data.error || 'Financeiro indisponível.'}</div>`
       return
     }
-    const summary = await summaryRes.json()
-    const payables = payablesRes.ok ? await payablesRes.json() : { data: [] }
-    const closings = closingsRes.ok ? await closingsRes.json() : { data: [] }
-    const payouts = payoutsRes.ok ? await payoutsRes.json() : { data: [] }
-    const s = summary.summary || {}
-    box.innerHTML = `
-      <div class="grid-3" style="margin-bottom:16px">
-        <div class="kpi-card"><div class="kpi-label">A pagar</div><div class="kpi-value">${brl(s.awaiting_closing)}</div><div class="kpi-sub">aguardando fechamento</div></div>
-        <div class="kpi-card"><div class="kpi-label">Em fechamento</div><div class="kpi-value">${brl(s.in_closing)}</div><div class="kpi-sub">liberado/em fechamento</div></div>
-        <div class="kpi-card"><div class="kpi-label">Pago</div><div class="kpi-value">${brl(s.paid)}</div><div class="kpi-sub">pagamentos registrados</div></div>
-      </div>
-      <h3 style="font-size:15px;margin:18px 0 10px">Correções a pagar</h3>
-      ${renderFinancialRows(payables.data || [])}
-      <h3 style="font-size:15px;margin:18px 0 10px">Fechamentos</h3>
-      ${renderClosingRows(closings.data || [])}
-      <h3 style="font-size:15px;margin:18px 0 10px">Pagamentos realizados</h3>
-      ${renderPayoutRows(payouts.data || [])}
-    `
+    financialState.summary = await summaryRes.json()
+    financialState.payables = payablesRes.ok ? (await payablesRes.json()).data || [] : []
+    financialState.closings = closingsRes.ok ? (await closingsRes.json()).data || [] : []
+    financialState.payouts = payoutsRes.ok ? (await payoutsRes.json()).data || [] : []
+    financialState.teachers = teachersRes.ok ? (await teachersRes.json()).data || [] : []
+    financialState.audit = auditRes.ok ? (await auditRes.json()).data || [] : []
+    renderFinanceiro()
   } catch {
     box.innerHTML = '<div class="empty">Não foi possível carregar o financeiro.</div>'
   }
+}
+
+function renderFinanceiro() {
+  const box = document.getElementById('financeiro-content')
+  if (!box) return
+  const s = financialState.summary?.summary || {}
+  const tabs = financialTabs(financialState.tab, [
+    { id: 'overview', label: 'Resumo' },
+    { id: 'teachers', label: 'Corretores' },
+    { id: 'payables', label: 'A pagar' },
+    { id: 'closings', label: 'Fechamentos' },
+    { id: 'payouts', label: 'Pagamentos' },
+    { id: 'audit', label: 'Auditoria' }
+  ], 'setFinanceiroTab')
+  const cards = `<div class="grid-3" style="margin-bottom:16px">
+    <div class="kpi-card"><div class="kpi-label">A pagar</div><div class="kpi-value">${brl(s.awaiting_closing)}</div><div class="kpi-sub">aguardando fechamento</div></div>
+    <div class="kpi-card"><div class="kpi-label">Em fechamento</div><div class="kpi-value">${brl(s.in_closing)}</div><div class="kpi-sub">liberado/em fechamento</div></div>
+    <div class="kpi-card"><div class="kpi-label">Pago</div><div class="kpi-value">${brl(s.paid)}</div><div class="kpi-sub">pagamentos registrados</div></div>
+  </div>`
+  let content = ''
+  if (financialState.tab === 'teachers') content = renderTeacherFinancialRows()
+  else if (financialState.tab === 'payables') content = renderPayablesPanel()
+  else if (financialState.tab === 'closings') content = renderClosingRows(financialState.closings)
+  else if (financialState.tab === 'payouts') content = renderPayoutRows(financialState.payouts)
+  else if (financialState.tab === 'audit') content = renderAuditRows()
+  else content = `${cards}${renderFinancialMiniChart(financialState.payables.concat(financialState.closings))}<div class="grid-2" style="margin-bottom:16px"><div class="card-soft"><strong>Corretores ativos</strong><p>${financialState.teachers.filter(t => t.ativo !== false).length}</p></div><div class="card-soft"><strong>Fechamentos abertos</strong><p>${financialState.closings.filter(c => ['IN_CLOSING','APPROVED','PARTIALLY_PAID'].includes(c.status)).length}</p></div></div><h3 style="font-size:15px;margin:18px 0 10px">Correções a pagar</h3>${renderFinancialRows(financialState.payables.slice(0, 8))}`
+  box.innerHTML = `${tabs}${renderExportButtons([{ id:'payables', label:'CSV a pagar' }, { id:'closings', label:'CSV fechamentos' }, { id:'payouts', label:'CSV pagamentos' }, { id:'audit', label:'CSV auditoria' }])}${financialState.tab === 'overview' ? content : cards + content}`
+}
+
+function renderTeacherFinancialRows() {
+  if (!financialState.teachers.length) return '<div class="empty">Nenhum corretor com regra financeira.</div>'
+  return `<div style="overflow:auto"><table class="table"><thead><tr><th>Corretor</th><th>Status</th><th>Correções</th><th>A pagar</th><th>Em fechamento</th><th>Pago</th><th>Último pagamento</th></tr></thead><tbody>
+    ${financialState.teachers.map(row => `<tr><td><strong>${esc(row.nome)}</strong><br><small>${esc(row.email || '')}</small></td><td>${row.ativo ? '<span class="tag tag-done">Ativo</span>' : '<span class="tag tag-pend">Inativo</span>'}</td><td>${row.corrections_count || 0}</td><td><strong>${brl(row.awaiting_closing)}</strong></td><td>${brl(row.in_closing)}</td><td>${brl(row.paid)}</td><td>${fmtDate(row.last_payment_at)}</td></tr>`).join('')}
+  </tbody></table></div>`
+}
+
+function selectedPayablesRows() {
+  return financialState.payables.filter(row => financialState.selectedPayables.has(row.id))
+}
+
+function selectedPayablesTotal() {
+  return selectedPayablesRows().reduce((sum, row) => sum + rowAmountCents(row), 0) / 100
+}
+
+function togglePayableSelection(id, checked) {
+  const row = financialState.payables.find(item => item.id === id)
+  if (!row) return
+  if (checked) {
+    const current = selectedPayablesRows()[0]
+    if (current && current.child_professor_id !== row.child_professor_id) {
+      alert('Selecione lançamentos de apenas um corretor por fechamento.')
+      renderFinanceiro()
+      return
+    }
+    financialState.selectedPayables.add(id)
+  } else {
+    financialState.selectedPayables.delete(id)
+  }
+  renderFinanceiro()
+}
+
+function selectAllVisiblePayables() {
+  const rows = financialState.payables
+  const first = rows[0]
+  financialState.selectedPayables.clear()
+  rows.filter(row => !first || row.child_professor_id === first.child_professor_id).forEach(row => financialState.selectedPayables.add(row.id))
+  renderFinanceiro()
+}
+
+function clearPayableSelection() {
+  financialState.selectedPayables.clear()
+  renderFinanceiro()
+}
+
+function renderPayablesPanel() {
+  const rows = selectedPayablesRows()
+  return `
+    <div class="card-soft" style="display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;margin-bottom:12px">
+      <div><strong>${rows.length} lançamento(s) selecionado(s)</strong><p style="margin:4px 0 0;color:var(--ink3);font-size:12px">Total previsto: ${brl(selectedPayablesTotal())}</p></div>
+      <div style="display:flex;gap:8px;flex-wrap:wrap">
+        <button class="btn btn-sec btn-sm" type="button" onclick="selectAllVisiblePayables()">Selecionar visíveis</button>
+        <button class="btn btn-sec btn-sm" type="button" onclick="clearPayableSelection()">Limpar seleção</button>
+        <button class="btn btn-accent btn-sm" type="button" ${rows.length ? '' : 'disabled'} onclick="createClosingFromSelection()">Criar fechamento</button>
+      </div>
+    </div>
+    ${renderFinancialRows(financialState.payables, false, { selectable: true })}
+  `
+}
+
+function renderAuditRows() {
+  if (!financialState.audit.length) return '<div class="empty">Nenhum evento de auditoria ainda.</div>'
+  return `<div style="overflow:auto"><table class="table"><thead><tr><th>Data</th><th>Ação</th><th>Origem</th><th>Detalhes</th></tr></thead><tbody>
+    ${financialState.audit.map(row => `<tr><td>${fmtDateTime(row.created_at)}</td><td><strong>${esc(row.action)}</strong></td><td>${esc(row.target_table || '—')}</td><td><small>${esc(JSON.stringify(row.metadata || {})).slice(0, 180)}</small></td></tr>`).join('')}
+  </tbody></table></div>`
+}
+
+async function createClosingFromSelection() {
+  const rows = selectedPayablesRows()
+  if (!rows.length) return
+  const child = rows[0].child_professor_id
+  const notes = prompt('Observação do fechamento (opcional):', '') || ''
+  const res = await financialApi('/api/admin/financial/closings', {
+    method: 'POST',
+    headers: { 'Idempotency-Key': newIdempotencyKey('ui-closing') },
+    body: JSON.stringify({ child_professor_id: child, entry_ids: rows.map(r => r.id), notes })
+  })
+  const data = await res.json().catch(() => ({}))
+  if (!res.ok) return alert(data.error || 'Não foi possível criar o fechamento.')
+  financialState.selectedPayables.clear()
+  await loadFinanceiro('closings')
+}
+
+async function approveClosing(id) {
+  if (!confirm('Aprovar este fechamento para pagamento?')) return
+  const res = await financialApi(`/api/admin/financial/closings/${encodeURIComponent(id)}/approve`, {
+    method: 'PATCH',
+    headers: { 'Idempotency-Key': newIdempotencyKey('ui-approve') },
+    body: JSON.stringify({})
+  })
+  const data = await res.json().catch(() => ({}))
+  if (!res.ok) return alert(data.error || 'Não foi possível aprovar.')
+  await loadFinanceiro('closings')
+}
+
+async function addClosingAdjustment(id) {
+  const value = prompt('Valor do ajuste. Use negativo para desconto. Ex: -10,00 ou 25,00:', '0,00')
+  if (value == null) return
+  const reason = prompt('Motivo do ajuste:', 'Ajuste manual') || ''
+  const cents = Math.round(parseMoneyBR(value) * 100) * (String(value).trim().startsWith('-') ? -1 : 1)
+  const res = await financialApi(`/api/admin/financial/closings/${encodeURIComponent(id)}/adjustments`, {
+    method: 'POST',
+    headers: { 'Idempotency-Key': newIdempotencyKey('ui-adjustment') },
+    body: JSON.stringify({ amount_cents: cents, reason, adjustment_type: 'MANUAL' })
+  })
+  const data = await res.json().catch(() => ({}))
+  if (!res.ok) return alert(data.error || 'Não foi possível registrar o ajuste.')
+  await loadFinanceiro('closings')
+}
+
+async function registerPayout(id, suggestedAmount) {
+  const value = prompt('Valor pago:', formatMoneyBR(suggestedAmount))
+  if (value == null) return
+  const reference = prompt('Referência do pagamento (PIX, comprovante, observação):', '') || ''
+  const cents = Math.round(parseMoneyBR(value) * 100)
+  const res = await financialApi(`/api/admin/financial/closings/${encodeURIComponent(id)}/payouts`, {
+    method: 'POST',
+    headers: { 'Idempotency-Key': newIdempotencyKey('ui-payout') },
+    body: JSON.stringify({ amount_cents: cents, payment_method: 'MANUAL', reference })
+  })
+  const data = await res.json().catch(() => ({}))
+  if (!res.ok) return alert(data.error || 'Não foi possível registrar o pagamento.')
+  await loadFinanceiro('payouts')
+  if (typeof loadNotifications === 'function') loadNotifications()
+}
+
+async function cancelClosing(id) {
+  const reason = prompt('Motivo do cancelamento:', 'Cancelamento manual')
+  if (reason == null) return
+  const res = await financialApi(`/api/admin/financial/closings/${encodeURIComponent(id)}/cancel`, {
+    method: 'POST',
+    headers: { 'Idempotency-Key': newIdempotencyKey('ui-cancel-closing') },
+    body: JSON.stringify({ reason })
+  })
+  const data = await res.json().catch(() => ({}))
+  if (!res.ok) return alert(data.error || 'Não foi possível cancelar.')
+  await loadFinanceiro('closings')
+}
+
+async function reversePayout(id) {
+  const reason = prompt('Motivo do estorno:', 'Estorno manual')
+  if (reason == null) return
+  const res = await financialApi(`/api/admin/financial/payouts/${encodeURIComponent(id)}/reverse`, {
+    method: 'POST',
+    headers: { 'Idempotency-Key': newIdempotencyKey('ui-reverse-payout') },
+    body: JSON.stringify({ reason })
+  })
+  const data = await res.json().catch(() => ({}))
+  if (!res.ok) return alert(data.error || 'Não foi possível estornar.')
+  await loadFinanceiro('payouts')
+}
+
+async function disputeCompensation(id) {
+  const reason = prompt('Explique a contestação deste lançamento:', '')
+  if (!reason) return
+  const res = await financialApi(`/api/admin/financial/compensations/${encodeURIComponent(id)}/dispute`, {
+    method: 'POST',
+    body: JSON.stringify({ reason })
+  })
+  const data = await res.json().catch(() => ({}))
+  if (!res.ok) return alert(data.error || 'Não foi possível contestar.')
+  await loadMeusGanhos('disputes')
 }
 
 function showPage(name, link) {
