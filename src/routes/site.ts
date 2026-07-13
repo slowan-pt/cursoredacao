@@ -19,6 +19,42 @@ function esc(value: unknown) {
     .replaceAll("'", '&#39;')
 }
 
+function plainText(value: unknown) {
+  return String(value ?? '').replace(/<[^>]*>/g, ' ').replace(/\s+/g, ' ').trim()
+}
+
+function truncateText(value: unknown, limit = 160) {
+  const text = plainText(value)
+  return text.length > limit ? `${text.slice(0, limit - 1).trim()}…` : text
+}
+
+function sanitizeRichHtml(value: unknown) {
+  let html = String(value ?? '')
+  html = html.replace(/<\s*(script|iframe|object|embed|style|form|input|button|textarea|select)[^>]*>[\s\S]*?<\s*\/\s*\1\s*>/gi, '')
+  html = html.replace(/<\s*(script|iframe|object|embed|style|form|input|button|textarea|select)[^>]*\/?>/gi, '')
+  html = html.replace(/\son[a-z]+\s*=\s*(".*?"|'.*?'|[^\s>]+)/gi, '')
+  html = html.replace(/\s(href|src)\s*=\s*("|')\s*javascript:[\s\S]*?\2/gi, '')
+  html = html.replace(/\sstyle\s*=\s*("|')([^"']*)\1/gi, (_match, quote, style) => {
+    const safe = String(style).split(';').map((rule) => {
+      const [prop, ...rest] = rule.split(':')
+      const key = String(prop || '').trim().toLowerCase()
+      const val = rest.join(':').trim()
+      if (!['color', 'background-color', 'font-size', 'font-family', 'text-align', 'line-height', 'letter-spacing', 'text-decoration', 'font-weight', 'font-style', 'box-shadow', 'padding', 'border-radius'].includes(key)) return ''
+      if (/url\s*\(|expression\s*\(|javascript:/i.test(val)) return ''
+      return `${key}:${esc(val)}`
+    }).filter(Boolean).join(';')
+    return safe ? ` style=${quote}${safe}${quote}` : ''
+  })
+  return html.replace(/<\/?([a-z0-9-]+)([^>]*)>/gi, (match, tag, attrs) => {
+    const allowed = ['b', 'strong', 'i', 'em', 'u', 'p', 'br', 'div', 'span', 'ul', 'ol', 'li', 'a', 'img', 'h2', 'h3', 'h4', 'blockquote', 'font']
+    if (!allowed.includes(String(tag).toLowerCase())) return esc(match)
+    const safeAttrs = String(attrs || '')
+      .replace(/\s(?!href=|src=|alt=|title=|target=|rel=|style=)[a-z0-9:-]+(?:\s*=\s*(".*?"|'.*?'|[^\s>]+))?/gi, '')
+      .replace(/\s(href|src)\s*=\s*("|')((?!https?:\/\/|mailto:|data:image\/)[^"']*)\2/gi, '')
+    return `<${match.startsWith('</') ? '/' : ''}${tag}${match.startsWith('</') ? '' : safeAttrs}>`
+  })
+}
+
 function moneyBR(value: unknown) {
   const n = Number(value || 0)
   return n > 0 ? `R$ ${n.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}` : 'Gratuito'
@@ -472,12 +508,13 @@ h1{font-size:clamp(36px,5vw,62px);line-height:1.02;letter-spacing:-1px;font-weig
 .band{background:var(--card);border-top:1px solid var(--border);border-bottom:1px solid var(--border);text-align:center}
 .band p{color:var(--ink3);margin:8px auto 24px;max-width:520px}
 .content-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:18px}
-.post-card{background:var(--card);border:1px solid var(--border);border-radius:var(--r2);padding:22px;display:flex;flex-direction:column;gap:12px;height:282px;overflow:hidden}
+.post-card{background:var(--card);border:1px solid var(--border);border-radius:var(--r2);padding:22px;display:flex;flex-direction:column;gap:12px;min-height:282px;overflow:hidden}
 .post-card .post-type{font-size:10px;font-weight:900;color:var(--brand);text-transform:uppercase;letter-spacing:.08em}
 .post-card h3{font-size:18px;line-height:1.25;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
-.post-card p{font-size:13px;color:var(--ink2);line-height:1.65;display:-webkit-box;-webkit-line-clamp:3;-webkit-box-orient:vertical;overflow:hidden}
-.post-body{font-size:13px;color:var(--ink2);line-height:1.7;white-space:pre-line;border-top:1px solid var(--border);padding-top:12px;margin-top:2px;max-height:78px;overflow:hidden}
+.post-card p{font-size:13px;color:var(--ink2);line-height:1.65;min-height:62px}
+.post-body{font-size:13px;color:var(--ink2);line-height:1.7;border-top:1px solid var(--border);padding-top:12px;margin-top:2px}
 .post-card .read-more{margin-top:auto;align-self:flex-start}
+.rich-output img{max-width:100%;border-radius:12px;display:block;margin:12px 0}.rich-output ul,.rich-output ol{padding-left:24px;margin:10px 0}.rich-output li{margin:5px 0}.rich-output a{color:var(--brand);font-weight:800;text-decoration:underline}.rich-output blockquote{border-left:4px solid var(--accent);padding:8px 12px;background:rgba(0,0,0,.04);border-radius:8px;margin:12px 0}.rich-output p{margin:0 0 12px}
 .reveal{opacity:0;transform:translateY(28px);transition:opacity .7s ease,transform .7s ease}
 .reveal.is-visible{opacity:1;transform:none}
 @media(prefers-reduced-motion:reduce){.reveal,.card,.btn,.course-cover img,.course-arrow{transition:none!important;transform:none!important}.reveal{opacity:1}}
@@ -529,7 +566,7 @@ footer{background:#111;color:rgba(255,255,255,.45);padding:34px 6%;font-size:12p
 .site-modal-alert{display:none;margin-top:10px;background:#fff2f2;color:#b91c1c;border:1px solid #fecaca;border-radius:8px;padding:10px 12px;font-size:13px;font-weight:700}
 @keyframes savePulse{0%,100%{box-shadow:0 0 0 0 rgba(197,241,53,.55);transform:translateY(0)}50%{box-shadow:0 0 0 7px rgba(197,241,53,0);transform:translateY(-1px)}}
 ${blockOrderCss}
-@media(max-width:860px){.hero{grid-template-columns:1fr}.hero.profile-left .profile,.hero.profile-left .hero-copy{grid-column:auto;grid-row:auto}.grid,.content-grid{grid-template-columns:1fr}.site-carousel .card,.site-carousel .post-card{flex-basis:86%}.carousel-prev{left:4px}.carousel-next{right:4px}.section-head{display:block}.nav-actions .nav-link{display:none}.edit-bar{left:12px;right:12px;transform:none;flex-wrap:wrap;justify-content:center}.site-modal-grid{grid-template-columns:1fr}}
+@media(max-width:860px){.hero{grid-template-columns:1fr}.hero.profile-left .profile,.hero.profile-left .hero-copy{grid-column:auto;grid-row:auto}.grid,.content-grid{grid-template-columns:1fr}.site-carousel{padding:0 36px}.site-carousel .carousel-track{scroll-padding:0 36px}.site-carousel .card,.site-carousel .post-card{flex:0 0 min(100%,320px);scroll-snap-align:center}.carousel-prev{left:0}.carousel-next{right:0}.section-head{display:block}.nav-actions .nav-link{display:none}.edit-bar{left:12px;right:12px;transform:none;flex-wrap:wrap;justify-content:center}.site-modal-grid{grid-template-columns:1fr}}
 </style>
 </head>
 <body>
@@ -537,7 +574,7 @@ ${blockOrderCss}
   <a class="brand" href="${sitePath}"><span class="mark">Redação</span><span>${esc(site.nome_prof)}</span></a>
   <div class="nav-actions">
     <a class="nav-link" href="#turmas">Turmas</a>
-    <a class="nav-link" href="#conteudos">Conteúdos</a>
+    ${isHidden('block:conteudos') ? '' : '<a class="nav-link" href="#conteudos">Conteúdos</a>'}
     <a class="btn btn-light" href="${loginUrl}">Entrar</a>
   </div>
 </nav>
@@ -619,8 +656,8 @@ ${blockOrderCss}
       <article class="post-card reveal" data-move-key="post:${esc(post.id || post.titulo)}"${moveStyle(`post:${post.id || post.titulo}`)}>
         <div class="post-type">${esc(postTypeLabel(post.tipo))}${post.pinned ? ' · Destaque' : ''}</div>
         <h3>${esc(post.titulo)}</h3>
-        <p>${esc(post.resumo || '')}</p>
-        ${post.conteudo ? `<div class="post-body">${esc(post.conteudo)}</div>` : ''}
+        <p>${esc(truncateText(post.resumo || post.conteudo, 155))}</p>
+        ${post.conteudo ? `<div class="post-body">${esc(truncateText(post.conteudo, 95))}</div>` : ''}
         <a class="btn btn-dark read-more" href="${sitePath}/conteudos/${postPublicId(post)}" target="_blank" rel="noopener">Ler completo</a>
       </article>
     `).join('') : `
@@ -2137,6 +2174,7 @@ function renderPostPage(data: { site: any; turmas: any[] }, post: any) {
   const loginUrl = `${sitePath}/login`
   const whatsappPhone = String(cms.contact?.whatsapp_phone || '5521971214042').replace(/\D/g, '') || '5521971214042'
   const whatsapp = `http://api.whatsapp.com/send?phone=${whatsappPhone}`
+  const articleBody = post.conteudo ? sanitizeRichHtml(post.conteudo) : esc(post.resumo || '')
 
   return `<!DOCTYPE html>
 <html lang="pt-BR">
@@ -2155,8 +2193,9 @@ a{text-decoration:none;color:inherit}.nav{height:64px;background:var(--brand);co
 .btn{display:inline-flex;align-items:center;justify-content:center;border:none;border-radius:8px;padding:11px 18px;font-size:13px;font-weight:800;cursor:pointer}.btn-light{background:#fff;color:var(--brand)}.btn-dark{background:var(--brand);color:var(--brand-text)}
 .article-hero{background:var(--brand);color:var(--brand-text);padding:70px 6% 54px}.article-hero .type{display:inline-flex;background:rgba(255,255,255,.12);border:1px solid rgba(255,255,255,.18);padding:6px 13px;border-radius:999px;font-size:11px;font-weight:900;text-transform:uppercase;letter-spacing:.08em;margin-bottom:22px}
 h1{font-size:clamp(34px,5vw,58px);line-height:1.04;font-weight:900;max-width:900px}.summary{color:var(--brand-text-soft);font-size:17px;line-height:1.7;max-width:780px;margin-top:18px}
-.article-wrap{max-width:920px;margin:0 auto;padding:46px 22px 76px}.article-body{background:var(--card);border:1px solid var(--border);border-radius:12px;padding:34px;font-size:17px;line-height:1.85;color:var(--ink2);white-space:pre-line}
+.article-wrap{max-width:920px;margin:0 auto;padding:46px 22px 76px}.article-body{background:var(--card);border:1px solid var(--border);border-radius:12px;padding:34px;font-size:17px;line-height:1.85;color:var(--ink2)}
 .article-body:empty:before{content:'Conteúdo em preparação.';color:var(--ink3)}.article-actions{display:flex;gap:10px;flex-wrap:wrap;margin-top:22px}
+.rich-output img{max-width:100%;border-radius:12px;display:block;margin:14px 0}.rich-output ul,.rich-output ol{padding-left:26px;margin:12px 0}.rich-output li{margin:6px 0}.rich-output a{color:var(--brand);font-weight:800;text-decoration:underline}.rich-output blockquote{border-left:4px solid var(--accent);padding:10px 14px;background:rgba(0,0,0,.04);border-radius:8px;margin:14px 0}.rich-output p{margin:0 0 14px}.rich-output h2,.rich-output h3,.rich-output h4{color:var(--ink);line-height:1.25;margin:18px 0 10px}
 .whatsapp-float{position:fixed;right:22px;bottom:22px;width:58px;height:58px;border-radius:50%;background:#25D366;color:#fff;display:flex;align-items:center;justify-content:center;box-shadow:0 12px 28px rgba(0,0,0,.22);z-index:200;border:3px solid #fff}
 .whatsapp-float svg{width:32px;height:32px;display:block}
 @media(max-width:760px){.nav-actions .nav-link{display:none}.article-body{padding:24px;font-size:15px}}
@@ -2177,7 +2216,7 @@ h1{font-size:clamp(34px,5vw,58px);line-height:1.04;font-weight:900;max-width:900
   ${post.resumo ? `<p class="summary">${esc(post.resumo)}</p>` : ''}
 </header>
 <main class="article-wrap">
-  <article class="article-body">${esc(post.conteudo || post.resumo || '')}</article>
+  <article class="article-body rich-output">${articleBody}</article>
   <div class="article-actions">
     <a class="btn btn-dark" href="${sitePath}#conteudos">Voltar aos conteúdos</a>
   </div>

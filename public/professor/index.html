@@ -89,6 +89,14 @@
             <input id="site-whatsapp" placeholder="Ex: 5521971214042" inputmode="numeric">
             <div class="hint">Informe país + DDD + número. Ex: 55 21 97121-4042.</div>
           </div>
+          <div class="site-tabbar" aria-label="Edição do site">
+            <button type="button" class="on" data-site-tab="cores" onclick="setSiteEditorTab('cores')">Cores do site</button>
+            <button type="button" data-site-tab="cabecalho" onclick="setSiteEditorTab('cabecalho')">Cabeçalho</button>
+            <button type="button" data-site-tab="turmas" onclick="setSiteEditorTab('turmas')">Turmas</button>
+            <button type="button" data-site-tab="conteudos" onclick="setSiteEditorTab('conteudos')">Conteúdos/Postagens</button>
+            <button type="button" data-site-tab="aluno" onclick="setSiteEditorTab('aluno')">Área Aluno</button>
+          </div>
+          <div class="site-tab-panel on" data-site-tab-panel="cores">
           <div id="site-colors" style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
             <div class="form-group">
               <label>Cor primária</label>
@@ -105,17 +113,40 @@
               </div>
             </div>
           </div>
-          <div class="site-manager-menu">
-            <button type="button" onclick="focusSiteArea('site-colors')"><strong>Cores do site</strong><span>Paleta principal e destaque</span></button>
-            <button type="button" onclick="openLayoutModal('cabecalho')"><strong>Cabeçalho</strong><span>Título, chamada e cartão do professor</span></button>
-            <button type="button" onclick="openLayoutModal('turmas')"><strong>Turmas</strong><span>Apenas textos visuais da seção</span></button>
-            <button type="button" onclick="openPostsModal()"><strong>Conteúdos/Postagens</strong><span>Matérias, notícias e publicações</span></button>
-            <button type="button" onclick="openLayoutModal('aluno')"><strong>Área Aluno</strong><span>Bloco inferior de acesso à plataforma</span></button>
-          </div>
           <div class="site-tools-row">
             <button type="button" class="btn btn-sec" onclick="setDashboardModelDefault()">Definir modelo como padrão</button>
           </div>
           <div class="contrast-hint" id="site-contrast-hint"></div>
+          </div>
+          <div class="site-tab-panel" data-site-tab-panel="cabecalho">
+            <div class="site-tab-card">
+              <strong>Cabeçalho do site</strong>
+              <p>Título principal, chamada, botão, cartão do professor e foto.</p>
+              <button type="button" class="btn btn-brand btn-sm" onclick="openLayoutModal('cabecalho')">Editar cabeçalho</button>
+            </div>
+          </div>
+          <div class="site-tab-panel" data-site-tab-panel="turmas">
+            <div class="site-tab-card">
+              <strong>Seção de turmas</strong>
+              <p>Edite apenas os textos visuais da seção. Conteúdo, preço e alunos continuam no menu Turmas.</p>
+              <button type="button" class="btn btn-brand btn-sm" onclick="openLayoutModal('turmas')">Editar textos da seção</button>
+            </div>
+          </div>
+          <div class="site-tab-panel" data-site-tab-panel="conteudos">
+            <div class="site-tab-card">
+              <strong>Conteúdos e postagens</strong>
+              <p>Crie matérias, notícias e publicações do site. Você também pode ocultar a seção pública.</p>
+              <label class="inline-switch"><input type="checkbox" id="hide-posts-section" onchange="updateSitePreview()"> Ocultar esta seção no site público</label>
+              <button type="button" class="btn btn-brand btn-sm" onclick="openPostsModal()">Editar postagens</button>
+            </div>
+          </div>
+          <div class="site-tab-panel" data-site-tab-panel="aluno">
+            <div class="site-tab-card">
+              <strong>Área do aluno</strong>
+              <p>Bloco inferior com chamada para acesso à plataforma.</p>
+              <button type="button" class="btn btn-brand btn-sm" onclick="openLayoutModal('aluno')">Editar área do aluno</button>
+            </div>
+          </div>
           <div class="preview-unsaved" id="preview-unsaved" style="display:none">⚠ Pré-visualização — alterações não salvas</div>
           <div class="site-preview-card" id="site-preview-card">
             <div class="site-preview-nav">
@@ -355,7 +386,10 @@
             <strong style="font-size:15px">Relatórios</strong>
             <p style="font-size:12px;color:var(--ink3);margin-top:4px">Resumo rápido de alunos, turmas e correções do site.</p>
           </div>
-          <button class="btn btn-sec btn-sm" type="button" onclick="exportRelatorioCsv()">Exportar CSV</button>
+          <div class="action-stack">
+            <button class="btn btn-sec btn-sm" type="button" onclick="exportRelatorioCsv()">Exportar CSV</button>
+            <button class="btn btn-brand btn-sm" type="button" onclick="exportRelatorioPdf()">Gerar PDF</button>
+          </div>
         </div>
         <div id="relatorios-content"></div>
       </div>
@@ -937,11 +971,42 @@
           </div>
           <div class="form-group">
             <label>Resumo</label>
-            <textarea id="post-resumo" placeholder="Resumo curto que aparecerá no card" oninput="updatePostPreview()"></textarea>
+            <textarea id="post-resumo" maxlength="170" placeholder="Resumo curto que aparecerá no card" oninput="updatePostSummaryLimit();updatePostPreview()"></textarea>
+            <div class="hint" id="post-resumo-count">0/170 caracteres. O ideal é até 150 para caber bem no card.</div>
           </div>
           <div class="form-group">
             <label>Conteúdo</label>
-            <textarea id="post-conteudo" placeholder="Texto completo, dicas, avisos ou material" oninput="updatePostPreview()"></textarea>
+            <div class="rich-toolbar" aria-label="Ferramentas de edição do texto">
+              <button type="button" title="Negrito" onclick="formatPostContent('bold')"><strong>B</strong></button>
+              <button type="button" title="Itálico" onclick="formatPostContent('italic')"><em>I</em></button>
+              <button type="button" title="Sublinhado" onclick="formatPostContent('underline')"><u>U</u></button>
+              <button type="button" title="Lista com marcadores" onclick="formatPostContent('insertUnorderedList')">•</button>
+              <button type="button" title="Lista numerada" onclick="formatPostContent('insertOrderedList')">1.</button>
+              <button type="button" title="Alinhar à esquerda" onclick="formatPostContent('justifyLeft')">☰</button>
+              <button type="button" title="Centralizar" onclick="formatPostContent('justifyCenter')">≡</button>
+              <button type="button" title="Justificar" onclick="formatPostContent('justifyFull')">▤</button>
+              <select title="Fonte" onchange="formatPostContent('fontName', this.value); this.selectedIndex=0">
+                <option value="">Fonte</option>
+                <option value="Inter">Inter</option>
+                <option value="Arial">Arial</option>
+                <option value="Georgia">Georgia</option>
+                <option value="Times New Roman">Times</option>
+              </select>
+              <select title="Tamanho" onchange="formatPostContent('fontSize', this.value); this.selectedIndex=0">
+                <option value="">Tamanho</option>
+                <option value="2">Pequeno</option>
+                <option value="3">Normal</option>
+                <option value="4">Médio</option>
+                <option value="5">Grande</option>
+                <option value="6">Título</option>
+              </select>
+              <label title="Cor do texto"><span>A</span><input type="color" onchange="formatPostContent('foreColor', this.value)"></label>
+              <label title="Cor de fundo"><span>▣</span><input type="color" onchange="formatPostContent('hiliteColor', this.value)"></label>
+              <button type="button" title="Inserir link" onclick="insertPostLink()">🔗</button>
+              <label title="Inserir imagem" class="rich-file">🖼<input type="file" accept="image/*" onchange="insertPostImage(event)"></label>
+            </div>
+            <div id="post-conteudo-editor" class="rich-editor" contenteditable="true" data-placeholder="Texto completo, dicas, avisos ou material" oninput="syncPostEditor();updatePostPreview()"></div>
+            <textarea id="post-conteudo" hidden></textarea>
           </div>
           <button type="button" class="btn btn-brand" onclick="savePostDraft()">Salvar publicação na lista</button>
         </div>
@@ -1373,9 +1438,15 @@ async function saveSite(e) {
 function showSiteErr(msg) { const el = document.getElementById('alert-site'); el.textContent = msg; el.style.display = 'block' }
 function hideSiteAlerts() { ['alert-site','alert-site-ok'].forEach(id => { const el = document.getElementById(id); if (el) el.style.display = 'none' }) }
 
+function setSiteEditorTab(tab) {
+  document.querySelectorAll('[data-site-tab]').forEach(btn => btn.classList.toggle('on', btn.dataset.siteTab === tab))
+  document.querySelectorAll('[data-site-tab-panel]').forEach(panel => panel.classList.toggle('on', panel.dataset.siteTabPanel === tab))
+}
+
 function focusSiteArea(id) {
   const el = document.getElementById(id)
   if (!el) return
+  setSiteEditorTab('cores')
   el.scrollIntoView({ behavior: 'smooth', block: 'center' })
   el.classList.add('site-focus-pulse')
   setTimeout(() => el.classList.remove('site-focus-pulse'), 1800)
@@ -1423,6 +1494,7 @@ function loadCmsForm(cms) {
   document.getElementById('cms-turmas-subtitle').value = data.layout.turmas_subtitle || ''
   document.getElementById('cms-posts-title').value = data.layout.posts_title || ''
   document.getElementById('cms-posts-intro').value = data.layout.posts_intro || ''
+  document.getElementById('hide-posts-section').checked = Array.isArray(data.layout.hidden_elements) && data.layout.hidden_elements.includes('block:conteudos')
   document.getElementById('cms-aluno-title').value = data.layout.aluno_title || ''
   document.getElementById('cms-aluno-text').value = data.layout.aluno_text || ''
   document.getElementById('cms-aluno-cta').value = data.layout.aluno_cta || ''
@@ -1436,6 +1508,9 @@ function collectCmsForm() {
   const whatsapp = (document.getElementById('site-whatsapp')?.value || defaultCms().contact.whatsapp_phone).replace(/\D/g, '')
   const previous = currentSite?.cms || defaultCms()
   const previousLayout = { ...defaultCms().layout, ...(previous.layout || {}) }
+  const hidden = new Set(Array.isArray(previousLayout.hidden_elements) ? previousLayout.hidden_elements : [])
+  if (document.getElementById('hide-posts-section')?.checked) hidden.add('block:conteudos')
+  else hidden.delete('block:conteudos')
   const theme = collectThemeControls()
   return {
     ...previous,
@@ -1455,7 +1530,8 @@ function collectCmsForm() {
       posts_intro: document.getElementById('cms-posts-intro').value.trim() || defaultCms().layout.posts_intro,
       aluno_title: document.getElementById('cms-aluno-title').value.trim() || defaultCms().layout.aluno_title,
       aluno_text: document.getElementById('cms-aluno-text').value.trim() || defaultCms().layout.aluno_text,
-      aluno_cta: document.getElementById('cms-aluno-cta').value.trim() || defaultCms().layout.aluno_cta
+      aluno_cta: document.getElementById('cms-aluno-cta').value.trim() || defaultCms().layout.aluno_cta,
+      hidden_elements: Array.from(hidden)
     },
     contact: {
       ...(previous.contact || {}),
@@ -2041,18 +2117,132 @@ function postTypeLabel(tipo) {
   return ({ POST: 'Publicação', NOTICIA: 'Notícia', MATERIA: 'Matéria' })[tipo] || 'Publicação'
 }
 
+function stripHtml(value) {
+  const tmp = document.createElement('div')
+  tmp.innerHTML = String(value || '')
+  return tmp.textContent || tmp.innerText || ''
+}
+
+function truncateText(value, limit = 160) {
+  const text = String(value || '').replace(/\s+/g, ' ').trim()
+  if (text.length <= limit) return text
+  return `${text.slice(0, limit - 1).trim()}…`
+}
+
+function sanitizeRichHtml(html) {
+  const template = document.createElement('template')
+  template.innerHTML = String(html || '')
+  const allowed = new Set(['B','STRONG','I','EM','U','P','BR','DIV','SPAN','UL','OL','LI','A','IMG','H2','H3','H4','BLOCKQUOTE','FONT'])
+  const allowedStyles = new Set(['color','background-color','font-size','font-family','text-align','line-height','letter-spacing','text-decoration','font-weight','font-style','box-shadow','padding','border-radius'])
+  const walk = (node) => {
+    Array.from(node.children || []).forEach(child => {
+      if (!allowed.has(child.tagName)) {
+        child.replaceWith(document.createTextNode(child.textContent || ''))
+        return
+      }
+      Array.from(child.attributes).forEach(attr => {
+        const name = attr.name.toLowerCase()
+        if (name === 'href') {
+          const href = child.getAttribute('href') || ''
+          if (!/^https?:\/\//i.test(href) && !href.startsWith('mailto:')) child.removeAttribute('href')
+          else child.setAttribute('target', '_blank')
+          child.setAttribute('rel', 'noopener')
+          return
+        }
+        if (name === 'src' && child.tagName === 'IMG') {
+          const src = child.getAttribute('src') || ''
+          if (!src.startsWith('data:image/') && !/^https?:\/\//i.test(src)) child.removeAttribute('src')
+          return
+        }
+        if (name === 'style') {
+          const safe = String(child.getAttribute('style') || '').split(';').map(rule => {
+            const [prop, ...rest] = rule.split(':')
+            const key = String(prop || '').trim().toLowerCase()
+            const val = rest.join(':').trim()
+            if (!allowedStyles.has(key)) return ''
+            if (/url\s*\(|expression\s*\(|javascript:/i.test(val)) return ''
+            return `${key}:${val}`
+          }).filter(Boolean).join(';')
+          if (safe) child.setAttribute('style', safe)
+          else child.removeAttribute('style')
+          return
+        }
+        if (!['title','alt'].includes(name)) child.removeAttribute(attr.name)
+      })
+      walk(child)
+    })
+  }
+  walk(template.content)
+  return template.innerHTML
+}
+
+function getPostContentHtml() {
+  return sanitizeRichHtml(document.getElementById('post-conteudo-editor')?.innerHTML || '')
+}
+
+function setPostContentHtml(html) {
+  const editor = document.getElementById('post-conteudo-editor')
+  const hidden = document.getElementById('post-conteudo')
+  const safe = sanitizeRichHtml(html || '')
+  if (editor) editor.innerHTML = safe
+  if (hidden) hidden.value = safe
+}
+
+function syncPostEditor() {
+  const hidden = document.getElementById('post-conteudo')
+  if (hidden) hidden.value = getPostContentHtml()
+}
+
+function formatPostContent(command, value = null) {
+  const editor = document.getElementById('post-conteudo-editor')
+  if (!editor) return
+  editor.focus()
+  document.execCommand(command, false, value)
+  syncPostEditor()
+  updatePostPreview()
+}
+
+function insertPostLink() {
+  const url = prompt('Cole o link completo começando com https://')
+  if (!url) return
+  if (!/^https?:\/\//i.test(url)) return alert('Informe um link começando com http:// ou https://')
+  formatPostContent('createLink', url)
+}
+
+function insertPostImage(event) {
+  const file = event.target.files?.[0]
+  event.target.value = ''
+  if (!file) return
+  if (!file.type.startsWith('image/')) return alert('Escolha uma imagem.')
+  if (file.size > 1024 * 1024) return alert('Use uma imagem de até 1 MB para manter a página leve.')
+  const reader = new FileReader()
+  reader.onload = () => formatPostContent('insertImage', String(reader.result || ''))
+  reader.readAsDataURL(file)
+}
+
+function updatePostSummaryLimit() {
+  const input = document.getElementById('post-resumo')
+  const counter = document.getElementById('post-resumo-count')
+  if (!input || !counter) return
+  if (input.value.length > 170) input.value = input.value.slice(0, 170)
+  counter.textContent = `${input.value.length}/170 caracteres. O ideal é até 150 para caber bem no card.`
+}
+
 function savePostDraft() {
   const titulo = document.getElementById('post-titulo').value.trim()
   if (!titulo) { showSiteErr('Informe o título da publicação.'); return }
+  syncPostEditor()
   const id = document.getElementById('post-id').value || `post-${Date.now()}`
+  const resumoRaw = document.getElementById('post-resumo').value.trim()
+  const conteudo = getPostContentHtml()
   const post = {
     id,
     tipo: document.getElementById('post-tipo').value,
     status: document.getElementById('post-status').value,
     pinned: document.getElementById('post-pinned').value === 'true',
     titulo,
-    resumo: document.getElementById('post-resumo').value.trim(),
-    conteudo: document.getElementById('post-conteudo').value.trim(),
+    resumo: truncateText(resumoRaw || stripHtml(conteudo), 160),
+    conteudo,
     created_at: cmsPosts.find(p => p.id === id)?.created_at || new Date().toISOString(),
     updated_at: new Date().toISOString()
   }
@@ -2072,7 +2262,8 @@ function editCmsPost(id) {
   document.getElementById('post-pinned').value = String(Boolean(post.pinned))
   document.getElementById('post-titulo').value = post.titulo || ''
   document.getElementById('post-resumo').value = post.resumo || ''
-  document.getElementById('post-conteudo').value = post.conteudo || ''
+  setPostContentHtml(post.conteudo || '')
+  updatePostSummaryLimit()
   updatePostPreview()
 }
 
@@ -2086,9 +2277,11 @@ function deleteCmsPost(id) {
 
 function clearPostForm() {
   ;['post-id','post-titulo','post-resumo','post-conteudo'].forEach(id => { document.getElementById(id).value = '' })
+  setPostContentHtml('')
   document.getElementById('post-tipo').value = 'POST'
   document.getElementById('post-status').value = 'PUBLICADO'
   document.getElementById('post-pinned').value = 'false'
+  updatePostSummaryLimit()
   updatePostPreview()
 }
 
@@ -2099,14 +2292,14 @@ function updatePostPreview() {
   const status = document.getElementById('post-status')?.value || 'PUBLICADO'
   const pinned = document.getElementById('post-pinned')?.value === 'true'
   const titulo = document.getElementById('post-titulo')?.value.trim() || 'Título da publicação'
-  const resumo = document.getElementById('post-resumo')?.value.trim() || 'Resumo curto que aparecerá no card do site.'
-  const conteudo = document.getElementById('post-conteudo')?.value.trim() || 'Texto completo da publicação.'
+  const conteudo = getPostContentHtml() || '<p>Texto completo da publicação.</p>'
+  const resumo = truncateText(document.getElementById('post-resumo')?.value.trim() || stripHtml(conteudo) || 'Resumo curto que aparecerá no card do site.', 160)
   el.innerHTML = `
     <article class="cms-live-post">
       <div class="mark-type">${postTypeLabel(tipo)} · ${status === 'RASCUNHO' ? 'Rascunho' : 'Publicado'}${pinned ? ' · Destaque' : ''}</div>
       <h3>${esc(titulo)}</h3>
       <p>${esc(resumo)}</p>
-      <div>${esc(conteudo)}</div>
+      <div class="rich-output">${sanitizeRichHtml(conteudo)}</div>
     </article>`
 }
 
@@ -3975,6 +4168,133 @@ function exportRelatorioCsv() {
   a.download = `relatorio-${new Date().toISOString().slice(0, 10)}.csv`
   a.click()
   URL.revokeObjectURL(url)
+}
+
+async function exportRelatorioPdf() {
+  if (!relatorioCache) {
+    await loadRelatorios()
+    if (!relatorioCache) return
+  }
+  const jspdf = await waitForGlobal('jspdf', 'Gerador de PDF')
+  const { jsPDF } = jspdf
+  const fileSlug = (value) => String(value || 'relatorio')
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, '-')
+    .replace(/^-+|-+$/g, '')
+    .slice(0, 60) || 'relatorio'
+  const doc = new jsPDF({ unit: 'pt', format: 'a4', compress: true })
+  const pageW = doc.internal.pageSize.getWidth()
+  const pageH = doc.internal.pageSize.getHeight()
+  const margin = 42
+  const maxW = pageW - margin * 2
+  let y = margin
+  const today = new Date().toLocaleString('pt-BR')
+  const title = currentSite?.nome_prof || 'Site do professor'
+  const addPageIfNeeded = (height = 36) => {
+    if (y + height <= pageH - margin) return
+    doc.addPage()
+    y = margin
+    drawHeader(false)
+  }
+  const drawHeader = (first = true) => {
+    doc.setFillColor(26, 58, 42)
+    doc.rect(0, 0, pageW, first ? 86 : 54, 'F')
+    doc.setTextColor(255, 255, 255)
+    doc.setFont('helvetica', 'bold')
+    doc.setFontSize(first ? 17 : 12)
+    doc.text('Relatório do site', margin, first ? 36 : 32)
+    doc.setFont('helvetica', 'normal')
+    doc.setFontSize(9)
+    doc.text(title, margin, first ? 55 : 46)
+    if (first) doc.text(`Gerado em ${today}`, margin, 70)
+    y = first ? 112 : 76
+  }
+  const textLine = (label, value, sub = '') => {
+    addPageIfNeeded(48)
+    doc.setFillColor(248, 248, 246)
+    doc.roundedRect(margin, y, maxW, 38, 8, 8, 'F')
+    doc.setTextColor(17, 17, 17)
+    doc.setFont('helvetica', 'bold')
+    doc.setFontSize(11)
+    doc.text(String(label), margin + 12, y + 16)
+    doc.setFontSize(14)
+    doc.text(String(value), pageW - margin - 12, y + 17, { align: 'right' })
+    if (sub) {
+      doc.setTextColor(96, 96, 96)
+      doc.setFont('helvetica', 'normal')
+      doc.setFontSize(8)
+      doc.text(String(sub), margin + 12, y + 30)
+    }
+    y += 46
+  }
+  const sectionTitle = (text) => {
+    addPageIfNeeded(36)
+    doc.setTextColor(17, 17, 17)
+    doc.setFont('helvetica', 'bold')
+    doc.setFontSize(13)
+    doc.text(text, margin, y)
+    y += 18
+  }
+  const wrapped = (text, x, width, size = 9) => {
+    doc.setFontSize(size)
+    return doc.splitTextToSize(String(text || '—'), width)
+  }
+  const tableRow = (cols, widths, opts = {}) => {
+    const lines = cols.map((col, i) => wrapped(col, 0, widths[i] - 10, opts.header ? 8 : 8.5))
+    const rowH = Math.max(26, ...lines.map(l => l.length * 10 + 10))
+    addPageIfNeeded(rowH + 4)
+    doc.setFillColor(opts.header ? 230 : 255, opts.header ? 234 : 255, opts.header ? 229 : 255)
+    doc.roundedRect(margin, y, maxW, rowH, opts.header ? 5 : 2, opts.header ? 5 : 2, 'F')
+    let x = margin
+    doc.setTextColor(opts.header ? 26 : 48, opts.header ? 58 : 48, opts.header ? 42 : 48)
+    doc.setFont('helvetica', opts.header ? 'bold' : 'normal')
+    lines.forEach((line, i) => {
+      doc.text(line, x + 8, y + 13)
+      x += widths[i]
+    })
+    y += rowH + 3
+  }
+
+  drawHeader(true)
+  const { stats, alunos, turmas, correcoes, media } = relatorioCache
+  const totalCreditos = alunos.reduce((s, a) => s + Math.max(0, Number(a.creditos_info?.creditos) || 0), 0)
+  textLine('Correções pendentes', stats.aguardando || 0, 'Aguardando ação do professor')
+  textLine('Correções finalizadas', stats.finalizadas || 0, `Média das notas: ${media}`)
+  textLine('Alunos', alunos.length, `${alunos.filter(a => a.ativo).length} aprovados · ${alunos.filter(a => !a.ativo).length} pendentes`)
+  textLine('Turmas abertas', turmas.filter(t => t.status === 'ABERTA').length, `${turmas.length} turma(s) no total`)
+  textLine('Créditos ativos', totalCreditos, 'Soma dos créditos disponíveis')
+
+  sectionTitle('Turmas')
+  tableRow(['Turma', 'Status', 'Alunos', 'Envios'], [maxW * .42, maxW * .16, maxW * .22, maxW * .20], { header: true })
+  turmas.slice(0, 24).forEach(t => {
+    const envios = correcoes.filter(c => c.turma_id === t.id).length
+    tableRow([t.nome, t.status || '—', `${Number(t.alunos_ativos || 0)} ativos · ${Number(t.alunos_inativos || 0)} inativos`, envios], [maxW * .42, maxW * .16, maxW * .22, maxW * .20])
+  })
+
+  sectionTitle('Alunos que precisam de atenção')
+  tableRow(['Aluno', 'Motivo', 'Créditos'], [maxW * .46, maxW * .34, maxW * .20], { header: true })
+  const alunosAtencao = alunos.filter(a => {
+    const creditos = Math.max(0, Number(a.creditos_info?.creditos) || 0)
+    const v = a.creditos_info?.vence_em
+    const vencido = v && new Date(`${v}T23:59:59`).getTime() < Date.now()
+    return !a.ativo || creditos <= 0 || vencido
+  }).slice(0, 24)
+  if (alunosAtencao.length) {
+    alunosAtencao.forEach(a => {
+      const creditos = Math.max(0, Number(a.creditos_info?.creditos) || 0)
+      const v = a.creditos_info?.vence_em
+      const vencido = v && new Date(`${v}T23:59:59`).getTime() < Date.now()
+      const motivos = [!a.ativo ? 'Pendente' : '', creditos <= 0 ? 'Sem créditos' : '', vencido ? 'Vencido' : ''].filter(Boolean).join(' · ')
+      tableRow([a.nome || 'Aluno', motivos, creditos], [maxW * .46, maxW * .34, maxW * .20])
+    })
+  } else {
+    tableRow(['Nenhum aluno exige atenção agora.', '', ''], [maxW * .46, maxW * .34, maxW * .20])
+  }
+
+  doc.setProperties({ title: `Relatório - ${title}`, subject: 'Relatório do painel do professor' })
+  doc.save(`relatorio-${fileSlug(title)}-${new Date().toISOString().slice(0, 10)}.pdf`)
 }
 
 function openTurmaModal(id) {
