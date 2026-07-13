@@ -1,7 +1,7 @@
 import { Hono } from 'hono'
 import type { Env } from '../types'
 import { getAdmin } from '../supabase'
-import { getPaymentGateway, normalizeAsaasWebhookPayload, validateAsaasWebhookToken } from '../payments'
+import { getPaymentGateway, normalizeAsaasPaymentStatus, normalizeAsaasWebhookPayload, validateAsaasWebhookToken } from '../payments'
 import { requireAuth } from '../middleware'
 
 const app = new Hono<{ Bindings: Env }>()
@@ -52,7 +52,7 @@ function tomorrowIsoDate() {
   return date.toISOString().slice(0, 10)
 }
 
-async function grantPaidEnrollment(sb: ReturnType<typeof getAdmin>, payment: any) {
+async function grantPaidEnrollment(sb: ReturnType<typeof getAdmin>, payment: any, origin = 'ASAAS_WEBHOOK') {
   if (!payment?.site_id || !payment?.turma_id || !payment?.aluno_id) {
     return { granted: false, reason: 'missing_enrollment_target' }
   }
@@ -62,7 +62,7 @@ async function grantPaidEnrollment(sb: ReturnType<typeof getAdmin>, payment: any
     turma_id: payment.turma_id,
     aluno_id: payment.aluno_id,
     ativo: true,
-    origem: 'ASAAS_WEBHOOK'
+    origem: origin
   }
   const { error: upsertErr } = await sb.from('turma_alunos').upsert(row, { onConflict: 'turma_id,aluno_id' })
   if (upsertErr && !missingTurmaAlunos(upsertErr)) {
@@ -81,7 +81,7 @@ async function grantPaidEnrollment(sb: ReturnType<typeof getAdmin>, payment: any
     ...(cms.enrollments[payment.turma_id] || {}),
     [payment.aluno_id]: {
       ativo: true,
-      origem: 'ASAAS_WEBHOOK',
+      origem: origin,
       created_at: cms.enrollments[payment.turma_id]?.[payment.aluno_id]?.created_at || new Date().toISOString(),
       updated_at: new Date().toISOString()
     }
@@ -108,6 +108,33 @@ async function grantPaidEnrollment(sb: ReturnType<typeof getAdmin>, payment: any
 
   await sb.from('profiles').update({ ativo: true }).eq('id', payment.aluno_id).eq('role', 'ALUNO')
   return { granted: true }
+}
+
+async function applyProviderPaymentStatus(sb: ReturnType<typeof getAdmin>, payment: any, providerPayment: any) {
+  const now = new Date().toISOString()
+  const status = normalizeAsaasPaymentStatus(String(providerPayment?.status || payment.status || 'PENDING'))
+  const paid = isPaidStatus(status)
+  const patch = {
+    status,
+    billing_type: providerPayment?.billingType || payment.billing_type || null,
+    raw_summary: {
+      ...(payment.raw_summary || {}),
+      synced_from_provider: true,
+      provider_payment_id: providerPayment?.id || payment.provider_payment_id,
+      provider_status: status
+    },
+    paid_at: paid ? (payment.paid_at || now) : payment.paid_at,
+    updated_at: now
+  }
+  const { data: updated, error } = await sb.from('payments')
+    .update(patch)
+    .eq('id', payment.id)
+    .select('id, site_id, turma_id, aluno_id, status')
+    .single()
+  if (error || !updated) return { synced: false, granted: false, status, reason: error?.message || 'payment_update_failed' }
+  if (!paid) return { synced: true, granted: false, status, reason: 'not_paid' }
+  const grant = await grantPaidEnrollment(sb, updated, 'ASAAS_SYNC')
+  return { synced: true, granted: grant.granted, status, reason: grant.reason || null }
 }
 
 app.post('/asaas/webhook', async (c) => {
@@ -341,6 +368,33 @@ app.post('/asaas/sandbox-homologation', requireAuth, async (c) => {
       .eq('id', payment.id)
     return c.json({ error: 'Falha na comunicação com Asaas Sandbox.' }, 502)
   }
+})
+
+app.post('/asaas/sandbox-homologation/:id/sync', requireAuth, async (c) => {
+  const user = c.get('user')
+  if (!['ADMIN', 'CORRETOR', 'SUPERADMIN'].includes(user.role)) {
+    return c.json({ error: 'Acesso negado.' }, 403)
+  }
+  if (c.env.ASAAS_ENV !== 'sandbox') {
+    return c.json({ error: 'Sincronização de homologação permitida apenas em sandbox.' }, 403)
+  }
+
+  const sb = getAdmin(c.env)
+  const { data: payment, error: paymentErr } = await sb.from('payments')
+    .select('id, site_id, turma_id, aluno_id, status, paid_at, billing_type, provider_payment_id, raw_summary')
+    .eq('id', c.req.param('id'))
+    .eq('provider', 'ASAAS')
+    .single()
+  if (paymentErr || !payment) return c.json({ error: 'Pagamento não encontrado.' }, 404)
+  if (user.role !== 'SUPERADMIN' && user.site_id !== payment.site_id) {
+    return c.json({ error: 'Acesso negado para este pagamento.' }, 403)
+  }
+  if (!payment.provider_payment_id) return c.json({ error: 'Pagamento sem ID no Asaas.' }, 400)
+
+  const gateway = getPaymentGateway(c.env)
+  const providerPayment = await gateway.getPayment(payment.provider_payment_id)
+  const result = await applyProviderPaymentStatus(sb, payment, providerPayment)
+  return c.json({ ok: result.synced, status: result.status, enrollment_granted: result.granted, reason: result.reason })
 })
 
 export { app as paymentRoutes }

@@ -65,6 +65,7 @@ export type NormalizedPaymentWebhook = {
 export type PaymentGateway = {
   createCustomer(input: CreateCustomerInput): Promise<any>
   createPixCharge(input: CreatePixChargeInput): Promise<unknown>
+  getPayment(paymentId: string): Promise<any>
   getPixQrCode(paymentId: string): Promise<any>
   ensurePixKey(): Promise<{ created: boolean; status?: string }>
   payPixQrCode(input: { payload: string; value: number; description?: string }): Promise<any>
@@ -153,6 +154,10 @@ class DisabledPaymentGateway implements PaymentGateway {
     throw new Error('Pagamentos temporariamente indisponíveis.')
   }
 
+  async getPayment(): Promise<unknown> {
+    throw new Error('Pagamentos temporariamente indisponíveis.')
+  }
+
   async ensurePixKey(): Promise<{ created: boolean }> {
     throw new Error('Pagamentos temporariamente indisponíveis.')
   }
@@ -208,6 +213,12 @@ class AsaasGateway implements PaymentGateway {
         externalReference: input.externalReference,
         notificationDisabled: input.notificationDisabled ?? true
       })
+    })
+  }
+
+  async getPayment(paymentId: string) {
+    return this.request(`/payments/${encodeURIComponent(paymentId)}`, {
+      method: 'GET'
     })
   }
 
