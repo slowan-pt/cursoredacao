@@ -1,6 +1,5 @@
 import { Hono } from 'hono'
 import type { Env } from '../types'
-import { getConfig } from '../config'
 import { getAdmin } from '../supabase'
 import { normalizeAsaasWebhookPayload, validateAsaasWebhookToken } from '../payments'
 
@@ -15,10 +14,6 @@ function isPaidStatus(status: string) {
 }
 
 app.post('/asaas/webhook', async (c) => {
-  const config = getConfig(c.env)
-  if (!config.flags.payments) {
-    return c.json({ error: 'Pagamentos temporariamente indisponíveis.' }, 503)
-  }
   if (!validateAsaasWebhookToken(c.env, c.req.raw)) {
     return c.json({ error: 'Webhook não autorizado.' }, 401)
   }
