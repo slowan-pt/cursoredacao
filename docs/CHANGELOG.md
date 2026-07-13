@@ -51,6 +51,13 @@ Todas as mudanças relevantes deste projeto devem ser registradas aqui.
 - Asaas segue bloqueado por ausência de `ASAAS_API_KEY`; Resend segue bloqueado por ausência de `RESEND_API_KEY`.
 - Webhook Asaas ajustado para liberar matrícula/créditos automaticamente quando um pagamento existente chega como `CONFIRMED` ou `RECEIVED`.
 - Homologação completa Asaas segue bloqueada porque `ASAAS_API_KEY` não existe e o valor do `ASAAS_WEBHOOK_TOKEN` do Worker não pode ser lido de volta.
+- Homologação Asaas sandbox avançada com `ASAAS_API_KEY` e `ASAAS_WEBHOOK_TOKEN` configurados no Worker:
+  - `ENABLE_PAYMENTS=true` e `ASAAS_ENV=sandbox` publicados;
+  - rota protegida de homologação cria cliente, chave Pix EVP, cobrança PIX R$ 5,00 e QR Code;
+  - gateway Asaas envia `User-Agent`, exigido pela API;
+  - webhook sem token validado com resposta `401`;
+  - pagamento automático do QR Code via API bloqueado por permissão sandbox (`insufficient_permission` para operações de saque/pagamento via API);
+  - cobrança mais recente permanece `PENDING` até simulação/pagamento manual ou liberação dessa permissão na chave sandbox.
 - Documentação operacional:
   - `docs/ARCHITECTURE.md`
   - `docs/ROADMAP.md`
