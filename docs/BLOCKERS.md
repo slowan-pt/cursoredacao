@@ -54,19 +54,21 @@
   5. Validar SSL ativo.
   6. Reexecutar `/health`, página inicial, login e assets.
 
-## Asaas sandbox sem API key
+## Asaas produção e checkout público
 
 - Prioridade: importante.
-- Impacto: checkout real e webhooks sandbox não podem ser testados fim a fim.
+- Impacto: o checkout público ainda precisa ser ligado com UX final e a produção não deve ser usada antes de revisão.
 - Situação:
-  - `ASAAS_WEBHOOK_TOKEN` existe no Worker.
-  - `ASAAS_API_KEY` não existe localmente nem no Worker.
-  - `ENABLE_PAYMENTS=false` em produção.
-  - Migration `005_payments.sql` aplicada e rota de webhook preparada.
+  - `ASAAS_WEBHOOK_TOKEN` e `ASAAS_API_KEY` existem como secrets do Worker em sandbox.
+  - `ENABLE_PAYMENTS=true` e `ASAAS_ENV=sandbox` foram publicados.
+  - Migration `005_payments.sql` aplicada.
+  - Webhook sandbox validado com nova cobrança `pay_k1hnnk6q1mt7l20l`.
+  - `PAYMENT_CREATED` não liberou matrícula.
+  - `PAYMENT_RECEIVED` liberou matrícula única.
 - Ação manual sugerida:
-  1. Criar/obter chave sandbox no Asaas.
-  2. Executar `npx wrangler secret put ASAAS_API_KEY`.
-  3. Configurar `ASAAS_ENV=sandbox` e só então avaliar `ENABLE_PAYMENTS=true`.
+  1. Manter `ASAAS_ENV=sandbox` até finalizar UX pública do checkout.
+  2. Revisar webhook e assinatura antes de produção.
+  3. Configurar chave de produção somente quando o domínio oficial e os testes finais estiverem concluídos.
 
 ## Resend sem API key e domínio verificado
 

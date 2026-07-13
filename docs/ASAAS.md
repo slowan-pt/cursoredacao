@@ -17,6 +17,13 @@ Atualizado em: 2026-07-12.
 - Após confirmação manual no painel Asaas, a sincronização protegida consultou o provedor e atualizou o pagamento local para `RECEIVED`.
 - A matrícula do aluno foi criada/ativada automaticamente com origem `ASAAS_SYNC`.
 - Nenhum webhook de pagamento confirmado chegou para a cobrança homologada; o endpoint não registrou erro no Worker.
+- Novo ciclo completo em 2026-07-13 validou o fluxo principal por webhook:
+  - cobrança sandbox `pay_k1hnnk6q1mt7l20l`;
+  - `PAYMENT_CREATED` recebido, armazenado e processado sem liberar matrícula;
+  - `PAYMENT_RECEIVED` recebido com status Asaas `RECEIVED_IN_CASH`, normalizado para `RECEIVED`;
+  - pagamento interno atualizado para `RECEIVED`;
+  - matrícula criada uma única vez com origem `ASAAS_WEBHOOK`;
+  - aluno passou a acessar a turma de homologação.
 
 ## Arquivos Preparados
 
@@ -91,8 +98,7 @@ ASAAS_ENV=sandbox
 
 ## Pendências
 
-- Verificar no painel do Asaas Sandbox por que a confirmação manual não disparou webhook `PAYMENT_RECEIVED`/`PAYMENT_CONFIRMED` para a cobrança homologada.
-- Validar idempotência real do webhook reenviando o mesmo evento quando houver payload confirmado no log do Asaas.
+- Validar idempotência real com reenvio manual do evento pelo painel Asaas Sandbox, quando necessário.
 - Criar endpoint de checkout real para uso público.
 - Definir política para boleto/cartão além de PIX.
 - Criar testes com mocks.
@@ -109,3 +115,26 @@ ASAAS_ENV=sandbox
 - Após confirmação manual, `POST /api/payments/asaas/sandbox-homologation/:id/sync` atualizou o pagamento para `RECEIVED`.
 - A matrícula ficou ativa e repetição da sincronização manteve apenas uma matrícula ativa.
 - Webhook real de confirmação não chegou para a cobrança homologada; existe apenas um evento antigo `PAYMENT_CREATED` de outro pagamento sem referência externa.
+
+## Resultado da Homologação Completa por Webhook — 2026-07-13
+
+- Cobrança sandbox: `pay_k1hnnk6q1mt7l20l`.
+- Payment interno: `988a0f5f-5c39-47a9-842e-a5664ee13072`.
+- External reference: `ASAAS-HML-d265f4dc-bb9b-4557-9419-18faf68c8c07`.
+- `PAYMENT_CREATED`:
+  - recebido pelo webhook;
+  - resposta HTTP 200;
+  - gravado uma vez em `payment_webhook_events`;
+  - `processed=true`;
+  - pagamento permaneceu `PENDING`;
+  - matrícula permaneceu bloqueada.
+- `PAYMENT_RECEIVED`:
+  - recebido pelo webhook;
+  - resposta HTTP 200 segundo comportamento atual da rota;
+  - gravado uma vez em `payment_webhook_events`;
+  - `processed=true`;
+  - status externo `RECEIVED_IN_CASH` normalizado para `RECEIVED`;
+  - payment interno atualizado para `RECEIVED`;
+  - matrícula ativa criada uma única vez.
+- Token inválido retorna HTTP 401.
+- Acesso do aluno validado na rota de turmas.

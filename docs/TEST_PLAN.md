@@ -63,7 +63,16 @@ git diff --check
 
 - Checkout simulado com flag ligada em ambiente não produção.
 - Confirmar que retorno do navegador não deve liberar pagamento real.
-- Webhook duplicado quando Asaas estiver implementado.
+- Asaas Sandbox:
+  - token inválido no webhook retorna HTTP 401;
+  - payload inválido retorna HTTP 400 quando autenticado;
+  - webhook válido retorna HTTP 200;
+  - `PAYMENT_CREATED` é gravado e não libera matrícula;
+  - `PAYMENT_RECEIVED` ou `PAYMENT_CONFIRMED` libera matrícula;
+  - `RECEIVED_IN_CASH` é normalizado para `RECEIVED`;
+  - cobrança inexistente fica armazenada para reconciliação;
+  - matrícula duplicada é impedida por `turma_id,aluno_id`;
+  - API de produção não deve ser chamada com `ASAAS_ENV=sandbox`.
 
 ### E-mails
 

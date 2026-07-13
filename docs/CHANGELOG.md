@@ -65,6 +65,13 @@ Todas as mudanças relevantes deste projeto devem ser registradas aqui.
   - matrícula do aluno foi criada/ativada com origem `ASAAS_SYNC`;
   - repetição da sincronização manteve apenas uma matrícula ativa;
   - webhook de confirmação não chegou para a cobrança homologada e precisa ser verificado nos logs do Asaas Sandbox.
+- Homologação nova e completa por webhook Asaas Sandbox:
+  - cobrança `pay_k1hnnk6q1mt7l20l` criada para turma de homologação nova;
+  - `PAYMENT_CREATED` chegou, foi gravado e não liberou matrícula;
+  - `PAYMENT_RECEIVED` chegou, foi gravado e atualizou o pagamento para `RECEIVED`;
+  - matrícula criada uma única vez com origem `ASAAS_WEBHOOK`;
+  - aluno validado com acesso à turma após confirmação;
+  - token inválido validado com HTTP 401.
 - Documentação operacional:
   - `docs/ARCHITECTURE.md`
   - `docs/ROADMAP.md`
