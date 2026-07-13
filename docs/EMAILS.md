@@ -7,6 +7,8 @@ Atualizado em: 2026-07-12.
 - Camada local preparada.
 - Feature flag padrão: `ENABLE_EMAILS=false`.
 - Provedor preparado: Resend via REST API.
+- `RESEND_API_KEY` ainda não existe localmente nem no Worker.
+- Nenhum e-mail real foi enviado neste ciclo.
 - Nenhuma chave real foi adicionada.
 - Nenhum e-mail real foi enviado nesta sessão.
 

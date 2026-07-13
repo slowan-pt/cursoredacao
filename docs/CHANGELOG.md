@@ -42,6 +42,13 @@ Todas as mudanças relevantes deste projeto devem ser registradas aqui.
 - Deploy real do Worker `cursoreducao` executado com versão `627f2f9d-1a96-484a-91e9-24c55956ec30`.
 - R2 remoto validado com put/get/delete de objeto temporário.
 - GitHub push segue bloqueado porque o remoto configurado retorna `Repository not found`.
+- Tentativa de configurar custom domains via Wrangler falhou na criação dos domain records; rollback executado e `workers_dev=true` foi explicitado.
+- Healthcheck `/health` passou a rodar antes dos Assets para evitar 404.
+- Deploy atual validado com versão `70d38840-7c8d-4cac-96dd-6347ac92a41d`.
+- Upload R2 real via aplicação validado com arquivo de teste, referência `r2:`, metadados em `storage_files` e limpeza posterior.
+- Rota guardada `POST /api/payments/asaas/webhook` adicionada e publicada com `ENABLE_PAYMENTS=false`.
+- Migration `005_payments.sql` aplicada no Supabase após backup de metadados do schema.
+- Asaas segue bloqueado por ausência de `ASAAS_API_KEY`; Resend segue bloqueado por ausência de `RESEND_API_KEY`.
 - Documentação operacional:
   - `docs/ARCHITECTURE.md`
   - `docs/ROADMAP.md`

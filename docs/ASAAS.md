@@ -9,7 +9,9 @@ Atualizado em: 2026-07-12.
 - Ambiente padrão: `ASAAS_ENV=sandbox`.
 - Nenhuma chave real foi adicionada.
 - Nenhuma cobrança real foi criada.
-- Nenhuma migration foi executada contra banco remoto.
+- `ASAAS_WEBHOOK_TOKEN` existe no Worker; `ASAAS_API_KEY` ainda não existe.
+- Migration `005_payments.sql` aplicada no banco remoto em 2026-07-12.
+- Rota `POST /api/payments/asaas/webhook` preparada e fechada por `ENABLE_PAYMENTS=false`.
 
 ## Arquivos Preparados
 
@@ -18,6 +20,7 @@ Atualizado em: 2026-07-12.
 - `src/types.ts`: variáveis `ASAAS_ENV`, `ASAAS_API_KEY` e `ASAAS_WEBHOOK_TOKEN`.
 - `.env.example`: variáveis sem valores reais.
 - `migrations/005_payments.sql`: tabelas de pagamentos e eventos de webhook.
+- `src/routes/payments.ts`: rota guardada para webhook Asaas.
 
 ## Segurança do Webhook
 
@@ -68,8 +71,8 @@ ENABLE_PAYMENTS=true
 ASAAS_ENV=sandbox
 ```
 
-4. Rodar `migrations/005_payments.sql` após revisão.
-5. Criar webhook sandbox apontando para o endpoint futuro da aplicação.
+4. Confirmar que `migrations/005_payments.sql` segue aplicada no Supabase.
+5. Criar webhook sandbox apontando para `/api/payments/asaas/webhook`.
 6. Testar:
    - evento duplicado;
    - pagamento pendente;
@@ -80,9 +83,8 @@ ASAAS_ENV=sandbox
 
 ## Pendências
 
-- Criar rota de webhook.
+- Testar rota de webhook com `ENABLE_PAYMENTS=true` em sandbox.
 - Criar endpoint de checkout real.
-- Integrar `normalizeAsaasWebhookPayload` à rota de webhook futura.
 - Persistir cobrança em `payments`.
 - Liberar matrícula somente no processamento idempotente do webhook.
 - Definir política para boleto/cartão além de PIX.

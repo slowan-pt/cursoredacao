@@ -4,12 +4,12 @@
 
 - Data da atualização: 2026-07-12.
 - Branch atual: `main`.
-- Relação com remoto: `main...origin/main [ahead 28]` após deploy R2; push GitHub bloqueado por acesso ao repositório.
-- Último commit local confirmado antes deste registro final: `5d5c147 chore: enable production R2 configuration`.
+- Relação com remoto: branch local continua à frente de `origin/main`; push GitHub bloqueado por acesso ao repositório.
+- Último commit local confirmado antes deste registro final: `42af3db feat: add guarded Asaas webhook route`.
 - Estado do working tree: limpo após consolidar os 11 arquivos rastreados modificados preexistentes.
 - Versão atual declarada: `1.0.0` em `package.json`.
 - Ambiente atual observado: Cloudflare Workers, URL pública `https://cursoreducao.slowgithub.workers.dev`.
-- Última versão do Worker informada neste ciclo: `627f2f9d-1a96-484a-91e9-24c55956ec30`.
+- Última versão do Worker validada neste ciclo: `70d38840-7c8d-4cac-96dd-6347ac92a41d`.
 
 ## Arquitetura oficial
 

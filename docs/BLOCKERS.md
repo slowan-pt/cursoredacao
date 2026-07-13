@@ -38,6 +38,49 @@
   4. Repetir `git ls-remote origin refs/heads/main`.
   5. Executar push somente depois do acesso confirmado.
 
+## Domínio oficial ainda não publicado
+
+- Prioridade: crítica para lançamento público.
+- Impacto: `redacaocomestrategia.com.br` ainda não aponta para o Worker.
+- Situação:
+  - O domínio responde com nameserver Cloudflare, mas não há registro raiz/www resolvendo para o Worker.
+  - A tentativa de aplicar custom domains via `wrangler deploy` falhou no endpoint de domain records.
+  - O deploy parcial desativou temporariamente `workers.dev`; foi feito rollback e novo deploy com `workers_dev=true`.
+- Ação manual sugerida:
+  1. Cloudflare Dashboard → Workers & Pages → `cursoreducao` → Settings → Triggers → Custom Domains.
+  2. Adicionar `redacaocomestrategia.com.br`.
+  3. Adicionar `www.redacaocomestrategia.com.br`.
+  4. Garantir DNS proxied/laranja para ambos.
+  5. Validar SSL ativo.
+  6. Reexecutar `/health`, página inicial, login e assets.
+
+## Asaas sandbox sem API key
+
+- Prioridade: importante.
+- Impacto: checkout real e webhooks sandbox não podem ser testados fim a fim.
+- Situação:
+  - `ASAAS_WEBHOOK_TOKEN` existe no Worker.
+  - `ASAAS_API_KEY` não existe localmente nem no Worker.
+  - `ENABLE_PAYMENTS=false` em produção.
+  - Migration `005_payments.sql` aplicada e rota de webhook preparada.
+- Ação manual sugerida:
+  1. Criar/obter chave sandbox no Asaas.
+  2. Executar `npx wrangler secret put ASAAS_API_KEY`.
+  3. Configurar `ASAAS_ENV=sandbox` e só então avaliar `ENABLE_PAYMENTS=true`.
+
+## Resend sem API key e domínio verificado
+
+- Prioridade: importante.
+- Impacto: e-mails transacionais reais seguem desativados.
+- Situação:
+  - `RESEND_API_KEY` não existe localmente nem no Worker.
+  - `ENABLE_EMAILS=false` em produção.
+- Ação manual sugerida:
+  1. Verificar domínio/remetente no Resend.
+  2. Configurar DNS SPF/DKIM/DMARC conforme Resend.
+  3. Executar `npx wrangler secret put RESEND_API_KEY`.
+  4. Testar somente com endereço controlado antes de ativar.
+
 ## SUPABASE_ANON_KEY ainda legacy
 
 - Prioridade: crítica.

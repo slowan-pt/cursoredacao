@@ -7,7 +7,7 @@ Este projeto usa Cloudflare Workers com Wrangler. Não usar Docker/VPS para a ar
 ## Estado Atual do Worker
 
 - Worker padrão: `cursoreducao`.
-- Último deploy validado: `627f2f9d-1a96-484a-91e9-24c55956ec30`.
+- Último deploy validado: `70d38840-7c8d-4cac-96dd-6347ac92a41d`.
 - URL atual: `https://cursoreducao.slowgithub.workers.dev`.
 - `APP_ENV=production`.
 - `ENABLE_R2_UPLOADS=true`.
@@ -16,6 +16,7 @@ Este projeto usa Cloudflare Workers com Wrangler. Não usar Docker/VPS para a ar
 - `ENABLE_EMAILS=false`.
 - `ENABLE_OAUTH=false`.
 - Domínio oficial `redacaocomestrategia.com.br` ainda pendente de configuração final.
+- `workers_dev=true` deve permanecer explícito enquanto o domínio oficial não estiver estável.
 
 ## Pré-requisitos
 
@@ -116,3 +117,19 @@ Resultado do deploy validado em 2026-07-12:
 - Isolamento do aluno em outro site: bloqueado como esperado.
 - Logout professor/corretor e aluno: passou.
 - R2 remoto: put/get/delete de objeto temporário passou.
+- Upload R2 via aplicação: passou com arquivo de teste e limpeza posterior.
+
+## Incidente Controlado de Domínio
+
+Em 2026-07-12, uma tentativa de publicar custom domains via Wrangler falhou na criação dos registros de domínio pela API Cloudflare.
+O deploy parcial removeu temporariamente o alvo `workers.dev`.
+
+Resposta aplicada:
+
+1. Rollback para `627f2f9d-1a96-484a-91e9-24c55956ec30`.
+2. Remoção das rotas que falharam do `wrangler.jsonc`.
+3. Adição explícita de `workers_dev=true`.
+4. Novo deploy validado.
+5. Correção de `/health` para passar pelo Worker antes dos Assets.
+
+Próxima tentativa de domínio deve ser feita pelo painel Cloudflare ou com API validada em uma janela controlada.
