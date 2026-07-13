@@ -45,7 +45,9 @@ Este runbook prepara ações manuais de segurança. Não execute etapas destruti
 - `SUPABASE_ANON_KEY`: migrada para `sb_publishable_...` mantendo o nome legado da variável.
 - Senha PostgreSQL/Supabase: rotacionada e validada via pooler com consulta somente leitura.
 - Legacy API keys: desativadas no painel Supabase.
-- Worker padrão `cursoreducao`: secrets `SUPABASE_SERVICE_KEY` e `SUPABASE_ANON_KEY` atualizados.
+- Worker antigo `cursoreducao`: secrets `SUPABASE_SERVICE_KEY` e `SUPABASE_ANON_KEY` atualizados.
+- Worker novo `cursoredacao`: secrets essenciais configurados em 2026-07-13 (`SUPABASE_URL`, `SUPABASE_ANON_KEY`, `SUPABASE_SERVICE_KEY`, `SESSION_SECRET`).
+- Worker novo `cursoredacao`: `ASAAS_API_KEY` e `ASAAS_WEBHOOK_TOKEN` ainda precisam ser configurados antes de homologar pagamentos nele.
 - Testes professor/corretor e aluno: passaram.
 - Próximo ciclo: limpeza segura do histórico Git.
 

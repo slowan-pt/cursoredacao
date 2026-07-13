@@ -6,9 +6,10 @@ Este projeto usa Cloudflare Workers com Wrangler. Não usar Docker/VPS para a ar
 
 ## Estado Atual do Worker
 
-- Worker padrão: `cursoreducao`.
-- Último deploy validado: `1dde43a6-f8a1-4f4b-91b0-bbe665ae26dc`.
-- URL atual: `https://cursoreducao.slowgithub.workers.dev`.
+- Worker padrão: `cursoredacao`.
+- Worker antigo preservado para rollback/observacao: `cursoreducao`.
+- Último deploy validado no Worker novo: `c0515734-9256-4c7d-90ac-d3846d4bb9e4`.
+- URL atual: `https://cursoredacao.slowgithub.workers.dev`.
 - `APP_ENV=production`.
 - `ENABLE_R2_UPLOADS=true`.
 - `ENABLE_PAYMENTS=true`.
@@ -19,6 +20,8 @@ Este projeto usa Cloudflare Workers com Wrangler. Não usar Docker/VPS para a ar
 - `ENABLE_APP_RATE_LIMITING=false`.
 - Domínio oficial `redacaocomestrategia.com.br` ainda pendente de configuração final.
 - `workers_dev=true` deve permanecer explícito enquanto o domínio oficial não estiver estável.
+- Secrets essenciais ja configurados no Worker novo: `SUPABASE_URL`, `SUPABASE_ANON_KEY`, `SUPABASE_SERVICE_KEY`, `SESSION_SECRET`.
+- Secrets Asaas ainda precisam ser configurados no Worker novo antes de homologar pagamentos nele: `ASAAS_API_KEY`, `ASAAS_WEBHOOK_TOKEN`.
 
 ## Pré-requisitos
 

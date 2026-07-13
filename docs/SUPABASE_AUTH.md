@@ -28,6 +28,9 @@ https://redacaocomestrategia.com.br
 https://redacaocomestrategia.com.br/auth-callback.html
 https://redacaocomestrategia.com.br/login.html
 https://redacaocomestrategia.com.br/redacao/*
+https://cursoredacao.slowgithub.workers.dev/auth-callback.html
+https://cursoredacao.slowgithub.workers.dev/login.html
+https://cursoredacao.slowgithub.workers.dev/redacao/*
 https://cursoreducao.slowgithub.workers.dev/auth-callback.html
 https://cursoreducao.slowgithub.workers.dev/login.html
 https://cursoreducao.slowgithub.workers.dev/redacao/*
@@ -50,4 +53,3 @@ Manter o fallback `workers.dev` ate o dominio oficial estar homologado.
 - Redirect URL ausente causa falha de callback.
 - Remover fallback cedo demais dificulta suporte durante a publicacao.
 - Trocar JWT signing keys sem plano invalida sessoes e pode quebrar integracoes.
-

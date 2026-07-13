@@ -6,6 +6,14 @@ Todas as mudanças relevantes deste projeto devem ser registradas aqui.
 
 ### Adicionado
 
+- Migracao controlada do Worker para `cursoredacao` em 2026-07-13:
+  - `wrangler.jsonc` passou a publicar o Worker novo `cursoredacao`;
+  - Worker novo publicado em `https://cursoredacao.slowgithub.workers.dev`;
+  - deploy validado: `c0515734-9256-4c7d-90ac-d3846d4bb9e4`;
+  - secrets essenciais aplicados ao Worker novo sem expor valores;
+  - `npm run smoke:prod -- --base=https://cursoredacao.slowgithub.workers.dev` passou;
+  - o Worker antigo `cursoreducao` foi preservado e nao foi excluido;
+  - Asaas no Worker novo ficou pendente por falta dos secrets `ASAAS_API_KEY` e `ASAAS_WEBHOOK_TOKEN` no ambiente local.
 - Rodada de finalização para produção em 2026-07-13:
   - adicionados `robots.txt`, `sitemap.xml`, `site.webmanifest` e `favicon.svg`;
   - páginas públicas principais passaram a declarar canonical, manifest, favicon e metadados do domínio oficial;

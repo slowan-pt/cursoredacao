@@ -5,11 +5,24 @@
 - Prioridade: critica para lancamento publico.
 - Situacao atual em 2026-07-13:
   - `APP_URL` ja aponta para `https://redacaocomestrategia.com.br`.
-  - O fallback `https://cursoreducao.slowgithub.workers.dev` segue publicado e validado.
+  - O Worker novo `https://cursoredacao.slowgithub.workers.dev` segue publicado e validado.
+  - O Worker antigo `https://cursoreducao.slowgithub.workers.dev` foi preservado temporariamente para rollback/observacao.
   - A tentativa de custom domain via Wrangler/API Cloudflare falhou com HTTP 400 no endpoint de domain records.
   - `wrangler.jsonc` ficou sem `routes` de custom domain para nao quebrar deploys.
-- Proxima acao: configurar `redacaocomestrategia.com.br` e `www.redacaocomestrategia.com.br` em Cloudflare Dashboard → Workers & Pages → `cursoreducao` → Settings → Triggers → Custom Domains.
+- Proxima acao: configurar `redacaocomestrategia.com.br` e `www.redacaocomestrategia.com.br` em Cloudflare Dashboard → Workers & Pages → `cursoredacao` → Settings → Triggers → Custom Domains.
 - Teste posterior: `npm run smoke:prod -- --base=https://redacaocomestrategia.com.br`.
+
+## Secrets Asaas no Worker novo
+
+- Prioridade: critica para homologar pagamentos no Worker `cursoredacao`.
+- Situacao atual:
+  - Worker `cursoredacao` tem `SUPABASE_URL`, `SUPABASE_ANON_KEY`, `SUPABASE_SERVICE_KEY` e `SESSION_SECRET`.
+  - `ASAAS_API_KEY` e `ASAAS_WEBHOOK_TOKEN` existem no Worker antigo, mas nao podem ser lidos/copiadados pelo Cloudflare.
+  - Esses dois valores nao estavam em `.dev.vars` durante a migracao.
+- Proxima acao: configurar manualmente os dois secrets no Worker `cursoredacao`:
+  - `npx wrangler secret put ASAAS_API_KEY --name cursoredacao`
+  - `npx wrangler secret put ASAAS_WEBHOOK_TOKEN --name cursoredacao`
+  - depois validar `POST /api/payments/asaas/webhook` com token e repetir smoke de checkout sandbox.
 
 ## Rate limiting efetivo
 
@@ -67,7 +80,7 @@
   - A tentativa de aplicar custom domains via `wrangler deploy` falhou no endpoint de domain records.
   - O deploy parcial desativou temporariamente `workers.dev`; foi feito rollback e novo deploy com `workers_dev=true`.
 - Ação manual sugerida:
-  1. Cloudflare Dashboard → Workers & Pages → `cursoreducao` → Settings → Triggers → Custom Domains.
+  1. Cloudflare Dashboard → Workers & Pages → `cursoredacao` → Settings → Triggers → Custom Domains.
   2. Adicionar `redacaocomestrategia.com.br`.
   3. Adicionar `www.redacaocomestrategia.com.br`.
   4. Garantir DNS proxied/laranja para ambos.

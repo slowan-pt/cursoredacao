@@ -5,7 +5,9 @@ Atualizado em: 2026-07-13.
 ## Resultado Remoto MVP — 2026-07-13
 
 - `npm run check:all`: passou.
-- `npm run smoke:prod`: passou no fallback `https://cursoreducao.slowgithub.workers.dev`.
+- `npm run smoke:prod -- --base=https://cursoredacao.slowgithub.workers.dev`: passou no Worker novo.
+- Worker novo validado: `https://cursoredacao.slowgithub.workers.dev`.
+- Worker antigo preservado: `https://cursoreducao.slowgithub.workers.dev`.
 - O smoke remoto valida `Cache-Control: no-store` em `/login`.
 - `/health`: HTTP 200, `service=redacao`, `version=1.0.0`.
 - Login professor: passou.

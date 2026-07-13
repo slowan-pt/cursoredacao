@@ -22,7 +22,8 @@ Atualizado em: 2026-07-13.
 - Integração real está em homologação sandbox.
 - Feature flag publicada no Worker atual: `ENABLE_PAYMENTS=true`.
 - Ambiente padrão: `ASAAS_ENV=sandbox`.
-- `ASAAS_WEBHOOK_TOKEN` e `ASAAS_API_KEY` existem como Cloudflare Secrets no Worker `cursoreducao`.
+- `ASAAS_WEBHOOK_TOKEN` e `ASAAS_API_KEY` existem como Cloudflare Secrets no Worker antigo `cursoreducao`.
+- No Worker novo `cursoredacao`, esses dois secrets ainda precisam ser configurados antes de validar webhook/checkout sandbox nessa URL.
 - Migration `005_payments.sql` aplicada no banco remoto em 2026-07-12.
 - A rota de webhook fica ativa com token mesmo quando `ENABLE_PAYMENTS=false`, para não perder eventos de pagamento.
 - Ao receber pagamento `CONFIRMED` ou `RECEIVED` para um registro existente, o webhook vincula o aluno à turma, ativa o aluno e registra créditos.

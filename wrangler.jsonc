@@ -1,6 +1,6 @@
 {
   "$schema": "./node_modules/wrangler/config-schema.json",
-  "name": "cursoreducao",
+  "name": "cursoredacao",
   "main": "src/index.ts",
   "compatibility_date": "2026-06-20",
   "compatibility_flags": ["nodejs_compat"],

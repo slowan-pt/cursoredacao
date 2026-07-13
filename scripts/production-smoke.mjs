@@ -1,6 +1,6 @@
 function readBaseUrl() {
   const explicit = process.argv.find((arg) => arg.startsWith('--base='))
-  return (explicit?.slice('--base='.length) || process.env.APP_BASE_URL || 'https://cursoreducao.slowgithub.workers.dev').replace(/\/+$/, '')
+  return (explicit?.slice('--base='.length) || process.env.APP_BASE_URL || 'https://cursoredacao.slowgithub.workers.dev').replace(/\/+$/, '')
 }
 
 const baseUrl = readBaseUrl()

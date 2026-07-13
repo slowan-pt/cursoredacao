@@ -3,13 +3,16 @@
 ## Atualização de Produção — 2026-07-13
 
 - Branch atual: `main`.
-- Último commit antes desta rodada: `f4e2e4a feat: harden MVP storage and professor notifications`.
+- Último commit antes da migracao do Worker: `97559e9 fix: avoid leaking internal service errors`.
 - GitHub remoto atual: `https://github.com/slowan-pt/cursoredacao.git`.
 - Working tree antes da rodada: limpo.
-- Worker publicado nesta rodada: `1dde43a6-f8a1-4f4b-91b0-bbe665ae26dc`.
-- URL remota validada: `https://cursoreducao.slowgithub.workers.dev`.
+- Worker novo publicado nesta rodada: `c0515734-9256-4c7d-90ac-d3846d4bb9e4`.
+- URL remota validada: `https://cursoredacao.slowgithub.workers.dev`.
+- Worker antigo `cursoreducao` preservado para rollback/observacao, sem exclusao.
 - `APP_URL` continua apontando para `https://redacaocomestrategia.com.br`.
 - Custom domain oficial ainda não está ativo. A tentativa via Wrangler/API Cloudflare falhou com HTTP 400 na criação de domain records, então o `wrangler.jsonc` ficou sem `routes` de custom domain para manter deploys seguros.
+- Secrets essenciais do Worker novo configurados: `SUPABASE_URL`, `SUPABASE_ANON_KEY`, `SUPABASE_SERVICE_KEY`, `SESSION_SECRET`.
+- Secrets pendentes no Worker novo: `ASAAS_API_KEY`, `ASAAS_WEBHOOK_TOKEN`.
 
 ### Concluído Nesta Rodada
 
@@ -27,7 +30,7 @@
 - Script `npm run audit:static` criado para bloquear marcadores temporários, `debugger`, `console.log` em código servido ao usuário, `document.write` fora do loader controlado e scripts locais que listem usuários.
 - Script `npm run typecheck:unused` adicionado e incluído no `check:all`.
 - `npm run check:all` passou.
-- `npm run smoke:prod` passou no fallback `workers.dev`.
+- `npm run smoke:prod -- --base=https://cursoredacao.slowgithub.workers.dev` passou no fallback `workers.dev` novo.
 - `ENABLE_APP_RATE_LIMITING=false` foi documentado em `.env.example`, `wrangler.jsonc` e tipagem centralizada.
 - Documentação operacional nova:
   - `docs/DOMAIN.md`;
@@ -45,9 +48,10 @@
 
 ### Não Concluído Por Depender De Ação Manual
 
-- Ativar `redacaocomestrategia.com.br` e `www.redacaocomestrategia.com.br` como custom domains do Worker no painel Cloudflare.
+- Ativar `redacaocomestrategia.com.br` e `www.redacaocomestrategia.com.br` como custom domains do Worker `cursoredacao` no painel Cloudflare.
+- Configurar `ASAAS_API_KEY` e `ASAAS_WEBHOOK_TOKEN` no Worker `cursoredacao` antes de repetir homologacao de pagamentos nessa URL.
 - Configurar Site URL e Redirect URLs no Supabase para o domínio oficial.
-- Aplicar `migrations/006_performance_indexes.sql` em janela segura no Supabase.
+- Aplicar `migrations/006_performance_indexes.sql` em janela segura no Supabase. Nesta rodada, `SUPABASE_DB_URL` nao estava disponivel em `.dev.vars`, portanto a migration nao foi executada.
 - Criar e validar domínio/API key no Resend.
 - Ativar Asaas produção e fazer PIX real de baixo valor.
 - Criar regras reais de rate limiting no Cloudflare WAF/Rate Limiting ou implementar Durable Objects.
