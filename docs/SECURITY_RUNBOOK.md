@@ -61,6 +61,16 @@ Este runbook prepara ações manuais de segurança. Não execute etapas destruti
 - Arquivos R2 excluídos pela exclusão controlada deixam de ser acessíveis pelas rotas da aplicação.
 - Painel de saúde superadmin expõe apenas agregados e estados de serviço, sem secrets, payloads ou dados pessoais completos.
 
+## Segurança do Módulo Financeiro
+
+- Valores financeiros são armazenados em centavos.
+- O navegador não define valor de remuneração do professor filho.
+- Lançamentos financeiros não devem ser apagados; use cancelamento, reversão ou ajuste.
+- Professor filho só pode consultar lançamentos vinculados ao próprio usuário.
+- Professor pai só pode consultar dados do próprio `site_id`.
+- Superadmin acessa visão global sem conteúdo de redações.
+- Antes de ativar `ENABLE_FINANCIAL_MODULE` e `ENABLE_TEACHER_COMPENSATION`, validar uma correção real de homologação.
+
 ## Pendências de Segurança
 
 - Revogação server-side de JWT após logout ainda não existe; usar banco/KV/Durable Object com `jti` ou versão de sessão.

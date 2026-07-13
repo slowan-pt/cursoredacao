@@ -23,8 +23,26 @@ Organizar o financeiro operacional da plataforma sem trocar a arquitetura atual.
   - `ENABLE_FINANCIAL_EXPORTS`;
   - `ENABLE_FINANCIAL_CHARTS`.
 - Migration não destrutiva criada em `migrations/007_financial_module.sql`.
-- Nenhuma migration remota foi aplicada neste ciclo.
+- Migration remota aplicada no Ciclo B.
 - Nenhuma rota pública foi ativada neste ciclo.
+
+## Ciclo B implementado
+
+- Migrations aplicadas no Supabase:
+  - `007_financial_module.sql`;
+  - `008_financial_statuses.sql`.
+- A finalização de uma correção atribuída a professor filho chama `ensureCorrectionCompensationEntry`.
+- O lançamento é idempotente por `correction_id`.
+- A regra usada fica congelada em `rule_snapshot_json`.
+- Se não houver regra nem valor configurado para o professor filho, a entrega acadêmica da correção não é bloqueada; o sistema gera auditoria e notificação operacional.
+- APIs criadas em `/api/admin/financial/*` para resumo, lançamentos, correções a pagar, fechamentos, aprovação, pagamentos manuais, auditoria e contestação.
+- API superadmin criada em `/api/superadmin/financial`.
+- Interface mínima adicionada:
+  - `Meus Ganhos` para professor filho;
+  - `Financeiro` para professor pai.
+- Script dry-run criado: `npm run financial:backfill:dry-run -- --since=YYYY-MM-DD --limit=100`.
+- Teste estrutural adicionado ao `npm run check:all`: `npm run check:financial`.
+- As flags continuam desligadas por padrão em `wrangler.jsonc`; menus financeiros só aparecem quando `ENABLE_FINANCIAL_MODULE=true`.
 
 ## Modelo de dados preparado
 
@@ -50,12 +68,12 @@ Todos os valores monetários são armazenados em centavos.
 
 ## Próximos ciclos
 
-1. Ciclo B: gerar `correction_compensation_entries` quando uma correção direcionada a professor filho for finalizada.
-2. Ciclo C: criar API e tela `Meus ganhos` para professor filho.
-3. Ciclo D: criar fechamento manual e pagamento manual no painel do professor pai.
-4. Ciclo E: criar visão global do superadmin.
-5. Ciclo F: adicionar CSV, gráficos e notificações internas.
-6. Ciclo G: ampliar testes, auditoria e documentação.
+1. Validar com dados reais uma correção finalizada por professor filho com flags financeiras ligadas em homologação.
+2. Migrar criação/aprovação/pagamento de fechamento para RPC SQL transacional.
+3. Criar tela completa de seleção múltipla de lançamentos.
+4. Criar upload de comprovante de pagamento manual em R2.
+5. Adicionar exportação CSV e alertas superadmin de divergência.
+6. Criar testes de integração com dados controlados.
 
 ## Rollback
 

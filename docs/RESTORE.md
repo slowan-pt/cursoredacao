@@ -1,5 +1,14 @@
 # Restore
 
+## Módulo financeiro
+
+Após restaurar um ambiente com dados financeiros:
+
+1. Validar contagens das tabelas `correction_compensation_entries`, `teacher_payment_closings` e `teacher_payouts`.
+2. Conferir se `correction_id` continua único em `correction_compensation_entries`.
+3. Rodar `npm run financial:backfill:dry-run -- --since=YYYY-MM-DD --limit=100` para identificar correções finalizadas sem lançamento.
+4. Manter as flags financeiras desligadas até validar integridade e permissões.
+
 Atualizado em: 2026-07-13.
 
 ## Código

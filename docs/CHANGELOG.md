@@ -11,6 +11,14 @@ Todas as mudanças relevantes deste projeto devem ser registradas aqui.
   - criada migration não destrutiva `007_financial_module.sql` com tabelas de configurações financeiras, regras de remuneração, lançamentos de correção, fechamentos, pagamentos manuais, ajustes e auditoria;
   - criada documentação `docs/FINANCIAL_MODULE.md`;
   - nenhuma migration remota aplicada e nenhum endpoint financeiro novo ativado neste ciclo.
+- Módulo financeiro interno — Ciclo B:
+  - migrations `007_financial_module.sql` e `008_financial_statuses.sql` aplicadas no Supabase;
+  - finalização de correção atribuída a professor filho gera lançamento financeiro idempotente;
+  - adicionados endpoints `/api/admin/financial/*`;
+  - adicionada visão superadmin `/api/superadmin/financial`;
+  - adicionadas telas mínimas `Meus Ganhos` e `Financeiro`;
+  - criado script dry-run `financial:backfill:dry-run`;
+  - `check:all` passou a incluir `check:financial`.
 - Migracao controlada do Worker para `cursoredacao` em 2026-07-13:
   - `wrangler.jsonc` passou a publicar o Worker novo `cursoredacao`;
   - Worker novo publicado em `https://cursoredacao.slowgithub.workers.dev`;

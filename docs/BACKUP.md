@@ -1,5 +1,19 @@
 # Backup
 
+## Módulo financeiro
+
+Inclua nas rotinas de backup as tabelas:
+
+- `financial_settings`;
+- `correction_compensation_rules`;
+- `correction_compensation_entries`;
+- `teacher_payment_closings`;
+- `teacher_payouts`;
+- `financial_adjustments`;
+- `financial_audit_logs`.
+
+Antes de ativar o módulo financeiro para uso real, faça um backup lógico do Supabase e guarde o dump em local seguro fora do repositório.
+
 Atualizado em: 2026-07-13.
 
 ## Banco Supabase

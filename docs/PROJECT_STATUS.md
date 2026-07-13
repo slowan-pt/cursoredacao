@@ -16,6 +16,20 @@
   - ainda não há tabela própria de valores devidos a corretores filhos.
 - Próxima ação recomendada: aplicar a migration em janela controlada e iniciar o Ciclo B, gerando um lançamento único em `correction_compensation_entries` quando uma redação direcionada a professor filho for finalizada.
 
+## Módulo financeiro interno — Ciclo B — 2026-07-13
+
+- Status: implementado localmente, validado por `npm run check:all`, aguardando deploy/virada controlada das flags.
+- Migrations aplicadas no Supabase: `007_financial_module.sql` e `008_financial_statuses.sql`.
+- Tabelas confirmadas: `financial_settings`, `correction_compensation_rules`, `correction_compensation_entries`, `teacher_payment_closings`, `teacher_payouts`, `financial_adjustments`, `financial_audit_logs`.
+- Gatilho implementado: `PATCH /api/admin/correcoes/:id` cria lançamento financeiro quando correção atribuída a professor filho vira `FINALIZADA`.
+- Idempotência: `correction_compensation_entries.correction_id` é único.
+- Professor filho: endpoints e tela mínima `Meus Ganhos`.
+- Professor pai: endpoints e tela mínima `Financeiro`.
+- Superadmin: endpoint `/api/superadmin/financial`.
+- Backfill: script dry-run criado sem gerar dívida retroativa.
+- Flags no Worker: continuam `false` por padrão; menus financeiros só aparecem quando `ENABLE_FINANCIAL_MODULE=true`.
+- Risco pendente: fechamentos e pagamentos manuais ainda usam sequência de updates via Supabase REST, não RPC SQL transacional.
+
 ## Atualização de Produção — 2026-07-13
 
 - Branch atual: `main`.

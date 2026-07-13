@@ -27,9 +27,9 @@ Atualizado em: 2026-07-13.
 
 ## Não Verificado Automaticamente Neste Ciclo
 
-- Módulo financeiro interno: migration `007_financial_module.sql` criada, mas ainda não aplicada em ambiente remoto.
-- Geração automática de valores a pagar para professor filho ao finalizar correção.
-- Fechamento manual e pagamento manual de professor filho.
+- Fluxo financeiro completo com flags ligadas em homologação: correção real de professor filho, fechamento e pagamento manual.
+- Exportação CSV do módulo financeiro.
+- Criação de fechamento por RPC SQL transacional.
 - Corretor filho acessando somente correções atribuídas em cenário com dados reais suficientes.
 - Custom domain `redacaocomestrategia.com.br`.
 - Envio real via Resend.
@@ -44,6 +44,7 @@ Atualizado em: 2026-07-13.
 npm run security:scan
 npm run check:public
 npm run audit:static
+npm run check:financial
 npm run typecheck:unused
 npm run smoke:prod
 npx tsc --noEmit

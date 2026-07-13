@@ -1,5 +1,14 @@
 # Blockers
 
+## Módulo financeiro: transações de fechamento
+
+- Prioridade: importante antes de uso em alto volume.
+- Situação atual:
+  - Lançamento por correção é idempotente por `correction_id`.
+  - Fechamento e pagamento manual funcionam por sequência controlada de operações via Supabase REST.
+  - Ainda não há RPC SQL transacional para criação/aprovação/pagamento de fechamento.
+- Próxima ação: mover fechamento/pagamento para função SQL transacional com validação de saldo, status e idempotência.
+
 ## Dominio oficial ainda nao ativo
 
 - Prioridade: critica para lancamento publico.
