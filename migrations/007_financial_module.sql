@@ -35,35 +35,6 @@ CREATE TABLE IF NOT EXISTS public.correction_compensation_rules (
   CHECK (valid_until IS NULL OR valid_until >= valid_from)
 );
 
-CREATE TABLE IF NOT EXISTS public.correction_compensation_entries (
-  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  site_id UUID NOT NULL REFERENCES public.sites(id) ON DELETE CASCADE,
-  correction_id UUID NOT NULL REFERENCES public.correcoes(id) ON DELETE RESTRICT,
-  child_professor_id UUID NOT NULL REFERENCES auth.users(id) ON DELETE RESTRICT,
-  parent_professor_id UUID REFERENCES auth.users(id) ON DELETE SET NULL,
-  aluno_id UUID REFERENCES auth.users(id) ON DELETE SET NULL,
-  turma_id UUID REFERENCES public.turmas(id) ON DELETE SET NULL,
-  rule_id UUID REFERENCES public.correction_compensation_rules(id) ON DELETE SET NULL,
-  closing_id UUID,
-  correction_type TEXT NOT NULL DEFAULT 'CORRECAO' CHECK (correction_type IN ('CORRECAO', 'REVISAO')),
-  status TEXT NOT NULL DEFAULT 'PENDING' CHECK (status IN ('PENDING', 'APPROVED', 'IN_CLOSING', 'PAID', 'CANCELED', 'REVERSED')),
-  amount_cents INTEGER NOT NULL CHECK (amount_cents >= 0),
-  currency TEXT NOT NULL DEFAULT 'BRL',
-  assigned_at TIMESTAMPTZ,
-  corrected_at TIMESTAMPTZ NOT NULL DEFAULT now(),
-  approved_at TIMESTAMPTZ,
-  paid_at TIMESTAMPTZ,
-  canceled_at TIMESTAMPTZ,
-  cancel_reason TEXT,
-  rule_snapshot_json JSONB NOT NULL DEFAULT '{}'::jsonb,
-  metadata JSONB NOT NULL DEFAULT '{}'::jsonb,
-  created_by UUID REFERENCES auth.users(id) ON DELETE SET NULL,
-  updated_by UUID REFERENCES auth.users(id) ON DELETE SET NULL,
-  created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
-  updated_at TIMESTAMPTZ NOT NULL DEFAULT now(),
-  UNIQUE (correction_id)
-);
-
 CREATE TABLE IF NOT EXISTS public.teacher_payment_closings (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   site_id UUID NOT NULL REFERENCES public.sites(id) ON DELETE CASCADE,
@@ -89,19 +60,34 @@ CREATE TABLE IF NOT EXISTS public.teacher_payment_closings (
   CHECK (period_end >= period_start)
 );
 
-DO $$
-BEGIN
-  IF NOT EXISTS (
-    SELECT 1
-    FROM pg_constraint
-    WHERE conname = 'correction_compensation_entries_closing_fk'
-  ) THEN
-    ALTER TABLE public.correction_compensation_entries
-      ADD CONSTRAINT correction_compensation_entries_closing_fk
-      FOREIGN KEY (closing_id) REFERENCES public.teacher_payment_closings(id) ON DELETE SET NULL;
-  END IF;
-END;
-$$;
+CREATE TABLE IF NOT EXISTS public.correction_compensation_entries (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  site_id UUID NOT NULL REFERENCES public.sites(id) ON DELETE CASCADE,
+  correction_id UUID NOT NULL REFERENCES public.correcoes(id) ON DELETE RESTRICT,
+  child_professor_id UUID NOT NULL REFERENCES auth.users(id) ON DELETE RESTRICT,
+  parent_professor_id UUID REFERENCES auth.users(id) ON DELETE SET NULL,
+  aluno_id UUID REFERENCES auth.users(id) ON DELETE SET NULL,
+  turma_id UUID REFERENCES public.turmas(id) ON DELETE SET NULL,
+  rule_id UUID REFERENCES public.correction_compensation_rules(id) ON DELETE SET NULL,
+  closing_id UUID REFERENCES public.teacher_payment_closings(id) ON DELETE SET NULL,
+  correction_type TEXT NOT NULL DEFAULT 'CORRECAO' CHECK (correction_type IN ('CORRECAO', 'REVISAO')),
+  status TEXT NOT NULL DEFAULT 'PENDING' CHECK (status IN ('PENDING', 'APPROVED', 'IN_CLOSING', 'PAID', 'CANCELED', 'REVERSED')),
+  amount_cents INTEGER NOT NULL CHECK (amount_cents >= 0),
+  currency TEXT NOT NULL DEFAULT 'BRL',
+  assigned_at TIMESTAMPTZ,
+  corrected_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+  approved_at TIMESTAMPTZ,
+  paid_at TIMESTAMPTZ,
+  canceled_at TIMESTAMPTZ,
+  cancel_reason TEXT,
+  rule_snapshot_json JSONB NOT NULL DEFAULT '{}'::jsonb,
+  metadata JSONB NOT NULL DEFAULT '{}'::jsonb,
+  created_by UUID REFERENCES auth.users(id) ON DELETE SET NULL,
+  updated_by UUID REFERENCES auth.users(id) ON DELETE SET NULL,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+  updated_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+  UNIQUE (correction_id)
+);
 
 CREATE TABLE IF NOT EXISTS public.teacher_payouts (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
@@ -176,41 +162,6 @@ CREATE INDEX IF NOT EXISTS idx_adjustments_closing
 
 CREATE INDEX IF NOT EXISTS idx_financial_audit_site_created
   ON public.financial_audit_logs(site_id, created_at DESC);
-
-CREATE OR REPLACE FUNCTION public.financial_set_updated_at()
-RETURNS trigger
-LANGUAGE plpgsql
-AS $$
-BEGIN
-  NEW.updated_at = now();
-  RETURN NEW;
-END;
-$$;
-
-DROP TRIGGER IF EXISTS trg_financial_settings_updated_at ON public.financial_settings;
-CREATE TRIGGER trg_financial_settings_updated_at
-  BEFORE UPDATE ON public.financial_settings
-  FOR EACH ROW EXECUTE FUNCTION public.financial_set_updated_at();
-
-DROP TRIGGER IF EXISTS trg_comp_rules_updated_at ON public.correction_compensation_rules;
-CREATE TRIGGER trg_comp_rules_updated_at
-  BEFORE UPDATE ON public.correction_compensation_rules
-  FOR EACH ROW EXECUTE FUNCTION public.financial_set_updated_at();
-
-DROP TRIGGER IF EXISTS trg_comp_entries_updated_at ON public.correction_compensation_entries;
-CREATE TRIGGER trg_comp_entries_updated_at
-  BEFORE UPDATE ON public.correction_compensation_entries
-  FOR EACH ROW EXECUTE FUNCTION public.financial_set_updated_at();
-
-DROP TRIGGER IF EXISTS trg_closings_updated_at ON public.teacher_payment_closings;
-CREATE TRIGGER trg_closings_updated_at
-  BEFORE UPDATE ON public.teacher_payment_closings
-  FOR EACH ROW EXECUTE FUNCTION public.financial_set_updated_at();
-
-DROP TRIGGER IF EXISTS trg_payouts_updated_at ON public.teacher_payouts;
-CREATE TRIGGER trg_payouts_updated_at
-  BEFORE UPDATE ON public.teacher_payouts
-  FOR EACH ROW EXECUTE FUNCTION public.financial_set_updated_at();
 
 ALTER TABLE public.financial_settings ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.correction_compensation_rules ENABLE ROW LEVEL SECURITY;
