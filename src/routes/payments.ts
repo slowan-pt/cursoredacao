@@ -199,7 +199,7 @@ app.post('/asaas/webhook', async (c) => {
 
 app.post('/asaas/sandbox-homologation', requireAuth, async (c) => {
   const user = c.get('user')
-  if (user.role !== 'ADMIN' && user.role !== 'SUPERADMIN') {
+  if (!['ADMIN', 'CORRETOR', 'SUPERADMIN'].includes(user.role)) {
     return c.json({ error: 'Acesso negado.' }, 403)
   }
   if (c.env.ASAAS_ENV !== 'sandbox') {
@@ -219,7 +219,7 @@ app.post('/asaas/sandbox-homologation', requireAuth, async (c) => {
     .eq('slug', siteSlug)
     .maybeSingle()
   if (siteErr || !site) return c.json({ error: 'Site de homologação não encontrado.' }, 404)
-  if (user.role === 'ADMIN' && user.site_id !== site.id) return c.json({ error: 'Acesso negado para este site.' }, 403)
+  if (user.role !== 'SUPERADMIN' && user.site_id !== site.id) return c.json({ error: 'Acesso negado para este site.' }, 403)
 
   const [{ data: aluno }, { data: turma }] = await Promise.all([
     sb.from('profiles')
@@ -272,6 +272,7 @@ app.post('/asaas/sandbox-homologation', requireAuth, async (c) => {
       externalReference: `ALUNO:${aluno.id}`,
       notificationDisabled: true
     })
+    const pixKey = await gateway.ensurePixKey()
     const charge: any = await gateway.createPixCharge({
       customerId: String(customer.id),
       value: 5,
@@ -280,6 +281,20 @@ app.post('/asaas/sandbox-homologation', requireAuth, async (c) => {
       externalReference
     })
     const qrCode = await gateway.getPixQrCode(String(charge.id))
+    const simulatePayment = body.simulate_payment !== false
+    let simulatedPixPayment: any = null
+    let simulationError: string | null = null
+    if (simulatePayment && qrCode?.payload) {
+      try {
+        simulatedPixPayment = await gateway.payPixQrCode({
+          payload: String(qrCode.payload),
+          value: 5,
+          description: `Pagamento sandbox ${externalReference}`
+        })
+      } catch (err: any) {
+        simulationError = err?.message || 'asaas_pix_payment_simulation_failed'
+      }
+    }
     await sb.from('payments')
       .update({
         provider_payment_id: charge.id,
@@ -289,7 +304,13 @@ app.post('/asaas/sandbox-homologation', requireAuth, async (c) => {
           sandbox: true,
           customer_id: customer.id,
           payment_id: charge.id,
-          external_reference: externalReference
+          external_reference: externalReference,
+          pix_key_ready: true,
+          pix_key_created: pixKey.created,
+          pix_key_status: pixKey.status || null,
+          simulated_pix_payment: Boolean(simulatedPixPayment),
+          simulated_pix_payment_id: simulatedPixPayment?.id || null,
+          simulation_error: simulationError
         },
         updated_at: new Date().toISOString()
       })
@@ -302,6 +323,8 @@ app.post('/asaas/sandbox-homologation', requireAuth, async (c) => {
       external_reference: externalReference,
       status: charge.status || 'PENDING',
       value: 5,
+      manual_action_required: Boolean(simulationError),
+      simulation_error: simulationError,
       pix: {
         encodedImage: qrCode.encodedImage || null,
         payload: qrCode.payload || null,

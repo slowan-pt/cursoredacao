@@ -41,6 +41,16 @@ export type AsaasWebhookPayload = {
   }
 }
 
+function describeAsaasError(status: number, data: any) {
+  const errors = Array.isArray(data?.errors)
+    ? data.errors
+      .map((item: any) => [item?.code, item?.description].filter(Boolean).join(': '))
+      .filter(Boolean)
+    : []
+  const message = errors.length ? ` ${errors.slice(0, 3).join(' | ')}` : ''
+  return `Asaas retornou erro ${status}.${message}`
+}
+
 export type NormalizedPaymentWebhook = {
   provider: 'ASAAS'
   providerEventId: string
@@ -56,6 +66,8 @@ export type PaymentGateway = {
   createCustomer(input: CreateCustomerInput): Promise<any>
   createPixCharge(input: CreatePixChargeInput): Promise<unknown>
   getPixQrCode(paymentId: string): Promise<any>
+  ensurePixKey(): Promise<{ created: boolean; status?: string }>
+  payPixQrCode(input: { payload: string; value: number; description?: string }): Promise<any>
 }
 
 const ASAAS_BASE_URLS = {
@@ -140,6 +152,14 @@ class DisabledPaymentGateway implements PaymentGateway {
   async getPixQrCode(): Promise<unknown> {
     throw new Error('Pagamentos temporariamente indisponíveis.')
   }
+
+  async ensurePixKey(): Promise<{ created: boolean }> {
+    throw new Error('Pagamentos temporariamente indisponíveis.')
+  }
+
+  async payPixQrCode(): Promise<unknown> {
+    throw new Error('Pagamentos temporariamente indisponíveis.')
+  }
 }
 
 class AsaasGateway implements PaymentGateway {
@@ -152,13 +172,14 @@ class AsaasGateway implements PaymentGateway {
       headers: {
         accept: 'application/json',
         'content-type': 'application/json',
+        'user-agent': 'redacao-com-estrategia/1.0',
         access_token: requireAsaasApiKey(this.env),
         ...(init.headers || {})
       }
     })
     const data = await response.json().catch(() => null)
     if (!response.ok) {
-      throw new Error(`Asaas retornou erro ${response.status}.`)
+      throw new Error(describeAsaasError(response.status, data))
     }
     return data
   }
@@ -193,6 +214,31 @@ class AsaasGateway implements PaymentGateway {
   async getPixQrCode(paymentId: string) {
     return this.request(`/payments/${encodeURIComponent(paymentId)}/pixQrCode`, {
       method: 'GET'
+    })
+  }
+
+  async ensurePixKey() {
+    const active: any = await this.request('/pix/addressKeys?status=ACTIVE&limit=100&offset=0', {
+      method: 'GET'
+    })
+    if (Array.isArray(active?.data) && active.data.length > 0) {
+      return { created: false, status: 'ACTIVE' }
+    }
+    const created: any = await this.request('/pix/addressKeys', {
+      method: 'POST',
+      body: JSON.stringify({ type: 'EVP' })
+    })
+    return { created: true, status: created?.status }
+  }
+
+  async payPixQrCode(input: { payload: string; value: number; description?: string }) {
+    return this.request('/pix/qrCodes/pay', {
+      method: 'POST',
+      body: JSON.stringify({
+        qrCode: { payload: input.payload },
+        value: input.value,
+        description: input.description
+      })
     })
   }
 }
