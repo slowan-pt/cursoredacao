@@ -1,5 +1,25 @@
 # Blockers
 
+## Dominio oficial ainda nao ativo
+
+- Prioridade: critica para lancamento publico.
+- Situacao atual em 2026-07-13:
+  - `APP_URL` ja aponta para `https://redacaocomestrategia.com.br`.
+  - O fallback `https://cursoreducao.slowgithub.workers.dev` segue publicado e validado.
+  - A tentativa de custom domain via Wrangler/API Cloudflare falhou com HTTP 400 no endpoint de domain records.
+  - `wrangler.jsonc` ficou sem `routes` de custom domain para nao quebrar deploys.
+- Proxima acao: configurar `redacaocomestrategia.com.br` e `www.redacaocomestrategia.com.br` em Cloudflare Dashboard → Workers & Pages → `cursoreducao` → Settings → Triggers → Custom Domains.
+- Teste posterior: `npm run smoke:prod -- --base=https://redacaocomestrategia.com.br`.
+
+## Rate limiting efetivo
+
+- Prioridade: importante para producao.
+- Situacao atual:
+  - `ENABLE_APP_RATE_LIMITING=false`.
+  - Existe ponto de extensao no codigo, mas nao ha protecao global efetiva na aplicacao.
+  - Nao foi implementado contador em memoria local porque isso nao protege globalmente em Cloudflare Workers.
+- Proxima acao: configurar Cloudflare WAF/Rate Limiting ou aprovar implementacao com Durable Objects.
+
 ## Revogação real de sessão após logout
 
 - Prioridade: importante para produção.
@@ -29,27 +49,14 @@
 
 - Prioridade: crítica.
 - Impacto: commits antigos ainda podem conter ou referenciar credenciais expostas.
-- Situação: limpeza local executada em 2026-07-12; validação remota ainda pendente porque o `origin` configurado retorna `Repository not found`.
+- Situação: limpeza local executada em 2026-07-12; o remoto foi corrigido em 2026-07-13 para `https://github.com/slowan-pt/cursoredacao.git`.
 - Solução sugerida:
   1. Backup local sensível criado.
   2. História alcançável validada sem formatos reais de segredo.
   3. Reflog/objetos órfãos limpos localmente.
-  4. Corrigir o acesso ao repositório GitHub ou ajustar o `origin` para o repositório privado correto.
-  5. Fazer `git push --force-with-lease`.
-  6. Clonar o remoto em pasta temporária e validar que GitHub ficou limpo.
-
-## GitHub remoto inacessível
-
-- Prioridade: crítica.
-- Impacto: impede publicar os commits locais no GitHub e concluir a validação remota pós-limpeza.
-- Situação: `https://github.com/slowan-pt/redacao.git` retorna `Repository not found`; URLs prováveis também foram testadas sem sucesso.
-- Observação 2026-07-13: `gh` não está instalado nesta máquina, então a checagem via GitHub CLI não pôde ser usada.
-- Solução sugerida:
-  1. Confirmar se o repositório privado existe no GitHub.
-  2. Confirmar se a conta autenticada localmente tem acesso.
-  3. Corrigir `origin` se o usuário/organização/nome do repositório forem diferentes.
-  4. Repetir `git ls-remote origin refs/heads/main`.
-  5. Executar push somente depois do acesso confirmado.
+  4. Manter o remoto atual `slowan-pt/cursoredacao`.
+  5. Fazer push normal para commits novos.
+  6. Nao fazer force push sem nova aprovacao e plano de recuperacao.
 
 ## Domínio oficial ainda não publicado
 

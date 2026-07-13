@@ -12,6 +12,7 @@ export interface Env {
   ENABLE_EMAILS?: string
   ENABLE_OAUTH?: string
   ENABLE_PUBLIC_CHECKOUT_SIMULATED?: string
+  ENABLE_APP_RATE_LIMITING?: string
   MAX_UPLOAD_BYTES?: string
   R2_UPLOADS_BUCKET?: string
   ASAAS_ENV?: string

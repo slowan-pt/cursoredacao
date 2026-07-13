@@ -1,0 +1,10 @@
+{
+  "name": "Redacao com Estrategia",
+  "short_name": "Redacao",
+  "start_url": "/",
+  "scope": "/",
+  "display": "standalone",
+  "background_color": "#f8f7f4",
+  "theme_color": "#1a3a2a",
+  "description": "Plataforma para cursos, envio e correcao de redacoes."
+}

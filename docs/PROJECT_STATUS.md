@@ -1,5 +1,50 @@
 # Redação com Estratégia — Status do Projeto
 
+## Atualização de Produção — 2026-07-13
+
+- Branch atual: `main`.
+- Último commit antes desta rodada: `f4e2e4a feat: harden MVP storage and professor notifications`.
+- GitHub remoto atual: `https://github.com/slowan-pt/cursoredacao.git`.
+- Working tree antes da rodada: limpo.
+- Worker publicado nesta rodada: `2c4d20c0-4454-47d4-9b9f-5e5df70dece5`.
+- URL remota validada: `https://cursoreducao.slowgithub.workers.dev`.
+- `APP_URL` continua apontando para `https://redacaocomestrategia.com.br`.
+- Custom domain oficial ainda não está ativo. A tentativa via Wrangler/API Cloudflare falhou com HTTP 400 na criação de domain records, então o `wrangler.jsonc` ficou sem `routes` de custom domain para manter deploys seguros.
+
+### Concluído Nesta Rodada
+
+- Metadados públicos adicionados:
+  - `public/robots.txt`;
+  - `public/sitemap.xml`;
+  - `public/site.webmanifest`;
+  - `public/favicon.svg`.
+- Páginas públicas principais receberam canonical, manifest, favicon e metadados compatíveis com o domínio oficial:
+  - `public/index.html`;
+  - `public/login.html`;
+  - `public/auth-callback.html`.
+- Script `npm run check:public` criado para validar metadados essenciais.
+- Script `npm run smoke:prod` criado para smoke remoto de `/health`, páginas públicas e assets.
+- `npm run check:all` passou.
+- `npm run smoke:prod` passou no fallback `workers.dev`.
+- `ENABLE_APP_RATE_LIMITING=false` foi documentado em `.env.example`, `wrangler.jsonc` e tipagem centralizada.
+- Documentação operacional nova:
+  - `docs/DOMAIN.md`;
+  - `docs/SUPABASE_AUTH.md`;
+  - `docs/ASAAS_PRODUCTION.md`;
+  - `docs/RATE_LIMITING.md`;
+  - `docs/OBSERVABILITY.md`;
+  - `docs/LAUNCH_CHECKLIST.md`;
+  - rascunhos jurídicos em `docs/legal/`.
+
+### Não Concluído Por Depender De Ação Manual
+
+- Ativar `redacaocomestrategia.com.br` e `www.redacaocomestrategia.com.br` como custom domains do Worker no painel Cloudflare.
+- Configurar Site URL e Redirect URLs no Supabase para o domínio oficial.
+- Criar e validar domínio/API key no Resend.
+- Ativar Asaas produção e fazer PIX real de baixo valor.
+- Criar regras reais de rate limiting no Cloudflare WAF/Rate Limiting ou implementar Durable Objects.
+- Revisar termos, privacidade, retenção e reembolso com apoio jurídico.
+
 ## Atualização MVP — 2026-07-13
 
 - Branch atual: `main`.
@@ -27,13 +72,13 @@
 - Rate limiting efetivo ainda depende de Cloudflare Rate Limiting/WAF/Durable Objects; não foi implementado contador em memória para evitar falsa proteção.
 - Resend está preparado em código/templates, mas `ENABLE_EMAILS=false` e não há envio real.
 - Domínio oficial ainda precisa ser ativado/validado no painel Cloudflare.
-- GitHub remoto segue pendente de acesso/push.
+- GitHub remoto atual foi corrigido para `https://github.com/slowan-pt/cursoredacao.git` e respondeu a `git ls-remote`.
 
 ## Dados gerais
 
 - Data da atualização: 2026-07-13.
 - Branch atual: `main`.
-- Relação com remoto: branch local continua à frente de `origin/main`; push GitHub bloqueado por acesso ao repositório.
+- Relação com remoto antes desta rodada: branch `main` sincronizada com `origin/main`.
 - Último commit local confirmado antes desta homologação: `a087598 feat: add Asaas sandbox homologation flow`.
 - Estado do working tree: modificado durante homologação Asaas sandbox; alterações em `src/payments.ts`, `src/routes/payments.ts` e docs serão consolidadas em commits locais.
 - Versão atual declarada: `1.0.0` em `package.json`.
@@ -496,15 +541,14 @@ Resumo anterior do `git diff --stat`:
 - Criar endpoint autenticado/streaming para substituir a hidratação temporária por data URL.
 - Validar upload/leitura via aplicação com aluno/turma de homologação dedicado, para evitar consumir créditos reais.
 
-## Bloqueio GitHub — 2026-07-12
+## Bloqueio GitHub resolvido — 2026-07-13
 
-- `origin` configurado como `https://github.com/slowan-pt/redacao.git`.
-- `git ls-remote origin refs/heads/main` retornou `Repository not found`.
-- Testes de URLs prováveis (`slowan-pt/redacao`, `slowgithub/redacao`, `slowan-pt/cursoreducao`, `slowgithub/cursoreducao`) também retornaram `Repository not found`.
-- `gh` CLI não está instalado.
+- Bloqueio anterior: `origin` configurado como `https://github.com/slowan-pt/redacao.git` retornava `Repository not found`.
+- Remoto atual: `https://github.com/slowan-pt/cursoredacao.git`.
+- `git ls-remote origin refs/heads/main` respondeu corretamente antes desta rodada.
+- `gh` CLI não está instalado, mas não é necessário para o push Git atual.
 - Git local usa credential helper do Windows e identidade `slowan-pt <slowgithub@gmail.com>`.
-- Push/force-with-lease não executado.
-- Próxima ação: corrigir acesso/remote do GitHub e então executar `git push --force-with-lease origin main`.
+- Próxima ação segura: usar push normal para commits novos. Nao usar force push sem nova revisao especifica.
 
 ## Próxima ação recomendada
 

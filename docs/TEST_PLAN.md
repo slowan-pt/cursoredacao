@@ -5,6 +5,7 @@ Atualizado em: 2026-07-13.
 ## Resultado Remoto MVP — 2026-07-13
 
 - `npm run check:all`: passou.
+- `npm run smoke:prod`: passou no fallback `https://cursoreducao.slowgithub.workers.dev`.
 - `/health`: HTTP 200, `service=redacao`, `version=1.0.0`.
 - Login professor: passou.
 - Login aluno: passou.
@@ -24,11 +25,14 @@ Atualizado em: 2026-07-13.
 - Envio real via Resend.
 - Cobrança Asaas de produção.
 - Revogação server-side de JWT após logout.
+- Smoke remoto pelo domínio oficial `https://redacaocomestrategia.com.br`, porque o custom domain ainda não está ativo.
 
 ## Validações Automatizadas Disponíveis
 
 ```bash
 npm run security:scan
+npm run check:public
+npm run smoke:prod
 npx tsc --noEmit
 git diff --check
 ```

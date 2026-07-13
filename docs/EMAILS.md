@@ -18,6 +18,7 @@ Atualizado em: 2026-07-13.
   - reembolso/estorno;
   - novo aluno pago para o professor;
   - recuperação de senha, sem substituir o fluxo seguro do Supabase Auth.
+- Envio real continua bloqueado até criação de `RESEND_API_KEY`, verificação do domínio de envio e troca consciente de `ENABLE_EMAILS=true`.
 
 ## Arquivos Preparados
 
@@ -89,6 +90,7 @@ EMAIL_FROM="Redação com Estratégia <no-reply@redacaocomestrategia.com.br>"
 - Os templates não são disparados automaticamente enquanto `ENABLE_EMAILS=false`.
 - Falta configurar `RESEND_API_KEY` e domínio/remetente verificado.
 - Falta definir política de retry/idempotência para envio real.
+- Falta criar prévias visuais automatizadas dos templates em HTML estático.
 
 ## Regras de Segurança
 

@@ -6,6 +6,17 @@ Todas as mudanças relevantes deste projeto devem ser registradas aqui.
 
 ### Adicionado
 
+- Rodada de finalização para produção em 2026-07-13:
+  - adicionados `robots.txt`, `sitemap.xml`, `site.webmanifest` e `favicon.svg`;
+  - páginas públicas principais passaram a declarar canonical, manifest, favicon e metadados do domínio oficial;
+  - criado `npm run check:public`;
+  - criado `npm run smoke:prod`;
+  - `check:all` agora valida metadados públicos;
+  - `ENABLE_APP_RATE_LIMITING=false` documentado em `.env.example`, `wrangler.jsonc` e tipos;
+  - docs novas: domínio, Supabase Auth, Asaas produção, rate limiting, observabilidade e checklist de lançamento;
+  - rascunhos jurídicos adicionados em `docs/legal/`;
+  - deploy publicado: `2c4d20c0-4454-47d4-9b9f-5e5df70dece5`;
+  - smoke remoto validado no fallback `https://cursoreducao.slowgithub.workers.dev`.
 - Finalização incremental do MVP em 2026-07-13:
   - upload R2 validado remotamente por PDF, PNG e JPEG fictícios via fluxo real do aluno;
   - rejeição remota validada para MIME inválido, PNG corrompido, URL externa falsa e arquivo acima de `MAX_UPLOAD_BYTES`;
@@ -52,7 +63,7 @@ Todas as mudanças relevantes deste projeto devem ser registradas aqui.
 - Variáveis explícitas de produção adicionadas ao `wrangler.jsonc`, mantendo pagamentos, e-mails, OAuth e checkout simulado desligados.
 - Deploy real do Worker `cursoreducao` executado com versão `627f2f9d-1a96-484a-91e9-24c55956ec30`.
 - R2 remoto validado com put/get/delete de objeto temporário.
-- GitHub push segue bloqueado porque o remoto configurado retorna `Repository not found`.
+- GitHub remoto foi corrigido posteriormente para `https://github.com/slowan-pt/cursoredacao.git`; o bloqueio antigo de `Repository not found` nao se aplica ao remoto atual.
 - Tentativa de configurar custom domains via Wrangler falhou na criação dos domain records; rollback executado e `workers_dev=true` foi explicitado.
 - Healthcheck `/health` passou a rodar antes dos Assets para evitar 404.
 - Deploy atual validado com versão `70d38840-7c8d-4cac-96dd-6347ac92a41d`.
@@ -121,7 +132,7 @@ Todas as mudanças relevantes deste projeto devem ser registradas aqui.
 
 ### Observações
 
-- O branch local continua à frente de `origin/main`.
+- O branch local foi sincronizado com o remoto correto antes da rodada de finalizacao para producao.
 - As alterações funcionais locais pendentes foram consolidadas em commits locais em 2026-07-12.
 - Nenhum push, deploy ou migration real foi executado durante a consolidação.
 

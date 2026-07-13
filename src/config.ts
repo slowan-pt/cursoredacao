@@ -13,6 +13,7 @@ export type AppConfig = {
     emails: boolean
     oauth: boolean
     publicCheckoutSimulated: boolean
+    appRateLimiting: boolean
   }
 }
 
@@ -74,7 +75,8 @@ export function getConfig(env: Env): AppConfig {
       r2Uploads: bool(env.ENABLE_R2_UPLOADS, false),
       emails: bool(env.ENABLE_EMAILS, false),
       oauth: bool(env.ENABLE_OAUTH, false),
-      publicCheckoutSimulated: bool(env.ENABLE_PUBLIC_CHECKOUT_SIMULATED, publicCheckoutDefault)
+      publicCheckoutSimulated: bool(env.ENABLE_PUBLIC_CHECKOUT_SIMULATED, publicCheckoutDefault),
+      appRateLimiting: bool(env.ENABLE_APP_RATE_LIMITING, false)
     }
   }
 }

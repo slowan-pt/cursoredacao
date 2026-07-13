@@ -1,5 +1,5 @@
 {
-  "name": "cursoreducao",
+  "name": "cursoredacao",
   "version": "1.0.0",
   "private": true,
   "scripts": {
@@ -7,7 +7,9 @@
     "deploy": "wrangler deploy",
     "typecheck": "tsc --noEmit",
     "check:diff": "git diff --check",
-    "check:all": "npm run typecheck && npm run security:scan && npm run check:diff",
+    "check:public": "node scripts/check-public-metadata.mjs",
+    "smoke:prod": "node scripts/production-smoke.mjs",
+    "check:all": "npm run typecheck && npm run security:scan && npm run check:public && npm run check:diff",
     "setup": "node scripts/setup.mjs",
     "security:scan": "node scripts/scan-secrets.mjs"
   },

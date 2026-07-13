@@ -1,0 +1,4 @@
+User-agent: *
+Allow: /
+
+Sitemap: https://redacaocomestrategia.com.br/sitemap.xml

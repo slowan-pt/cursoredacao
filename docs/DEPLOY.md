@@ -7,7 +7,7 @@ Este projeto usa Cloudflare Workers com Wrangler. Não usar Docker/VPS para a ar
 ## Estado Atual do Worker
 
 - Worker padrão: `cursoreducao`.
-- Último deploy validado: `720e4f78-c4d6-4f2f-95ad-552292343fd0`.
+- Último deploy validado: `2c4d20c0-4454-47d4-9b9f-5e5df70dece5`.
 - URL atual: `https://cursoreducao.slowgithub.workers.dev`.
 - `APP_ENV=production`.
 - `ENABLE_R2_UPLOADS=true`.
@@ -16,6 +16,7 @@ Este projeto usa Cloudflare Workers com Wrangler. Não usar Docker/VPS para a ar
 - `ENABLE_PUBLIC_CHECKOUT_SIMULATED=false`.
 - `ENABLE_EMAILS=false`.
 - `ENABLE_OAUTH=false`.
+- `ENABLE_APP_RATE_LIMITING=false`.
 - Domínio oficial `redacaocomestrategia.com.br` ainda pendente de configuração final.
 - `workers_dev=true` deve permanecer explícito enquanto o domínio oficial não estiver estável.
 
@@ -56,6 +57,7 @@ Não passar valores diretamente no comando.
 ```bash
 git status --short --branch
 npm run security:scan
+npm run check:public
 npx tsc --noEmit
 git diff --check
 ```
@@ -94,6 +96,8 @@ Checklist manual:
 - revisar `APP_URL`;
 - testar login e recuperação de senha.
 
+Ver instruções detalhadas em `docs/DOMAIN.md` e `docs/SUPABASE_AUTH.md`.
+
 ## Pós-Deploy
 
 Testar:
@@ -119,6 +123,7 @@ Resultado do deploy validado em 2026-07-12:
 - Logout professor/corretor e aluno: passou.
 - R2 remoto: put/get/delete de objeto temporário passou.
 - Upload R2 via aplicação: passou com arquivo de teste e limpeza posterior.
+- Smoke remoto público em 2026-07-13: `/health`, `/`, `/login.html`, `/redacao/puppin-teste`, `/robots.txt`, `/sitemap.xml` e `/site.webmanifest` passaram no fallback `workers.dev`.
 
 ## Incidente Controlado de Domínio
 

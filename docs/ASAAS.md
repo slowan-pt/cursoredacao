@@ -6,6 +6,8 @@ Atualizado em: 2026-07-13.
 
 - Ambiente publicado continua em Sandbox: `ASAAS_ENV=sandbox`.
 - `ENABLE_PAYMENTS=true`.
+- Produção não foi ativada nesta rodada.
+- Checklist separado criado em `docs/ASAAS_PRODUCTION.md`.
 - Fluxo comercial público já foi validado com preço vindo exclusivamente de `turmas.preco`.
 - Painel financeiro do professor reforçado neste ciclo:
   - filtro simples por status;

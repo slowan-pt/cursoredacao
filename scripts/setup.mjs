@@ -92,14 +92,14 @@ async function main() {
     },
     {
       email: 'slowgithub@gmail.com',
-      password: seedPassword('SEED_PROFESSOR_PASSWORD', 'Prof@cursoreducao123'),
+      password: seedPassword('SEED_PROFESSOR_PASSWORD', 'Prof@cursoredacao123'),
       nome: 'Professor',
       role: 'CORRETOR',
       site_id: site.id
     },
     {
       email: 'testeplataformas8@gmail.com',
-      password: seedPassword('SEED_STUDENT_PASSWORD', 'Aluno@cursoreducao123'),
+      password: seedPassword('SEED_STUDENT_PASSWORD', 'Aluno@cursoredacao123'),
       nome: 'Aluno Teste',
       role: 'ALUNO',
       site_id: site.id
