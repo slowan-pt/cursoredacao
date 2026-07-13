@@ -1,6 +1,6 @@
 # Plano de Testes
 
-Atualizado em: 2026-07-12.
+Atualizado em: 2026-07-13.
 
 ## Validações Automatizadas Disponíveis
 
@@ -63,6 +63,18 @@ git diff --check
 
 - Checkout simulado com flag ligada em ambiente não produção.
 - Confirmar que retorno do navegador não deve liberar pagamento real.
+- Fluxo comercial público de turma nova:
+  - professor cria turma com nome, descrição, status aberto e preço;
+  - turma aparece no site público correto;
+  - aluno inicia compra pelo site público;
+  - backend lê turma/preço diretamente do banco;
+  - checkout cria registro em `payments`;
+  - checkout cria cobrança PIX Asaas Sandbox;
+  - segundo clique reaproveita cobrança `PENDING`;
+  - `PAYMENT_CREATED` não libera matrícula;
+  - `PAYMENT_RECEIVED`, `PAYMENT_CONFIRMED` ou equivalente normalizado libera matrícula;
+  - professor visualiza nome do aluno, turma, valor, forma de pagamento, status e data;
+  - notificação interna é gravada sem depender de e-mail.
 - Asaas Sandbox:
   - token inválido no webhook retorna HTTP 401;
   - payload inválido retorna HTTP 400 quando autenticado;
@@ -73,6 +85,16 @@ git diff --check
   - cobrança inexistente fica armazenada para reconciliação;
   - matrícula duplicada é impedida por `turma_id,aluno_id`;
   - API de produção não deve ser chamada com `ASAAS_ENV=sandbox`.
+
+#### Evidência de homologação comercial — 2026-07-13
+
+- Turma: `Homologacao Comercial 20260713-000003`.
+- Preço: `R$ 5,73`.
+- Cobrança Sandbox: `pay_4d2uxcz072cm1m5s`.
+- `PAYMENT_CREATED`: recebido/processado, matrícula não criada.
+- `PAYMENT_RECEIVED`: recebido/processado, matrícula criada.
+- Aluno: login validado e turma comprada disponível.
+- Professor: pagamento visível na API administrativa e no dashboard.
 
 ### E-mails
 

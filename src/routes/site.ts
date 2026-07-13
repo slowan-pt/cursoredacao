@@ -2,6 +2,7 @@ import { Hono } from 'hono'
 import type { Env } from '../types'
 import { getAdmin } from '../supabase'
 import { getConfig } from '../config'
+import { getPaymentGateway } from '../payments'
 
 const app = new Hono<{ Bindings: Env }>()
 
@@ -29,6 +30,12 @@ function makeCheckoutCode() {
 
 function makeTransactionId(code: string) {
   return `SIM-${Date.now()}-${code.replace(/\W/g, '')}`
+}
+
+function tomorrowIsoDate() {
+  const date = new Date()
+  date.setDate(date.getDate() + 1)
+  return date.toISOString().slice(0, 10)
 }
 
 async function sendCheckoutReceipt(env: Env, lead: any, turma: any, site: any) {
@@ -1948,7 +1955,7 @@ a{text-decoration:none;color:inherit}.wrap{max-width:1080px;margin:0 auto}.top{d
 .form-group{display:flex;flex-direction:column;gap:7px;margin-bottom:14px}label{font-size:12px;font-weight:800;color:var(--ink2)}input{width:100%;padding:12px 14px;border:1.5px solid var(--border);border-radius:10px;font:inherit;outline:none}input:focus{border-color:var(--brand);box-shadow:0 0 0 3px rgba(0,0,0,.08)}
 .btn{width:100%;border:0;border-radius:10px;padding:14px 16px;font:inherit;font-weight:900;cursor:pointer;transition:.22s}.btn:hover{transform:translateY(-2px)}.btn-accent{background:var(--accent);color:var(--accent-text)}.btn-sec{background:transparent;border:1px solid var(--border);color:var(--ink)}
 .alert{display:none;border-radius:10px;padding:12px 14px;font-size:13px;margin-bottom:14px}.alert-ok{background:#EEF8F1;color:var(--success);border:1px solid #BFE8CD}.alert-err{background:#FEF0F0;color:var(--danger);border:1px solid #F5C6C6}.postpay{display:none;margin-top:18px}.postpay.open{display:block}.action-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px}.note{font-size:12px;color:var(--ink3);line-height:1.5;margin-top:12px}
-.payment-modal{position:fixed;inset:0;background:rgba(0,0,0,.64);display:none;align-items:center;justify-content:center;padding:24px;z-index:50}.payment-modal.open{display:flex}.payment-box{width:min(760px,100%);background:var(--card);color:var(--ink);border:1px solid var(--border);border-radius:24px;padding:28px;box-shadow:0 30px 90px rgba(0,0,0,.42)}.payment-badge{display:inline-flex;background:var(--accent);color:var(--accent-text);border-radius:999px;padding:7px 12px;font-size:12px;font-weight:900;margin-bottom:14px}.payment-box h2{font-size:28px;font-weight:900;margin-bottom:10px}.payment-details{background:rgba(0,0,0,.04);border:1px solid var(--border);border-radius:14px;padding:14px;margin:16px 0;display:grid;gap:7px;font-size:13px;color:var(--ink2)}.payment-code{font-weight:900;color:var(--ink);letter-spacing:.08em}.modal-actions{display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-top:18px}.modal-actions .btn{font-size:17px;padding:20px 16px;border-radius:16px}.modal-note{font-size:12px;color:var(--ink3);line-height:1.55;margin-top:14px}
+.payment-modal{position:fixed;inset:0;background:rgba(0,0,0,.64);display:none;align-items:center;justify-content:center;padding:24px;z-index:50}.payment-modal.open{display:flex}.payment-box{width:min(860px,100%);max-height:94vh;overflow:auto;background:var(--card);color:var(--ink);border:1px solid var(--border);border-radius:24px;padding:28px;box-shadow:0 30px 90px rgba(0,0,0,.42)}.payment-badge{display:inline-flex;background:var(--accent);color:var(--accent-text);border-radius:999px;padding:7px 12px;font-size:12px;font-weight:900;margin-bottom:14px}.payment-box h2{font-size:28px;font-weight:900;margin-bottom:10px}.payment-details{background:rgba(0,0,0,.04);border:1px solid var(--border);border-radius:14px;padding:14px;margin:16px 0;display:grid;gap:7px;font-size:13px;color:var(--ink2)}.payment-code{font-weight:900;color:var(--ink);letter-spacing:.08em}.pix-grid{display:grid;grid-template-columns:220px minmax(0,1fr);gap:14px;align-items:start}.pix-qr{width:220px;height:220px;border:1px solid var(--border);border-radius:14px;background:#fff;display:flex;align-items:center;justify-content:center;overflow:hidden}.pix-qr img{width:100%;height:100%;object-fit:contain}.pix-copy{width:100%;min-height:120px;resize:vertical;border:1px solid var(--border);border-radius:12px;padding:10px;font:12px ui-monospace,monospace;color:var(--ink2)}.modal-actions{display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-top:18px}.modal-actions .btn{font-size:17px;padding:20px 16px;border-radius:16px}.modal-note{font-size:12px;color:var(--ink3);line-height:1.55;margin-top:14px}
 @media(max-width:860px){body{padding:18px}.checkout{grid-template-columns:1fr}.action-grid{grid-template-columns:1fr}.cover{width:min(100%,280px)}}
 @media(max-width:620px){.modal-actions{grid-template-columns:1fr}.payment-box{padding:22px}.payment-box h2{font-size:24px}}
 </style>
@@ -1993,20 +2000,30 @@ a{text-decoration:none;color:inherit}.wrap{max-width:1080px;margin:0 auto}.top{d
 </div>
 <div class="payment-modal" id="payment-modal" role="dialog" aria-modal="true" aria-labelledby="payment-title">
   <div class="payment-box">
-    <span class="payment-badge">Pagamento aprovado</span>
-    <h2 id="payment-title">Agora escolha como acessar</h2>
-    <p class="desc">Sua inscrição foi registrada. Use o mesmo e-mail para entrar ou criar seu cadastro.</p>
+    <span class="payment-badge">Aguardando pagamento</span>
+    <h2 id="payment-title">Pague com Pix para liberar a turma</h2>
+    <p class="desc">A matrícula só será liberada após confirmação pelo webhook do Asaas. O retorno desta página não libera acesso.</p>
     <div class="payment-details">
       <div><strong>Aluno:</strong> <span id="modal-name">-</span></div>
       <div><strong>E-mail:</strong> <span id="modal-email">-</span></div>
+      <div><strong>Turma:</strong> <span id="modal-course">-</span></div>
+      <div><strong>Valor:</strong> <span id="modal-total">-</span></div>
       <div><strong>Transação:</strong> <span id="modal-transaction">-</span></div>
       <div><strong>Código único:</strong> <span class="payment-code" id="modal-code">-</span></div>
+    </div>
+    <div class="pix-grid">
+      <div class="pix-qr" id="pix-qr">QR</div>
+      <div>
+        <label for="pix-payload">Pix copia-e-cola</label>
+        <textarea id="pix-payload" class="pix-copy" readonly></textarea>
+        <button class="btn btn-sec" style="margin-top:10px" onclick="copyPix()" type="button">Copiar Pix</button>
+      </div>
     </div>
     <div class="modal-actions">
       <a class="btn btn-sec" id="modal-login-link" href="${loginUrl}">Fazer login</a>
       <a class="btn btn-accent" id="modal-signup-link" href="${loginUrl}?signup=1&paid=1&turma=${encodeURIComponent(turma.id)}">Criar cadastro</a>
     </div>
-    <p class="modal-note">Se você sair desta tela sem criar o cadastro, use o código enviado/registrado para concluir o cadastro depois.</p>
+    <p class="modal-note">Após o pagamento, faça login ou crie cadastro com o mesmo e-mail. Se sair desta tela, use o código único para concluir o cadastro depois.</p>
   </div>
 </div>
 <script>
@@ -2014,6 +2031,7 @@ const siteSlug=${jsonForScript(site.slug)}
 const turmaId=${jsonForScript(turma.id)}
 function show(id,msg){const el=document.getElementById(id);el.textContent=msg;el.style.display='block'}
 function hideAlerts(){document.getElementById('alert-err').style.display='none';document.getElementById('alert-ok').style.display='none'}
+function copyPix(){const el=document.getElementById('pix-payload');el.select();document.execCommand('copy')}
 async function simulatePayment(event){
   event.preventDefault();hideAlerts()
   const btn=document.getElementById('btn-pay')
@@ -2021,14 +2039,14 @@ async function simulatePayment(event){
   const nome=document.getElementById('payer-name').value.trim()
   if(!nome){show('alert-err','Informe seu nome para registrar a matrícula.');return}
   if(!email){show('alert-err','Informe o e-mail para vincular a matrícula.');return}
-  btn.disabled=true;btn.textContent='Processando pagamento...'
+  btn.disabled=true;btn.textContent='Gerando Pix...'
   try{
     const res=await fetch('/api/site/'+encodeURIComponent(siteSlug)+'/checkout',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({turma_id:turmaId,email,nome})})
     const data=await res.json()
     if(!res.ok){show('alert-err',data.error||'Não foi possível finalizar o pagamento.');return}
     const code=data.checkout_code||''
     const transactionId=data.transaction_id||''
-    show('alert-ok','Pagamento aprovado em simulação. Agora faça login ou crie seu cadastro com este mesmo e-mail.')
+    show('alert-ok','Pix gerado. A matrícula será liberada após confirmação do pagamento.')
     document.getElementById('pay-form').style.display='none'
     document.getElementById('postpay').classList.add('open')
     const loginHref='${loginUrl}?paid=1&turma='+encodeURIComponent(turmaId)+'&email='+encodeURIComponent(email)
@@ -2039,8 +2057,13 @@ async function simulatePayment(event){
     document.getElementById('modal-signup-link').href=signupHref
     document.getElementById('modal-name').textContent=nome
     document.getElementById('modal-email').textContent=email
+    document.getElementById('modal-course').textContent=data.turma_nome||'${esc(turma.nome)}'
+    document.getElementById('modal-total').textContent=data.total?('R$ '+Number(data.total).toLocaleString('pt-BR',{minimumFractionDigits:2,maximumFractionDigits:2})):'${price}'
     document.getElementById('modal-transaction').textContent=transactionId||'-'
     document.getElementById('modal-code').textContent=code||'-'
+    const img=data.pix&&data.pix.encodedImage
+    document.getElementById('pix-qr').innerHTML=img?'<img alt="QR Code Pix" src="data:image/png;base64,'+img+'">':'QR Code indisponível'
+    document.getElementById('pix-payload').value=(data.pix&&data.pix.payload)||''
     try{localStorage.setItem('checkout:'+siteSlug+':'+turmaId,JSON.stringify({nome,email,checkout_code:code,transaction_id:transactionId,created_at:new Date().toISOString()}))}catch{}
     document.getElementById('payment-modal').classList.add('open')
   }catch{show('alert-err','Erro de conexão. Tente novamente.')}
@@ -2165,8 +2188,11 @@ app.get('/api/site/:slug', async (c) => {
 })
 
 app.post('/api/site/:slug/checkout', async (c) => {
-  if (!getConfig(c.env).flags.publicCheckoutSimulated) {
-    return c.json({ error: 'Checkout temporariamente indisponível.' }, 503)
+  if (!getConfig(c.env).flags.payments) {
+    return c.json({ error: 'Pagamentos temporariamente indisponíveis.' }, 503)
+  }
+  if (c.env.ASAAS_ENV !== 'sandbox') {
+    return c.json({ error: 'Checkout público real ainda está liberado apenas no sandbox.' }, 503)
   }
 
   let body: { turma_id?: string; email?: string; nome?: string }
@@ -2182,12 +2208,24 @@ app.post('/api/site/:slug/checkout', async (c) => {
   if (!email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) return c.json({ error: 'Informe um e-mail válido.' }, 400)
   if (!turmaId) return c.json({ error: 'Turma obrigatória.' }, 400)
 
-  const data = await loadSite(c.env, c.req.param('slug'))
-  if (!data) return c.json({ error: 'Site não encontrado' }, 404)
-  const turma = data.turmas.find((item: any) => String(item.id) === turmaId)
-  if (!turma) return c.json({ error: 'Turma não encontrada ou fechada.' }, 404)
+  const sb = getAdmin(c.env)
+  const { data: site, error: siteErr } = await sb.from('sites')
+    .select('id, slug, nome_prof, allowed_origins, ativo')
+    .eq('slug', c.req.param('slug'))
+    .eq('ativo', true)
+    .maybeSingle()
+  if (siteErr || !site) return c.json({ error: 'Site não encontrado' }, 404)
+  const { data: turma, error: turmaErr } = await sb.from('turmas')
+    .select('id, site_id, nome, concurso, descricao, preco, status')
+    .eq('id', turmaId)
+    .eq('site_id', site.id)
+    .maybeSingle()
+  if (turmaErr) return c.json({ error: turmaErr.message }, 500)
+  if (!turma || turma.status !== 'ABERTA') return c.json({ error: 'Turma não encontrada ou fechada.' }, 404)
+  const amount = Number(turma.preco || 0)
+  if (!Number.isFinite(amount) || amount <= 0) return c.json({ error: 'Esta turma não possui preço válido para checkout.' }, 400)
 
-  const cms = parseCms(data.site)
+  const cms = parseCms(site)
   if (cms.turma_settings?.[turmaId]?.matriculas_abertas === false) {
     return c.json({ error: 'As matrículas desta turma estão fechadas.' }, 403)
   }
@@ -2195,33 +2233,186 @@ app.post('/api/site/:slug/checkout', async (c) => {
   const key = `${email}:${turmaId}`
   const previous = cms.checkout_leads?.[key] || {}
   const checkoutCode = previous.checkout_code || previous.code || makeCheckoutCode()
-  const transactionId = previous.transaction_id || makeTransactionId(checkoutCode)
   const now = new Date().toISOString()
+  const gateway = getPaymentGateway(c.env)
+
+  const { data: pendingPayment } = await sb.from('payments')
+    .select('id, provider_payment_id, external_reference, checkout_code, status, amount_cents, billing_type, created_at')
+    .eq('site_id', site.id)
+    .eq('turma_id', turma.id)
+    .eq('payer_email', email)
+    .eq('status', 'PENDING')
+    .not('provider_payment_id', 'is', null)
+    .order('created_at', { ascending: false })
+    .limit(1)
+    .maybeSingle()
+  if (pendingPayment?.provider_payment_id) {
+    let qrCode: any
+    try {
+      qrCode = await gateway.getPixQrCode(String(pendingPayment.provider_payment_id))
+    } catch {
+      qrCode = null
+    }
+    const lead = {
+      ...previous,
+      email,
+      nome,
+      turma_id: turmaId,
+      site_id: site.id,
+      status: 'PENDING',
+      total: amount,
+      checkout_code: pendingPayment.checkout_code || checkoutCode,
+      code: pendingPayment.checkout_code || checkoutCode,
+      transaction_id: pendingPayment.provider_payment_id,
+      payment_id: pendingPayment.id,
+      provider_payment_id: pendingPayment.provider_payment_id,
+      external_reference: pendingPayment.external_reference,
+      payment_provider: 'ASAAS',
+      receipt: {
+        aluno: nome,
+        email,
+        turma: turma.nome,
+        total: amount,
+        transaction_id: pendingPayment.provider_payment_id,
+        checkout_code: pendingPayment.checkout_code || checkoutCode
+      },
+      created_at: previous.created_at || pendingPayment.created_at || now,
+      updated_at: now
+    }
+    cms.checkout_leads = {
+      ...(cms.checkout_leads || {}),
+      [key]: {
+        ...lead,
+        email_status: previous.email_status || 'not-resend-existing-pending',
+        email_checked_at: previous.email_checked_at || now
+      }
+    }
+    const save = await saveCms(c.env, site.id, cms)
+    if (save.error) return c.json({ error: save.error.message }, 500)
+    return c.json({
+      ok: true,
+      reused: true,
+      status: pendingPayment.status || 'PENDING',
+      email,
+      nome,
+      turma_id: turmaId,
+      checkout_code: pendingPayment.checkout_code || checkoutCode,
+      transaction_id: pendingPayment.provider_payment_id,
+      payment_id: pendingPayment.id,
+      provider_payment_id: pendingPayment.provider_payment_id,
+      external_reference: pendingPayment.external_reference,
+      total: amount,
+      turma_nome: turma.nome,
+      billing_type: pendingPayment.billing_type || 'PIX',
+      pix: {
+        encodedImage: qrCode?.encodedImage || null,
+        payload: qrCode?.payload || null,
+        expirationDate: qrCode?.expirationDate || null
+      },
+      email_sent: false
+    })
+  }
+
+  const externalReference = `ASAAS-PUB-${crypto.randomUUID()}`
+  const authUsers = await sb.auth.admin.listUsers()
+  const authUser = authUsers.data.users.find((item) => String(item.email || '').toLowerCase() === email)
+  if (authUser?.id) {
+    await sb.from('profiles').upsert({
+      id: authUser.id,
+      nome,
+      role: 'ALUNO',
+      site_id: site.id,
+      ativo: false
+    }, { onConflict: 'id' })
+  }
+  const { data: payment, error: paymentErr } = await sb.from('payments')
+    .insert({
+      site_id: site.id,
+      turma_id: turma.id,
+      aluno_id: authUser?.id || null,
+      payer_email: email,
+      payer_name: nome,
+      provider: 'ASAAS',
+      external_reference: externalReference,
+      status: 'PENDING',
+      amount_cents: Math.round(amount * 100),
+      billing_type: 'PIX',
+      checkout_code: checkoutCode
+    })
+    .select('id')
+    .single()
+  if (paymentErr) return c.json({ error: 'Não foi possível iniciar o pagamento.' }, 500)
+
+  let customer: any
+  let charge: any
+  let qrCode: any
+  try {
+    customer = await gateway.createCustomer({
+      name: nome,
+      email,
+      cpfCnpj: String((body as any).cpf_cnpj || '11144477735'),
+      externalReference: authUser?.id ? `ALUNO:${authUser.id}` : `LEAD:${checkoutCode}`,
+      notificationDisabled: true
+    })
+    await gateway.ensurePixKey()
+    charge = await gateway.createPixCharge({
+      customerId: String(customer.id),
+      value: amount,
+      dueDate: tomorrowIsoDate(),
+      description: `${turma.nome} - ${site.nome_prof}`,
+      externalReference
+    })
+    qrCode = await gateway.getPixQrCode(String(charge.id))
+  } catch (err: any) {
+    await sb.from('payments').update({
+      status: 'FAILED',
+      raw_summary: { error: err?.message || 'asaas_checkout_failed', public_checkout: true },
+      updated_at: now
+    }).eq('id', payment.id)
+    return c.json({ error: 'Não foi possível criar a cobrança no Asaas.' }, 502)
+  }
+
+  await sb.from('payments').update({
+    provider_payment_id: charge.id,
+    provider_customer_id: customer.id,
+    status: charge.status || 'PENDING',
+    raw_summary: {
+      public_checkout: true,
+      payment_id: charge.id,
+      customer_id: customer.id,
+      external_reference: externalReference,
+      checkout_code: checkoutCode
+    },
+    updated_at: new Date().toISOString()
+  }).eq('id', payment.id)
+
   const lead = {
     ...previous,
     email,
     nome,
     turma_id: turmaId,
-    site_id: data.site.id,
-    status: 'PAGAMENTO_APROVADO_SIMULADO',
-    total: Number(turma.preco || 0),
+    site_id: site.id,
+    status: 'PENDING',
+    total: amount,
     checkout_code: checkoutCode,
     code: checkoutCode,
-    transaction_id: transactionId,
-    payment_provider: 'SIMULADO',
+    transaction_id: charge.id,
+    payment_id: payment.id,
+    provider_payment_id: charge.id,
+    external_reference: externalReference,
+    payment_provider: 'ASAAS',
     receipt: {
       aluno: nome,
       email,
       turma: turma.nome,
-      total: Number(turma.preco || 0),
-      transaction_id: transactionId,
+      total: amount,
+      transaction_id: charge.id,
       checkout_code: checkoutCode
     },
     created_at: previous.created_at || now,
-    paid_at: previous.paid_at || now,
     updated_at: now
   }
-  const emailResult = await sendCheckoutReceipt(c.env, lead, turma, data.site)
+  const emailResult = await sendCheckoutReceipt(c.env, lead, turma, site)
   cms.checkout_leads = {
     ...(cms.checkout_leads || {}),
     [key]: {
@@ -2232,16 +2423,27 @@ app.post('/api/site/:slug/checkout', async (c) => {
     }
   }
 
-  const save = await saveCms(c.env, data.site.id, cms)
+  const save = await saveCms(c.env, site.id, cms)
   if (save.error) return c.json({ error: save.error.message }, 500)
   return c.json({
     ok: true,
-    status: 'PAGAMENTO_APROVADO_SIMULADO',
+    status: charge.status || 'PENDING',
     email,
     nome,
     turma_id: turmaId,
     checkout_code: checkoutCode,
-    transaction_id: transactionId,
+    transaction_id: charge.id,
+    payment_id: payment.id,
+    provider_payment_id: charge.id,
+    external_reference: externalReference,
+    total: amount,
+    turma_nome: turma.nome,
+    billing_type: 'PIX',
+    pix: {
+      encodedImage: qrCode?.encodedImage || null,
+      payload: qrCode?.payload || null,
+      expirationDate: qrCode?.expirationDate || null
+    },
     email_sent: emailResult.sent
   })
 })

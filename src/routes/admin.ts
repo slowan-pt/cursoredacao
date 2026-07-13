@@ -63,6 +63,7 @@ function defaultCms() {
     },
     posts: [],
     child_teachers: [],
+    notifications: [],
     turma_settings: {},
     student_credits: {},
     enrollments: {},
@@ -84,6 +85,7 @@ function parseCms(site: any) {
       theme: { ...defaultCms().theme, ...(cms.theme || {}) },
       posts: Array.isArray(cms.posts) ? cms.posts : [],
       child_teachers: Array.isArray(cms.child_teachers) ? cms.child_teachers : [],
+      notifications: Array.isArray(cms.notifications) ? cms.notifications : [],
       turma_settings: cms.turma_settings && typeof cms.turma_settings === 'object' ? cms.turma_settings : {},
       student_credits: cms.student_credits && typeof cms.student_credits === 'object' ? cms.student_credits : {},
       enrollments: cms.enrollments && typeof cms.enrollments === 'object' ? cms.enrollments : {},
@@ -1269,6 +1271,38 @@ app.post('/turmas', async (c) => {
     .insert({ ...body, site_id: siteId }).select().single()
   if (error) return c.json({ error: error.message }, 500)
   return c.json(data, 201)
+})
+
+app.get('/payments', async (c) => {
+  const user = c.get('user')
+  const sb = getAdmin(c.env)
+  const siteId = await resolveSiteId(sb, user)
+  if (!siteId) return c.json({ error: 'Professor sem site vinculado.' }, 400)
+  const { data: payments, error } = await sb.from('payments')
+    .select('id, site_id, turma_id, aluno_id, payer_email, payer_name, provider, provider_payment_id, status, amount_cents, billing_type, checkout_code, created_at, paid_at, updated_at')
+    .eq('site_id', siteId)
+    .order('created_at', { ascending: false })
+    .limit(100)
+  if (error) return c.json({ error: error.message }, 500)
+
+  const turmaIds = Array.from(new Set((payments || []).map((p: any) => p.turma_id).filter(Boolean)))
+  const alunoIds = Array.from(new Set((payments || []).map((p: any) => p.aluno_id).filter(Boolean)))
+  const [{ data: turmas }, { data: alunos }] = await Promise.all([
+    turmaIds.length ? sb.from('turmas').select('id, nome').eq('site_id', siteId).in('id', turmaIds) : Promise.resolve({ data: [] as any[] }),
+    alunoIds.length ? sb.from('profiles').select('id, nome, ativo').eq('site_id', siteId).in('id', alunoIds) : Promise.resolve({ data: [] as any[] })
+  ])
+  const turmaById = new Map((turmas || []).map((t: any) => [t.id, t]))
+  const alunoById = new Map((alunos || []).map((a: any) => [a.id, a]))
+
+  return c.json({
+    data: (payments || []).map((p: any) => ({
+      ...p,
+      amount: Number(p.amount_cents || 0) / 100,
+      turma_nome: turmaById.get(p.turma_id)?.nome || null,
+      aluno_nome: alunoById.get(p.aluno_id)?.nome || p.payer_name || null,
+      aluno_ativo: p.aluno_id ? alunoById.get(p.aluno_id)?.ativo !== false : null
+    }))
+  })
 })
 
 app.patch('/turmas/:id', async (c) => {

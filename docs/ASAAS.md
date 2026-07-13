@@ -1,6 +1,6 @@
 # Asaas — Pagamentos
 
-Atualizado em: 2026-07-12.
+Atualizado em: 2026-07-13.
 
 ## Estado
 
@@ -24,6 +24,19 @@ Atualizado em: 2026-07-12.
   - pagamento interno atualizado para `RECEIVED`;
   - matrícula criada uma única vez com origem `ASAAS_WEBHOOK`;
   - aluno passou a acessar a turma de homologação.
+- Ciclo comercial público em 2026-07-13 validou que qualquer turma nova com preço cadastrado pode iniciar venda pelo site público:
+  - turma criada pelo professor: `Homologacao Comercial 20260713-000003`, valor `R$ 5,73`;
+  - página pública exibiu a turma;
+  - checkout público carregou turma/preço diretamente do banco;
+  - cobrança PIX Asaas Sandbox criada: `pay_4d2uxcz072cm1m5s`;
+  - `payments` ficou `PENDING` até webhook pago;
+  - segundo clique no checkout reaproveitou a mesma cobrança pendente;
+  - `PAYMENT_CREATED` não liberou matrícula;
+  - após confirmação manual no Asaas, `PAYMENT_RECEIVED` atualizou `payments` para `RECEIVED`;
+  - matrícula ativa criada com origem `ASAAS_CHECKOUT`;
+  - aluno acessou a turma;
+  - professor visualizou pagamento no dashboard;
+  - notificação interna `PAYMENT_RECEIVED` foi gravada no CMS do site.
 
 ## Arquivos Preparados
 
@@ -36,6 +49,9 @@ Atualizado em: 2026-07-12.
 - `src/routes/payments.ts`: rota guardada para webhook Asaas.
 - `src/routes/payments.ts`: rota autenticada de homologação sandbox.
 - `src/routes/payments.ts`: rota autenticada de sincronização sandbox para consultar status no Asaas e aplicar matrícula quando o status for pago.
+- `src/routes/site.ts`: checkout público real em sandbox para turmas ativas.
+- `src/routes/admin.ts`: consulta administrativa de pagamentos por site.
+- `public/professor/index.html`: bloco de pagamentos recentes no dashboard.
 
 ## Segurança do Webhook
 
@@ -99,7 +115,7 @@ ASAAS_ENV=sandbox
 ## Pendências
 
 - Validar idempotência real com reenvio manual do evento pelo painel Asaas Sandbox, quando necessário.
-- Criar endpoint de checkout real para uso público.
+- Expandir checkout real para produção quando `ASAAS_ENV=production` for autorizado.
 - Definir política para boleto/cartão além de PIX.
 - Criar testes com mocks.
 
@@ -138,3 +154,33 @@ ASAAS_ENV=sandbox
   - matrícula ativa criada uma única vez.
 - Token inválido retorna HTTP 401.
 - Acesso do aluno validado na rota de turmas.
+
+## Resultado do Fluxo Comercial Público — 2026-07-13
+
+- Worker publicado: `cursoreducao`, versão `a6c0461f-f674-4f0f-9b53-4c7e9bdb548f`.
+- Turma criada via API do professor:
+  - nome: `Homologacao Comercial 20260713-000003`;
+  - status: `ABERTA`;
+  - preço no banco: `R$ 5,73`;
+  - site: `puppin-teste`.
+- Página pública da turma carregou corretamente.
+- Checkout público retornou:
+  - status `PENDING`;
+  - valor `5.73`;
+  - nome da turma;
+  - QR Code Pix;
+  - copia-e-cola Pix;
+  - `provider_payment_id=pay_4d2uxcz072cm1m5s`.
+- Antes do pagamento:
+  - `payments.status=PENDING`;
+  - `payment_webhook_events` recebeu `PAYMENT_CREATED`;
+  - nenhuma matrícula foi criada.
+- Após confirmação manual no painel Asaas:
+  - `payment_webhook_events` recebeu `PAYMENT_RECEIVED`;
+  - evento ficou `processed=true`;
+  - `payments.status=RECEIVED`;
+  - `payments.paid_at` preenchido;
+  - matrícula ativa criada na turma;
+  - aluno de teste acessou a turma comprada;
+  - professor visualizou o pagamento em `/api/admin/payments` e no bloco de dashboard;
+  - notificação interna `Aluno pagou uma turma` registrada no CMS.

@@ -43,6 +43,10 @@ function missingTurmaAlunos(error: any) {
   return /turma_alunos|relation .* does not exist|schema cache/i.test(String(error?.message || ''))
 }
 
+function isPaidStatus(status: unknown) {
+  return ['CONFIRMED', 'RECEIVED'].includes(String(status || '').toUpperCase())
+}
+
 async function validateCheckoutCodeForRegistration(env: Env, siteId: string, email: string, turmaId?: string, checkoutCode?: string) {
   if (!turmaId) return { ok: true }
   const code = String(checkoutCode || '').trim().toUpperCase()
@@ -52,13 +56,24 @@ async function validateCheckoutCodeForRegistration(env: Env, siteId: string, ema
   const { data: site, error } = await sb.from('sites').select('allowed_origins').eq('id', siteId).single()
   if (error || !site) return { ok: false, error: error?.message || 'Site não encontrado.' }
   const cms = parseCms(site)
-  const match = Object.values(cms.checkout_leads || {}).some((lead: any) =>
+  const cmsMatch = Object.values(cms.checkout_leads || {}).some((lead: any) =>
     String(lead?.email || '').toLowerCase() === email &&
     String(lead?.turma_id || '') === String(turmaId) &&
     lead?.status === 'PAGAMENTO_APROVADO_SIMULADO' &&
     String(lead?.checkout_code || lead?.code || '').trim().toUpperCase() === code
   )
-  return match ? { ok: true } : { ok: false, error: 'Código de pagamento inválido para este e-mail.' }
+  if (cmsMatch) return { ok: true }
+  const { data: payment, error: payErr } = await sb.from('payments')
+    .select('status')
+    .eq('site_id', siteId)
+    .eq('turma_id', turmaId)
+    .eq('payer_email', email)
+    .eq('checkout_code', code)
+    .maybeSingle()
+  if (payErr) return { ok: false, error: payErr.message }
+  return payment && isPaidStatus(payment.status)
+    ? { ok: true }
+    : { ok: false, error: 'Código de pagamento inválido ou ainda não confirmado para este e-mail.' }
 }
 
 async function applyPaidCheckoutForStudent(
@@ -76,16 +91,31 @@ async function applyPaidCheckoutForStudent(
   const allPaid = Object.values(cms.checkout_leads || {})
     .filter((lead: any) => String(lead?.email || '').toLowerCase() === email && lead?.status === 'PAGAMENTO_APROVADO_SIMULADO')
     .filter((lead: any) => !options.turmaId || String(lead?.turma_id || '') === String(options.turmaId))
+  const paymentQuery = sb.from('payments')
+    .select('id, turma_id, checkout_code, status')
+    .eq('site_id', siteId)
+    .eq('payer_email', email)
+    .in('status', ['CONFIRMED', 'RECEIVED'])
+  if (options.turmaId) paymentQuery.eq('turma_id', options.turmaId)
+  const { data: realPaidRows, error: realPaidErr } = await paymentQuery
+  if (realPaidErr) return { activated: false, error: realPaidErr }
+  const realPaid = (realPaidRows || []).filter((payment: any) => {
+    if (!options.requireCode) return true
+    return String(payment.checkout_code || '').trim().toUpperCase() === normalizedCode
+  })
   const paid = options.requireCode
     ? allPaid.filter((lead: any) => String(lead?.checkout_code || lead?.code || '').trim().toUpperCase() === normalizedCode)
     : allPaid
-  if (options.requireCode && allPaid.length && !paid.length) {
+  if (options.requireCode && (allPaid.length || realPaidRows?.length) && !paid.length && !realPaid.length) {
     return { activated: false, error: { message: 'Código de pagamento inválido para este e-mail.' } }
   }
-  if (options.requireCode && !allPaid.length) {
+  if (options.requireCode && !allPaid.length && !realPaid.length) {
     return { activated: false, error: { message: 'Pagamento não encontrado para este e-mail e turma.' } }
   }
-  const turmaIds = Array.from(new Set(paid.map((lead: any) => String(lead.turma_id || '')).filter(Boolean)))
+  const turmaIds = Array.from(new Set([
+    ...paid.map((lead: any) => String(lead.turma_id || '')).filter(Boolean),
+    ...realPaid.map((payment: any) => String(payment.turma_id || '')).filter(Boolean)
+  ]))
   if (!turmaIds.length) return { activated: false }
 
   const rows = turmaIds.map((turma_id) => ({
@@ -93,7 +123,7 @@ async function applyPaidCheckoutForStudent(
     turma_id,
     aluno_id: userId,
     ativo: true,
-    origem: 'PAGAMENTO_SIMULADO_PUBLICO'
+    origem: realPaid.some((payment: any) => String(payment.turma_id || '') === turma_id) ? 'ASAAS_CHECKOUT' : 'PAGAMENTO_SIMULADO_PUBLICO'
   }))
   const { error: upsertErr } = await sb.from('turma_alunos').upsert(rows, { onConflict: 'turma_id,aluno_id' })
   if (missingTurmaAlunos(upsertErr)) {
@@ -102,7 +132,7 @@ async function applyPaidCheckoutForStudent(
         ...(cms.enrollments[turmaId] || {}),
         [userId]: {
           ativo: true,
-          origem: 'PAGAMENTO_SIMULADO_PUBLICO',
+          origem: realPaid.some((payment: any) => String(payment.turma_id || '') === turmaId) ? 'ASAAS_CHECKOUT' : 'PAGAMENTO_SIMULADO_PUBLICO',
           created_at: cms.enrollments[turmaId]?.[userId]?.created_at || new Date().toISOString(),
           updated_at: new Date().toISOString()
         }
@@ -110,6 +140,11 @@ async function applyPaidCheckoutForStudent(
     })
   } else if (upsertErr) {
     return { activated: false, error: upsertErr }
+  }
+  if (realPaid.length) {
+    await sb.from('payments')
+      .update({ aluno_id: userId, updated_at: new Date().toISOString() })
+      .in('id', realPaid.map((payment: any) => payment.id))
   }
 
   const currentCredit = cms.student_credits?.[userId] || {}

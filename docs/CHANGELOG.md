@@ -72,6 +72,15 @@ Todas as mudanças relevantes deste projeto devem ser registradas aqui.
   - matrícula criada uma única vez com origem `ASAAS_WEBHOOK`;
   - aluno validado com acesso à turma após confirmação;
   - token inválido validado com HTTP 401.
+- Fluxo comercial público de turma nova validado com Asaas Sandbox:
+  - checkout público agora cria cobrança PIX real em sandbox a partir do preço salvo em `turmas.preco`;
+  - cobrança pendente existente é reaproveitada para o mesmo aluno/turma;
+  - professor visualiza pagamentos recentes no dashboard;
+  - webhook pago registra notificação interna no CMS;
+  - turma `Homologacao Comercial 20260713-000003` vendida por `R$ 5,73`;
+  - cobrança `pay_4d2uxcz072cm1m5s` recebeu `PAYMENT_CREATED` e depois `PAYMENT_RECEIVED`;
+  - matrícula ativa criada com origem `ASAAS_CHECKOUT`;
+  - aluno validado com acesso à turma comprada.
 - Documentação operacional:
   - `docs/ARCHITECTURE.md`
   - `docs/ROADMAP.md`

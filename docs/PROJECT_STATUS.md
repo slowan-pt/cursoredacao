@@ -2,14 +2,14 @@
 
 ## Dados gerais
 
-- Data da atualização: 2026-07-12.
+- Data da atualização: 2026-07-13.
 - Branch atual: `main`.
 - Relação com remoto: branch local continua à frente de `origin/main`; push GitHub bloqueado por acesso ao repositório.
 - Último commit local confirmado antes desta homologação: `a087598 feat: add Asaas sandbox homologation flow`.
 - Estado do working tree: modificado durante homologação Asaas sandbox; alterações em `src/payments.ts`, `src/routes/payments.ts` e docs serão consolidadas em commits locais.
 - Versão atual declarada: `1.0.0` em `package.json`.
 - Ambiente atual observado: Cloudflare Workers, URL pública `https://cursoreducao.slowgithub.workers.dev`.
-- Última versão do Worker validada nesta homologação Asaas: `d9ef9af2-bd90-439a-a185-0258f33ea15a`.
+- Última versão do Worker validada nesta homologação comercial Asaas: `a6c0461f-f674-4f0f-9b53-4c7e9bdb548f`.
 
 ## Arquitetura oficial
 
@@ -94,13 +94,26 @@ Resumo anterior do `git diff --stat`:
 
 - Evidências locais:
   - `src/routes/site.ts` contém rota `/api/site/:slug/checkout`.
-  - `src/routes/site.ts` persiste `checkout_leads` no CMS serializado.
-  - O fluxo é identificado como `PAGAMENTO_APROVADO_SIMULADO`.
+  - `src/routes/site.ts` carrega site/turma diretamente do banco, valida turma aberta e usa exclusivamente `turmas.preco`.
+  - `src/routes/site.ts` cria registro interno em `payments`, cobrança PIX Asaas Sandbox e reaproveita cobrança pendente existente para evitar duplicidade.
+  - `src/routes/payments.ts` grava eventos em `payment_webhook_events` e libera matrícula somente para status pago normalizado.
+  - `src/routes/payments.ts` registra notificação interna no CMS do site quando o pagamento é recebido.
+  - `src/routes/admin.ts` expõe `/api/admin/payments` para o professor visualizar vendas.
+  - `public/professor/index.html` mostra pagamentos recentes no dashboard.
   - `src/config.ts` contém flags `ENABLE_PAYMENTS` e `ENABLE_PUBLIC_CHECKOUT_SIMULATED`.
-- Status: parcial.
-- Commitado: não verificado como commitado; alterações principais estão locais.
-- Testado: não verificado neste documento.
-- Risco: Asaas ainda não implementado; webhook, assinatura, idempotência e conciliação ainda pendentes.
+- Status: implementado localmente, aguardando revisão/commit deste ciclo.
+- Commitado: ainda não neste ciclo.
+- Testado: sim, em 2026-07-13 no Worker publicado `cursoreducao`.
+- Evidência de homologação:
+  - turma nova `Homologacao Comercial 20260713-000003`, preço `R$ 5,73`;
+  - checkout público criou cobrança PIX Asaas Sandbox `pay_4d2uxcz072cm1m5s`;
+  - `PAYMENT_CREATED` manteve pagamento `PENDING` e zero matrículas;
+  - `PAYMENT_RECEIVED` atualizou pagamento para `RECEIVED`;
+  - matrícula ativa criada com origem `ASAAS_CHECKOUT`;
+  - aluno acessou a turma após login;
+  - painel do professor exibiu pagamento com aluno, turma, valor, PIX, status e data de pagamento;
+  - notificação interna `PAYMENT_RECEIVED` criada no CMS.
+- Risco: confirmação de pagamento ainda depende do painel Asaas Sandbox porque a API local não tem `ASAAS_API_KEY`; em produção ainda faltam políticas finais de boleto/cartão, reenvio de eventos pelo painel e alertas visuais de notificação.
 
 ### Domínio
 

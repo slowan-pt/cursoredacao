@@ -9,6 +9,8 @@ const CMS_PREFIX = 'CMS:'
 
 function defaultCms() {
   return {
+    checkout_leads: {} as Record<string, any>,
+    notifications: [] as any[],
     student_credits: {} as Record<string, { creditos?: number; vence_em?: string | null; updated_at?: string }>,
     enrollments: {} as Record<string, Record<string, { ativo?: boolean; origem?: string; created_at?: string; updated_at?: string }>>
   }
@@ -21,6 +23,8 @@ function parseCms(site: any) {
     const cms = JSON.parse(String(raw).slice(CMS_PREFIX.length))
     return {
       ...cms,
+      checkout_leads: cms.checkout_leads && typeof cms.checkout_leads === 'object' ? cms.checkout_leads : {},
+      notifications: Array.isArray(cms.notifications) ? cms.notifications : [],
       student_credits: cms.student_credits && typeof cms.student_credits === 'object' ? cms.student_credits : {},
       enrollments: cms.enrollments && typeof cms.enrollments === 'object' ? cms.enrollments : {}
     }
@@ -110,6 +114,66 @@ async function grantPaidEnrollment(sb: ReturnType<typeof getAdmin>, payment: any
   return { granted: true }
 }
 
+async function markCheckoutPaidAndNotify(sb: ReturnType<typeof getAdmin>, payment: any, origin = 'ASAAS_WEBHOOK') {
+  if (!payment?.site_id) return { ok: false, reason: 'missing_site' }
+  const { data: site, error: siteErr } = await sb.from('sites')
+    .select('allowed_origins')
+    .eq('id', payment.site_id)
+    .maybeSingle()
+  if (siteErr || !site) return { ok: false, reason: siteErr?.message || 'site_not_found' }
+  const cms = parseCms(site)
+  const now = new Date().toISOString()
+  const leadKey = `${String(payment.payer_email || '').toLowerCase()}:${payment.turma_id}`
+  const lead = cms.checkout_leads?.[leadKey] || {}
+  if (payment.payer_email && payment.turma_id) {
+    cms.checkout_leads = {
+      ...(cms.checkout_leads || {}),
+      [leadKey]: {
+        ...lead,
+        email: payment.payer_email,
+        nome: payment.payer_name || lead.nome || '',
+        turma_id: payment.turma_id,
+        site_id: payment.site_id,
+        status: 'PAGAMENTO_CONFIRMADO_ASAAS',
+        checkout_code: payment.checkout_code || lead.checkout_code || lead.code || '',
+        code: payment.checkout_code || lead.code || lead.checkout_code || '',
+        payment_id: payment.id,
+        provider_payment_id: payment.provider_payment_id,
+        payment_provider: 'ASAAS',
+        total: Number(payment.amount_cents || 0) / 100,
+        paid_at: payment.paid_at || now,
+        updated_at: now
+      }
+    }
+  }
+  const { data: turma } = payment.turma_id
+    ? await sb.from('turmas').select('nome').eq('id', payment.turma_id).maybeSingle()
+    : { data: null }
+  const key = `payment:${payment.provider_payment_id || payment.id}`
+  const notifications = Array.isArray(cms.notifications) ? cms.notifications.filter((n: any) => n?.key !== key) : []
+  notifications.unshift({
+    id: crypto.randomUUID(),
+    key,
+    type: 'PAYMENT_RECEIVED',
+    title: 'Aluno pagou uma turma',
+    message: `${payment.payer_name || payment.payer_email || 'Aluno'} pagou ${turma?.nome || 'uma turma'}.`,
+    aluno_email: payment.payer_email,
+    aluno_nome: payment.payer_name,
+    turma_id: payment.turma_id,
+    turma_nome: turma?.nome || null,
+    amount_cents: payment.amount_cents,
+    provider_payment_id: payment.provider_payment_id,
+    origin,
+    read: false,
+    created_at: now
+  })
+  cms.notifications = notifications.slice(0, 100)
+  const { error } = await sb.from('sites')
+    .update({ allowed_origins: withCmsOrigins(site.allowed_origins, cms) })
+    .eq('id', payment.site_id)
+  return error ? { ok: false, reason: error.message } : { ok: true }
+}
+
 async function applyProviderPaymentStatus(sb: ReturnType<typeof getAdmin>, payment: any, providerPayment: any) {
   const now = new Date().toISOString()
   const status = normalizeAsaasPaymentStatus(String(providerPayment?.status || payment.status || 'PENDING'))
@@ -189,13 +253,13 @@ app.post('/asaas/webhook', async (c) => {
   let paymentResult = await sb.from('payments')
     .update(patch)
     .eq('provider_payment_id', normalized.providerPaymentId)
-    .select('id, site_id, turma_id, aluno_id, status')
+    .select('id, site_id, turma_id, aluno_id, payer_email, payer_name, provider_payment_id, amount_cents, billing_type, checkout_code, paid_at, status')
     .maybeSingle()
   if (!paymentResult.data && normalized.externalReference) {
     paymentResult = await sb.from('payments')
       .update(patch)
       .eq('external_reference', normalized.externalReference)
-      .select('id, site_id, turma_id, aluno_id, status')
+      .select('id, site_id, turma_id, aluno_id, payer_email, payer_name, provider_payment_id, amount_cents, billing_type, checkout_code, paid_at, status')
       .maybeSingle()
   }
 
@@ -211,6 +275,13 @@ app.post('/asaas/webhook', async (c) => {
 
   let grantResult: { granted: boolean; reason?: string } = { granted: false, reason: 'not_paid' }
   if (paid) {
+    await markCheckoutPaidAndNotify(sb, paymentResult.data)
+    if (!paymentResult.data.aluno_id) {
+      await sb.from('payment_webhook_events')
+        .update({ processed: true, processed_at: now })
+        .eq('id', inserted.id)
+      return c.json({ ok: true, processed: true, enrollment_pending: true, reason: 'student_signup_pending' })
+    }
     grantResult = await grantPaidEnrollment(sb, paymentResult.data)
     if (!grantResult.granted) {
       return c.json({ ok: true, processed: false, reason: grantResult.reason || 'enrollment_not_granted' })

@@ -196,6 +196,13 @@
         </div>
         <div id="corr-recentes"></div>
       </div>
+      <div class="card" style="margin-top:18px">
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px">
+          <strong>Pagamentos recentes</strong>
+          <span style="font-size:12px;color:var(--muted)">Asaas / Pix</span>
+        </div>
+        <div id="pagamentos-recentes"></div>
+      </div>
     </div>
 
     <!-- PENDENTES -->
@@ -1194,6 +1201,7 @@ async function init() {
   await loadSite()
   loadStats()
   loadCorrecoes('recentes')
+  loadPagamentosRecentes()
 }
 
 function siteUrl(site) {
@@ -2670,6 +2678,41 @@ async function loadStats() {
   document.getElementById('badge-pend').textContent = d.aguardando
 }
 
+async function loadPagamentosRecentes() {
+  const el = document.getElementById('pagamentos-recentes')
+  if (!el || isChildTeacherMode()) return
+  const res = await fetch('/api/admin/payments')
+  if (!res.ok) {
+    el.innerHTML = '<div class="empty"><p>Não foi possível carregar os pagamentos.</p></div>'
+    return
+  }
+  const { data } = await res.json()
+  const rows = (data || []).slice(0, 6)
+  if (!rows.length) {
+    el.innerHTML = '<div class="empty"><p>Nenhum pagamento registrado ainda.</p></div>'
+    return
+  }
+  el.innerHTML = rows.map(p => {
+    const paidAt = p.paid_at ? fmtDateTime(p.paid_at) : '—'
+    const amount = formatPriceBR(Number(p.amount || 0))
+    const status = String(p.status || 'PENDING')
+    const cls = ['CONFIRMED', 'RECEIVED'].includes(status) ? 'tag-done' : status === 'PENDING' ? 'tag-pend' : 'tag-prog'
+    return `
+      <div class="corr-card" style="margin-bottom:10px">
+        <div class="corr-thumb">💳</div>
+        <div class="corr-info">
+          <div class="corr-aluno">${esc(p.aluno_nome || p.payer_name || p.payer_email || 'Aluno')}</div>
+          <div class="corr-tema">${esc(p.turma_nome || 'Turma')} · ${esc(p.billing_type || 'PIX')}</div>
+          <div class="corr-meta">
+            <span class="tag ${cls}">${esc(status)}</span>
+            <span style="font-size:11px;font-weight:700;color:var(--brand)">${amount}</span>
+            <span class="corr-date">Pago em: ${paidAt}</span>
+          </div>
+        </div>
+      </div>`
+  }).join('')
+}
+
 const PROFESSOR_CHILD_PERMISSIONS = [
   ['gerenciar_turmas', 'Poderá gerenciar as turmas'],
   ['gerenciar_temas', 'Poderá gerenciar os temas'],
@@ -4141,6 +4184,7 @@ function refreshCorrecaoLists() {
   loadCorrecoes('recentes')
   loadCorrecoes('pendentes', 'PENDENTES')
   loadCorrecoes('todas')
+  loadPagamentosRecentes()
 }
 
 function updateCorrecaoTopbar(data = currentCorrecao) {
@@ -6413,6 +6457,7 @@ function showPage(name, link) {
     if (sub) sub.textContent = 'Somente redações direcionadas para você'
   }
   if (name === 'site') loadSite()
+  if (name === 'dashboard') { loadStats(); loadCorrecoes('recentes'); loadPagamentosRecentes() }
   if (name === 'pendentes') loadCorrecoes('pendentes', 'PENDENTES')
   if (name === 'todas') loadCorrecoes('todas')
   if (name === 'turmas') loadTurmas()
