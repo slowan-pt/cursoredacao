@@ -174,7 +174,7 @@ async function markCheckoutPaidAndNotify(sb: ReturnType<typeof getAdmin>, paymen
   return error ? { ok: false, reason: error.message } : { ok: true }
 }
 
-async function applyProviderPaymentStatus(sb: ReturnType<typeof getAdmin>, payment: any, providerPayment: any) {
+async function applyProviderPaymentStatus(sb: ReturnType<typeof getAdmin>, payment: any, providerPayment: any, origin = 'ASAAS_SYNC') {
   const now = new Date().toISOString()
   const status = normalizeAsaasPaymentStatus(String(providerPayment?.status || payment.status || 'PENDING'))
   const paid = isPaidStatus(status)
@@ -193,12 +193,95 @@ async function applyProviderPaymentStatus(sb: ReturnType<typeof getAdmin>, payme
   const { data: updated, error } = await sb.from('payments')
     .update(patch)
     .eq('id', payment.id)
-    .select('id, site_id, turma_id, aluno_id, status')
+    .select('id, site_id, turma_id, aluno_id, payer_email, payer_name, provider_payment_id, amount_cents, billing_type, checkout_code, paid_at, status')
     .single()
   if (error || !updated) return { synced: false, granted: false, status, reason: error?.message || 'payment_update_failed' }
   if (!paid) return { synced: true, granted: false, status, reason: 'not_paid' }
-  const grant = await grantPaidEnrollment(sb, updated, 'ASAAS_SYNC')
+  await markCheckoutPaidAndNotify(sb, updated, origin)
+  const grant = await grantPaidEnrollment(sb, updated, origin)
   return { synced: true, granted: grant.granted, status, reason: grant.reason || null }
+}
+
+async function runSandboxReconciliation(c: any) {
+  const user = c.get('user')
+  if (!['ADMIN', 'CORRETOR', 'SUPERADMIN'].includes(user.role)) {
+    return c.json({ error: 'Acesso negado.' }, 403)
+  }
+  if (c.env.ASAAS_ENV !== 'sandbox') {
+    return c.json({ error: 'Reconciliação automática permitida apenas em sandbox.' }, 403)
+  }
+
+  const body = await c.req.json().catch(() => ({}))
+  const dryRun = body.dry_run !== false
+  const limit = Math.max(1, Math.min(50, Math.floor(Number(body.limit) || 10)))
+  const siteSlug = body.site_slug ? String(body.site_slug) : ''
+  const sb = getAdmin(c.env)
+
+  let siteId = user.site_id || ''
+  if (siteSlug) {
+    const { data: site, error: siteErr } = await sb.from('sites')
+      .select('id, slug')
+      .eq('slug', siteSlug)
+      .maybeSingle()
+    if (siteErr || !site) return c.json({ error: 'Site não encontrado.' }, 404)
+    if (user.role !== 'SUPERADMIN' && user.site_id !== site.id) return c.json({ error: 'Acesso negado para este site.' }, 403)
+    siteId = site.id
+  }
+
+  let query = sb.from('payments')
+    .select('id, site_id, turma_id, aluno_id, payer_email, payer_name, provider_payment_id, amount_cents, billing_type, checkout_code, paid_at, status, raw_summary, updated_at')
+    .eq('provider', 'ASAAS')
+    .eq('status', 'PENDING')
+    .not('provider_payment_id', 'is', null)
+    .order('updated_at', { ascending: true })
+    .limit(limit)
+  if (user.role !== 'SUPERADMIN' || siteId) query = query.eq('site_id', siteId)
+
+  const { data: payments, error } = await query
+  if (error) return c.json({ error: 'Não foi possível listar pagamentos pendentes.' }, 500)
+
+  const gateway = getPaymentGateway(c.env)
+  const results: any[] = []
+  for (const payment of payments || []) {
+    const item: any = {
+      id: payment.id,
+      provider_payment_id: payment.provider_payment_id,
+      previous_status: payment.status,
+      dry_run: dryRun
+    }
+    try {
+      const providerPayment = await gateway.getPayment(payment.provider_payment_id)
+      const normalizedStatus = normalizeAsaasPaymentStatus(String(providerPayment?.status || 'PENDING'))
+      item.provider_status = normalizedStatus
+      if (!dryRun) {
+        const applied = await applyProviderPaymentStatus(sb, payment, providerPayment, 'ASAAS_RECONCILIATION')
+        item.updated = applied.synced
+        item.enrollment_granted = applied.granted
+        item.reason = applied.reason
+      } else {
+        item.updated = false
+        item.enrollment_granted = false
+        item.reason = isPaidStatus(normalizedStatus) ? 'would_grant_enrollment' : 'not_paid'
+      }
+    } catch (err: any) {
+      item.updated = false
+      item.enrollment_granted = false
+      item.error = err?.message || 'asaas_reconciliation_failed'
+    }
+    results.push(item)
+  }
+
+  return c.json({
+    ok: true,
+    sandbox: true,
+    dry_run: dryRun,
+    limit,
+    checked: results.length,
+    paid_found: results.filter((item) => isPaidStatus(item.provider_status)).length,
+    updated: results.filter((item) => item.updated).length,
+    enrollment_granted: results.filter((item) => item.enrollment_granted).length,
+    results
+  })
 }
 
 app.post('/asaas/webhook', async (c) => {
@@ -294,6 +377,9 @@ app.post('/asaas/webhook', async (c) => {
 
   return c.json({ ok: true })
 })
+
+app.post('/asaas/sandbox-reconciliation', requireAuth, runSandboxReconciliation)
+app.post('/asaas/reconciliation', requireAuth, runSandboxReconciliation)
 
 app.post('/asaas/sandbox-homologation', requireAuth, async (c) => {
   const user = c.get('user')

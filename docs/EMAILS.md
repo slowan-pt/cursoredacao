@@ -91,6 +91,21 @@ EMAIL_FROM="Redação com Estratégia <no-reply@redacaocomestrategia.com.br>"
 - Falta configurar `RESEND_API_KEY` e domínio/remetente verificado.
 - Falta definir política de retry/idempotência para envio real.
 - Falta criar prévias visuais automatizadas dos templates em HTML estático.
+- `npm run preview:emails` gera prévias locais em `tmp/email-previews` e valida `MockEmailProvider` sem API key real.
+
+## Preview Local
+
+```bash
+npm run preview:emails
+```
+
+O comando:
+
+- não usa `RESEND_API_KEY`;
+- não envia e-mails reais;
+- gera HTMLs locais em `tmp/email-previews`;
+- valida os templates com `MockEmailProvider`;
+- mantém os arquivos gerados fora do Git.
 
 ## Regras de Segurança
 

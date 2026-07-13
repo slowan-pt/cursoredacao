@@ -9,6 +9,7 @@ Atualizado em: 2026-07-13.
 - `SUPABASE_SERVICE_KEY` usa chave nova `sb_secret_...`.
 - `SUPABASE_ANON_KEY` usa publishable key nova, mantendo nome legado da variavel para compatibilidade.
 - Nao alterar JWT signing keys.
+- Ainda não alterar Site URL enquanto o domínio oficial não responder pelo Worker `cursoredacao`.
 
 ## Configuracao Manual Do Dominio
 

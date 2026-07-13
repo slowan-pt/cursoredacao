@@ -14,15 +14,12 @@
 
 ## Secrets Asaas no Worker novo
 
-- Prioridade: critica para homologar pagamentos no Worker `cursoredacao`.
+- Prioridade: resolvido em 2026-07-13.
 - Situacao atual:
-  - Worker `cursoredacao` tem `SUPABASE_URL`, `SUPABASE_ANON_KEY`, `SUPABASE_SERVICE_KEY` e `SESSION_SECRET`.
-  - `ASAAS_API_KEY` e `ASAAS_WEBHOOK_TOKEN` existem no Worker antigo, mas nao podem ser lidos/copiadados pelo Cloudflare.
-  - Esses dois valores nao estavam em `.dev.vars` durante a migracao.
-- Proxima acao: configurar manualmente os dois secrets no Worker `cursoredacao`:
-  - `npx wrangler secret put ASAAS_API_KEY --name cursoredacao`
-  - `npx wrangler secret put ASAAS_WEBHOOK_TOKEN --name cursoredacao`
-  - depois validar `POST /api/payments/asaas/webhook` com token e repetir smoke de checkout sandbox.
+  - Worker `cursoredacao` tem `SUPABASE_URL`, `SUPABASE_ANON_KEY`, `SUPABASE_SERVICE_KEY`, `SESSION_SECRET`, `ASAAS_API_KEY` e `ASAAS_WEBHOOK_TOKEN`.
+  - `PAYMENT_CREATED` chegou no endpoint novo e foi gravado.
+  - Reconciliação sandbox validada.
+- Cuidado restante: manter `ASAAS_ENV=sandbox` até domínio oficial e produção Asaas serem revisados.
 
 ## Rate limiting efetivo
 
@@ -90,14 +87,15 @@
 ## Asaas produção e checkout público
 
 - Prioridade: importante.
-- Impacto: o checkout público ainda precisa ser ligado com UX final e a produção não deve ser usada antes de revisão.
+- Impacto: produção não deve ser usada antes de revisão.
 - Situação:
-  - `ASAAS_WEBHOOK_TOKEN` e `ASAAS_API_KEY` existem como secrets do Worker em sandbox.
+  - `ASAAS_WEBHOOK_TOKEN` e `ASAAS_API_KEY` existem como secrets do Worker novo em sandbox.
   - `ENABLE_PAYMENTS=true` e `ASAAS_ENV=sandbox` foram publicados.
   - Migration `005_payments.sql` aplicada.
-  - Webhook sandbox validado com nova cobrança `pay_k1hnnk6q1mt7l20l`.
+  - Webhook sandbox validado no Worker `cursoredacao`.
   - `PAYMENT_CREATED` não liberou matrícula.
   - `PAYMENT_RECEIVED` liberou matrícula única.
+  - Reconciliação sandbox liberou matrícula idempotente para pagamento recebido.
 - Ação manual sugerida:
   1. Manter `ASAAS_ENV=sandbox` até finalizar UX pública do checkout.
   2. Revisar webhook e assinatura antes de produção.

@@ -6,6 +6,7 @@ node_modules/
 !.env.example
 dist/
 backups/
+tmp/
 .wrangler-dev*.log
 
 # Arquivos temporarios gerados por comandos locais acidentais

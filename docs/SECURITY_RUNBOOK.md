@@ -47,7 +47,7 @@ Este runbook prepara ações manuais de segurança. Não execute etapas destruti
 - Legacy API keys: desativadas no painel Supabase.
 - Worker antigo `cursoreducao`: secrets `SUPABASE_SERVICE_KEY` e `SUPABASE_ANON_KEY` atualizados.
 - Worker novo `cursoredacao`: secrets essenciais configurados em 2026-07-13 (`SUPABASE_URL`, `SUPABASE_ANON_KEY`, `SUPABASE_SERVICE_KEY`, `SESSION_SECRET`).
-- Worker novo `cursoredacao`: `ASAAS_API_KEY` e `ASAAS_WEBHOOK_TOKEN` ainda precisam ser configurados antes de homologar pagamentos nele.
+- Worker novo `cursoredacao`: `ASAAS_API_KEY` e `ASAAS_WEBHOOK_TOKEN` configurados e homologados em sandbox.
 - Testes professor/corretor e aluno: passaram.
 - Próximo ciclo: limpeza segura do histórico Git.
 
@@ -59,6 +59,7 @@ Este runbook prepara ações manuais de segurança. Não execute etapas destruti
 - Alteração de turma fora do site do professor retorna `404` controlado.
 - Uploads novos exigem data URL válido em produção/R2; URLs externas falsas são rejeitadas.
 - Arquivos R2 excluídos pela exclusão controlada deixam de ser acessíveis pelas rotas da aplicação.
+- Painel de saúde superadmin expõe apenas agregados e estados de serviço, sem secrets, payloads ou dados pessoais completos.
 
 ## Pendências de Segurança
 

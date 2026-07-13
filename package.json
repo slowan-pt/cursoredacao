@@ -10,6 +10,7 @@
     "check:diff": "git diff --check",
     "check:public": "node scripts/check-public-metadata.mjs",
     "audit:static": "node scripts/audit-static.mjs",
+    "preview:emails": "node scripts/preview-emails.mjs",
     "smoke:prod": "node scripts/production-smoke.mjs",
     "check:all": "npm run typecheck && npm run typecheck:unused && npm run security:scan && npm run check:public && npm run audit:static && npm run check:diff",
     "setup": "node scripts/setup.mjs",

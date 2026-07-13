@@ -20,6 +20,10 @@ Atualizado em: 2026-07-13.
 - Exclusão controlada de redação de teste: bloqueou reabertura e marcou metadados R2 como `DELETED`.
 - Painel financeiro: `/api/admin/payments?limit=5&status=ALL` retornou HTTP 200 e `sandbox=true`.
 - Notificações internas: `/api/admin/notifications` retornou HTTP 200 para professor e HTTP 403 para aluno.
+- Worker novo `cursoredacao`: Asaas Sandbox validado com criação de cobrança PIX e `PAYMENT_CREATED` no webhook.
+- Reconciliação sandbox: `dry_run` validado; execução real em sandbox atualizou pagamento `RECEIVED`, liberou matrícula única e repetição não duplicou.
+- Painel de saúde superadmin: `/api/superadmin/health` retornou HTTP 200.
+- Migration `006_performance_indexes.sql`: aplicada e 11 índices confirmados.
 
 ## Não Verificado Automaticamente Neste Ciclo
 

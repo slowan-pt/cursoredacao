@@ -6,13 +6,13 @@
 - Último commit antes da migracao do Worker: `97559e9 fix: avoid leaking internal service errors`.
 - GitHub remoto atual: `https://github.com/slowan-pt/cursoredacao.git`.
 - Working tree antes da rodada: limpo.
-- Worker novo publicado nesta rodada: `c0515734-9256-4c7d-90ac-d3846d4bb9e4`.
+- Worker novo publicado nesta rodada: `b2fb90d2-33cb-49f8-acbd-880f65ef4c1e`.
 - URL remota validada: `https://cursoredacao.slowgithub.workers.dev`.
 - Worker antigo `cursoreducao` preservado para rollback/observacao, sem exclusao.
 - `APP_URL` continua apontando para `https://redacaocomestrategia.com.br`.
 - Custom domain oficial ainda não está ativo. A tentativa via Wrangler/API Cloudflare falhou com HTTP 400 na criação de domain records, então o `wrangler.jsonc` ficou sem `routes` de custom domain para manter deploys seguros.
 - Secrets essenciais do Worker novo configurados: `SUPABASE_URL`, `SUPABASE_ANON_KEY`, `SUPABASE_SERVICE_KEY`, `SESSION_SECRET`.
-- Secrets pendentes no Worker novo: `ASAAS_API_KEY`, `ASAAS_WEBHOOK_TOKEN`.
+- Secrets Asaas configurados no Worker novo: `ASAAS_API_KEY`, `ASAAS_WEBHOOK_TOKEN`.
 
 ### Concluído Nesta Rodada
 
@@ -45,13 +45,16 @@
 - Headers `Cache-Control: no-store` adicionados para `/api/*`, `/login.html` e `/auth-callback.html`.
 - Rotas `/login` e `/auth-callback` passaram a ser servidas via Worker para garantir `Cache-Control: no-store` nos assets sensíveis.
 - Rotas administrativas, aluno, site, auth e superadmin passaram a retornar mensagem genérica para falhas internas de banco/serviço, evitando vazamento de detalhes de Supabase.
+- `migrations/006_performance_indexes.sql` aplicada via conexão administrativa ignorada pelo Git; 11 índices confirmados.
+- Asaas Sandbox no Worker novo validado com cobrança PIX, webhook `PAYMENT_CREATED`, sync e reconciliação.
+- Reconciliação sandbox adicionada em `POST /api/payments/asaas/sandbox-reconciliation`.
+- Painel de saúde superadmin adicionado em `/api/superadmin/health` e na aba `Saúde`.
+- `npm run preview:emails` adicionado para gerar previews locais dos templates sem API key real.
 
 ### Não Concluído Por Depender De Ação Manual
 
 - Ativar `redacaocomestrategia.com.br` e `www.redacaocomestrategia.com.br` como custom domains do Worker `cursoredacao` no painel Cloudflare.
-- Configurar `ASAAS_API_KEY` e `ASAAS_WEBHOOK_TOKEN` no Worker `cursoredacao` antes de repetir homologacao de pagamentos nessa URL.
 - Configurar Site URL e Redirect URLs no Supabase para o domínio oficial.
-- Aplicar `migrations/006_performance_indexes.sql` em janela segura no Supabase. Nesta rodada, `SUPABASE_DB_URL` nao estava disponivel em `.dev.vars`, portanto a migration nao foi executada.
 - Criar e validar domínio/API key no Resend.
 - Ativar Asaas produção e fazer PIX real de baixo valor.
 - Criar regras reais de rate limiting no Cloudflare WAF/Rate Limiting ou implementar Durable Objects.

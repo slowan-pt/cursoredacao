@@ -22,6 +22,7 @@
       <div class="sb-grp">Plataforma</div>
       <a class="sb-item" href="#" onclick="showPage('sites',this)">🏫 Sites / Tenants</a>
       <a class="sb-item" href="#" onclick="showPage('users',this)">👥 Usuários</a>
+      <a class="sb-item" href="#" onclick="showPage('health',this)">🩺 Saúde</a>
       <div class="sb-grp">Ações</div>
       <a class="sb-item" href="#" onclick="openSiteModal()">➕ Novo Site</a>
       <a class="sb-item" href="#" onclick="openModal('modal-user')">➕ Novo Usuário</a>
@@ -99,6 +100,18 @@
           <button class="btn btn-brand btn-sm" onclick="openModal('modal-user')">+ Novo usuário</button>
         </div>
         <div id="users-list"></div>
+      </div>
+    </div>
+
+    <!-- HEALTH PAGE -->
+    <div class="page" id="page-health" style="display:none">
+      <div class="card">
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:20px">
+          <strong style="font-size:15px">Saúde do sistema</strong>
+          <button class="btn btn-sec btn-sm" onclick="loadHealth()">Atualizar</button>
+        </div>
+        <div id="health-grid" class="page-grid grid-3"></div>
+        <div id="health-details" style="margin-top:18px"></div>
       </div>
     </div>
   </main>
@@ -269,6 +282,7 @@
 let sites = []
 let users = []
 let usersTreeOpen = {}
+let health = null
 const primaryColors = ['#1A3A2A', '#123C69', '#4B2E83', '#7A1F2B', '#2B2D42', '#004D40']
 const accentColors = ['#C5F135', '#FFD166', '#06D6A0', '#4CC9F0', '#F72585', '#FFFFFF']
 
@@ -462,12 +476,50 @@ function showPage(name, link) {
   document.getElementById('page-' + name).style.display = 'block'
   document.querySelectorAll('.sb-item').forEach(i => i.classList.remove('on'))
   if (link) link.classList.add('on')
-  const titles = { dashboard: 'Dashboard', sites: 'Sites / Tenants', users: 'Usuários' }
+  const titles = { dashboard: 'Dashboard', sites: 'Sites / Tenants', users: 'Usuários', health: 'Saúde' }
   document.getElementById('topbar-title').textContent = titles[name] || name
   if (name === 'users') loadUsers()
   if (name === 'sites') loadSites()
+  if (name === 'health') loadHealth()
   closeSidebar()
   return false
+}
+
+async function loadHealth() {
+  const grid = document.getElementById('health-grid')
+  const details = document.getElementById('health-details')
+  grid.innerHTML = '<div class="empty"><p>Carregando saúde do sistema...</p></div>'
+  details.innerHTML = ''
+  const res = await fetch('/api/superadmin/health')
+  if (!res.ok) { grid.innerHTML = '<div class="alert alert-err" style="display:block">Não foi possível carregar a saúde do sistema.</div>'; return }
+  health = await res.json()
+  const badge = (ok, yes = 'OK', no = 'Atenção') => `<span class="tag ${ok ? 'tag-done' : 'tag-pend'}">${ok ? yes : no}</span>`
+  grid.innerHTML = [
+    healthCard('Worker', health.worker, `${health.host} · v${health.app_version}`),
+    healthCard('Supabase', badge(health.supabase?.ok), 'consulta agregada'),
+    healthCard('Asaas', badge(health.asaas?.configured && health.asaas?.payments_enabled), `${health.asaas?.env || '—'} · pagamentos ${health.asaas?.payments_enabled ? 'ativos' : 'inativos'}`),
+    healthCard('Pagamentos pendentes', health.payments?.pending ?? '—', 'Asaas'),
+    healthCard('Recebidos hoje', health.payments?.received_today ?? '—', 'CONFIRMED/RECEIVED'),
+    healthCard('Webhooks', `${health.webhooks?.processed ?? 0}/${health.webhooks?.pending ?? 0}`, 'processados / pendentes'),
+    healthCard('Matrículas ativas', health.enrollments?.active ?? '—', 'turma_alunos'),
+    healthCard('Uploads privados', health.r2?.uploads ?? '—', health.r2?.enabled ? 'R2 ativo' : 'R2 inativo'),
+    healthCard('E-mails', badge(health.emails?.enabled && health.emails?.configured, 'Ativo', 'Desativado'), health.emails?.configured ? 'provider configurado' : 'sem provider')
+  ].join('')
+  details.innerHTML = `<div class="table-wrap"><table style="width:100%;border-collapse:collapse">
+    <tbody>
+      <tr><td style="padding:10px;border-bottom:1px solid var(--border);font-weight:700">Notificações</td><td style="padding:10px;border-bottom:1px solid var(--border)">${health.notifications?.total ?? 0} total · ${health.notifications?.unread ?? 0} não lidas</td></tr>
+      <tr><td style="padding:10px;border-bottom:1px solid var(--border);font-weight:700">Migration 006</td><td style="padding:10px;border-bottom:1px solid var(--border)">${esc(health.migrations?.['006_performance_indexes'] || 'não verificada')}</td></tr>
+      <tr><td style="padding:10px;border-bottom:1px solid var(--border);font-weight:700">Último deploy</td><td style="padding:10px;border-bottom:1px solid var(--border)">${esc(health.last_deploy || 'verificar via Wrangler')}</td></tr>
+    </tbody>
+  </table></div>`
+}
+
+function healthCard(label, value, sub) {
+  return `<div class="kpi-card">
+    <div class="kpi-label">${esc(label)}</div>
+    <div class="kpi-value" style="font-size:22px;margin-top:4px">${value}</div>
+    <div class="kpi-sub">${esc(sub || '')}</div>
+  </div>`
 }
 
 function openSiteModal(id) {

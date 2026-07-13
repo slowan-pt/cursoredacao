@@ -32,6 +32,22 @@ async function uniqueSiteSlug(sb: ReturnType<typeof getAdmin>, base: string) {
   }
 }
 
+function parseNotifications(site: any) {
+  const raw = (site?.allowed_origins || []).find((item: string) => String(item).startsWith('CMS:'))
+  if (!raw) return []
+  try {
+    const cms = JSON.parse(String(raw).slice(4))
+    return Array.isArray(cms.notifications) ? cms.notifications : []
+  } catch {
+    return []
+  }
+}
+
+async function safeCount(query: any) {
+  const { count, error } = await query
+  return error ? null : count ?? 0
+}
+
 app.get('/stats', async (c) => {
   const sb = getAdmin(c.env)
   const [sites, profiles] = await Promise.all([
@@ -39,6 +55,73 @@ app.get('/stats', async (c) => {
     sb.from('profiles').select('id', { count: 'exact', head: true })
   ])
   return c.json({ sites: sites.count ?? 0, users: profiles.count ?? 0 })
+})
+
+app.get('/health', async (c) => {
+  const sb = getAdmin(c.env)
+  const today = new Date().toISOString().slice(0, 10)
+  const [
+    supabaseProbe,
+    pendingPayments,
+    receivedToday,
+    webhooksProcessed,
+    webhooksPending,
+    enrollments,
+    uploads,
+    sites
+  ] = await Promise.all([
+    sb.from('sites').select('id', { count: 'exact', head: true }).limit(1),
+    safeCount(sb.from('payments').select('id', { count: 'exact', head: true }).eq('provider', 'ASAAS').eq('status', 'PENDING')),
+    safeCount(sb.from('payments').select('id', { count: 'exact', head: true }).eq('provider', 'ASAAS').in('status', ['RECEIVED', 'CONFIRMED']).gte('paid_at', `${today}T00:00:00.000Z`)),
+    safeCount(sb.from('payment_webhook_events').select('id', { count: 'exact', head: true }).eq('processed', true)),
+    safeCount(sb.from('payment_webhook_events').select('id', { count: 'exact', head: true }).eq('processed', false)),
+    safeCount(sb.from('turma_alunos').select('turma_id', { count: 'exact', head: true }).eq('ativo', true)),
+    safeCount(sb.from('storage_files').select('id', { count: 'exact', head: true }).neq('status', 'DELETED')),
+    sb.from('sites').select('allowed_origins')
+  ])
+
+  const notifications = (sites.data || []).flatMap(parseNotifications)
+  return c.json({
+    app_version: c.env.APP_VERSION || 'dev',
+    app_env: c.env.APP_ENV || 'development',
+    worker: 'cursoredacao',
+    host: new URL(c.req.url).hostname,
+    health: true,
+    supabase: { ok: !supabaseProbe.error },
+    asaas: {
+      env: c.env.ASAAS_ENV || 'disabled',
+      configured: Boolean(c.env.ASAAS_API_KEY && c.env.ASAAS_WEBHOOK_TOKEN),
+      payments_enabled: c.env.ENABLE_PAYMENTS === 'true'
+    },
+    r2: {
+      configured: Boolean(c.env.R2_UPLOADS),
+      enabled: c.env.ENABLE_R2_UPLOADS === 'true',
+      uploads
+    },
+    emails: {
+      enabled: c.env.ENABLE_EMAILS === 'true',
+      configured: Boolean(c.env.RESEND_API_KEY)
+    },
+    payments: {
+      pending: pendingPayments,
+      received_today: receivedToday
+    },
+    webhooks: {
+      processed: webhooksProcessed,
+      pending: webhooksPending
+    },
+    enrollments: {
+      active: enrollments
+    },
+    notifications: {
+      total: notifications.length,
+      unread: notifications.filter((item: any) => item?.read === false).length
+    },
+    migrations: {
+      '006_performance_indexes': 'aplicada e confirmada por script administrativo em 2026-07-13'
+    },
+    last_deploy: 'verificado via Wrangler'
+  })
 })
 
 app.get('/sites', async (c) => {

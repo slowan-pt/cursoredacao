@@ -4,7 +4,8 @@ Atualizado em: 2026-07-13.
 
 ## Estado Atual de Referência
 
-- Worker publicado mais recente validado: `720e4f78-c4d6-4f2f-95ad-552292343fd0`.
+- Worker publicado mais recente validado: `b2fb90d2-33cb-49f8-acbd-880f65ef4c1e`.
+- Worker antigo `cursoreducao` permanece publicado como fallback temporário, mas o alvo oficial atual é `cursoredacao`.
 - `ENABLE_R2_UPLOADS=true`; rollback de código não deve apagar objetos R2.
 - `ENABLE_PAYMENTS=true` com `ASAAS_ENV=sandbox`; não alternar para produção durante rollback.
 
@@ -53,3 +54,5 @@ npx wrangler rollback <VERSION_ID>
 - Rotas de professor/aluno funcionam.
 - Upload/download conforme flags.
 - Logs sem erro repetitivo.
+- Asaas Sandbox continua em `ASAAS_ENV=sandbox`.
+- Painel de saúde superadmin responde em `/api/superadmin/health`.

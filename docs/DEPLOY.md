@@ -8,7 +8,7 @@ Este projeto usa Cloudflare Workers com Wrangler. Não usar Docker/VPS para a ar
 
 - Worker padrão: `cursoredacao`.
 - Worker antigo preservado para rollback/observacao: `cursoreducao`.
-- Último deploy validado no Worker novo: `c0515734-9256-4c7d-90ac-d3846d4bb9e4`.
+- Último deploy validado no Worker novo: `b2fb90d2-33cb-49f8-acbd-880f65ef4c1e`.
 - URL atual: `https://cursoredacao.slowgithub.workers.dev`.
 - `APP_ENV=production`.
 - `ENABLE_R2_UPLOADS=true`.
@@ -21,7 +21,7 @@ Este projeto usa Cloudflare Workers com Wrangler. Não usar Docker/VPS para a ar
 - Domínio oficial `redacaocomestrategia.com.br` ainda pendente de configuração final.
 - `workers_dev=true` deve permanecer explícito enquanto o domínio oficial não estiver estável.
 - Secrets essenciais ja configurados no Worker novo: `SUPABASE_URL`, `SUPABASE_ANON_KEY`, `SUPABASE_SERVICE_KEY`, `SESSION_SECRET`.
-- Secrets Asaas ainda precisam ser configurados no Worker novo antes de homologar pagamentos nele: `ASAAS_API_KEY`, `ASAAS_WEBHOOK_TOKEN`.
+- Secrets Asaas configurados no Worker novo: `ASAAS_API_KEY`, `ASAAS_WEBHOOK_TOKEN`.
 
 ## Pré-requisitos
 
@@ -127,6 +127,7 @@ Resultado do deploy validado em 2026-07-12:
 - R2 remoto: put/get/delete de objeto temporário passou.
 - Upload R2 via aplicação: passou com arquivo de teste e limpeza posterior.
 - Smoke remoto público em 2026-07-13: `/health`, `/`, `/login.html`, `/redacao/puppin-teste`, `/robots.txt`, `/sitemap.xml` e `/site.webmanifest` passaram no fallback `workers.dev`.
+- Worker novo validado em 2026-07-13: login/logout professor, login/logout aluno, Asaas Sandbox, webhook `PAYMENT_CREATED`, reconciliação sandbox e painel de saúde superadmin.
 
 ## Incidente Controlado de Domínio
 

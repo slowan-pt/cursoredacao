@@ -12,6 +12,7 @@ Dominio oficial: `https://redacaocomestrategia.com.br`.
 - `workers_dev=true` deve permanecer ate o dominio oficial passar nos testes.
 - A tentativa de configurar custom domains via `wrangler.jsonc` falhou na API de domain records da Cloudflare com HTTP 400.
 - As rotas de custom domain foram removidas do `wrangler.jsonc` para nao quebrar deploys futuros.
+- Verificação DNS em 2026-07-13 retornou apenas SOA Cloudflare para o domínio raiz e o HTTPS ainda não respondeu.
 
 ## Acao Manual Recomendada
 

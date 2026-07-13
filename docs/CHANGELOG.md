@@ -14,6 +14,14 @@ Todas as mudanças relevantes deste projeto devem ser registradas aqui.
   - `npm run smoke:prod -- --base=https://cursoredacao.slowgithub.workers.dev` passou;
   - o Worker antigo `cursoreducao` foi preservado e nao foi excluido;
   - Asaas no Worker novo ficou pendente por falta dos secrets `ASAAS_API_KEY` e `ASAAS_WEBHOOK_TOKEN` no ambiente local.
+- Finalização MVP no Worker `cursoredacao`:
+  - secrets Asaas Sandbox configurados no Worker novo;
+  - `PAYMENT_CREATED` validado no webhook novo;
+  - migration `006_performance_indexes.sql` aplicada e 11 índices confirmados;
+  - criada reconciliação sandbox de pagamentos pendentes com `dry_run`, limite e matrícula idempotente;
+  - painel de saúde superadmin criado em `/api/superadmin/health` e na UI;
+  - previews locais de e-mail adicionados via `npm run preview:emails`;
+  - domínio oficial ainda pendente, com DNS retornando apenas SOA Cloudflare.
 - Rodada de finalização para produção em 2026-07-13:
   - adicionados `robots.txt`, `sitemap.xml`, `site.webmanifest` e `favicon.svg`;
   - páginas públicas principais passaram a declarar canonical, manifest, favicon e metadados do domínio oficial;

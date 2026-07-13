@@ -8,13 +8,14 @@ Atualizado em: 2026-07-13.
 - [ ] `www` redirecionando para o dominio raiz.
 - [ ] HTTPS valido.
 - [ ] Supabase Site URL e Redirect URLs atualizadas.
-- [ ] Migration `006_performance_indexes.sql` aplicada no Supabase.
-- [ ] `npm run check:all` passando.
+- [x] Migration `006_performance_indexes.sql` aplicada no Supabase.
+- [x] `npm run check:all` passando.
 - [ ] `npm run smoke:prod` passando no dominio oficial.
-- [ ] R2 validado em upload e download.
+- [x] R2 validado em upload e download no fallback Workers.
 - [ ] Asaas producao configurado, mas validado com PIX real de baixo valor.
 - [ ] Webhook producao validado com token.
 - [ ] Rate limiting no Cloudflare WAF ou alternativa compartilhada.
+- [x] Painel de saúde superadmin criado.
 - [ ] Backup Supabase revisado.
 - [ ] Restore testado em ambiente seguro.
 - [ ] Politica de reembolso/cancelamento aprovada.

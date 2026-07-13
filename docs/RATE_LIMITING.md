@@ -32,13 +32,27 @@ Atualizado em: 2026-07-13.
 
 ## Regras Sugeridas Iniciais
 
-| Rota | Janela inicial | Acao inicial |
-| --- | --- | --- |
-| `/api/auth/login` | 10 tentativas por minuto por IP | Log, depois challenge/bloqueio |
-| `/api/auth/register` | 5 tentativas por minuto por IP | Log, depois challenge |
-| checkout publico | 10 tentativas por minuto por IP | Log, depois challenge |
-| upload de redacao | 20 tentativas por 10 minutos por usuario/IP | Log, depois bloqueio temporario |
-| webhook Asaas | validar token; limitar apenas abuso evidente | Log |
+| Rota | Limite sugerido | Janela | Acao inicial | Excecoes/observacoes |
+| --- | --- | --- | --- | --- |
+| `/api/auth/login` | 10 tentativas | 1 minuto por IP | Log, depois challenge/bloqueio | Atenção a redes corporativas/NAT |
+| `/api/auth/register` | 5 tentativas | 1 minuto por IP | Log, depois challenge | Permitir professores/alunos legítimos |
+| recuperação de senha | 5 tentativas | 10 minutos por IP/e-mail | Log, depois challenge | Evitar enumeração de usuário |
+| checkout público | 10 tentativas | 1 minuto por IP | Log, depois challenge | Não bloquear retorno de pagamento |
+| criação de cobrança | 5 tentativas | 5 minutos por IP/e-mail | Log, depois challenge | Idempotência por cobrança pendente |
+| upload de redação | 20 tentativas | 10 minutos por usuário/IP | Log, depois bloqueio temporário | Considerar tamanho do arquivo |
+| webhook Asaas | validar token; 60 requisições | 1 minuto por IP/origem | Log | Não bloquear eventos legítimos sem monitorar |
+| rotas administrativas sensíveis | 60 requisições | 1 minuto por usuário/IP | Log, depois challenge | Superadmin/professor podem operar em lote |
+
+## Configuração Manual Cloudflare
+
+1. Cloudflare Dashboard.
+2. Security.
+3. WAF.
+4. Rate limiting rules.
+5. Criar uma regra por grupo de rotas.
+6. Começar com ação `Log`.
+7. Revisar falsos positivos por pelo menos um ciclo de homologação.
+8. Trocar para `Managed Challenge` ou bloqueio temporário apenas onde houver abuso claro.
 
 ## Durable Objects
 

@@ -23,7 +23,7 @@ Atualizado em: 2026-07-13.
 - Feature flag publicada no Worker atual: `ENABLE_PAYMENTS=true`.
 - Ambiente padrão: `ASAAS_ENV=sandbox`.
 - `ASAAS_WEBHOOK_TOKEN` e `ASAAS_API_KEY` existem como Cloudflare Secrets no Worker antigo `cursoreducao`.
-- No Worker novo `cursoredacao`, esses dois secrets ainda precisam ser configurados antes de validar webhook/checkout sandbox nessa URL.
+- No Worker novo `cursoredacao`, esses dois secrets já estão configurados.
 - Migration `005_payments.sql` aplicada no banco remoto em 2026-07-12.
 - A rota de webhook fica ativa com token mesmo quando `ENABLE_PAYMENTS=false`, para não perder eventos de pagamento.
 - Ao receber pagamento `CONFIRMED` ou `RECEIVED` para um registro existente, o webhook vincula o aluno à turma, ativa o aluno e registra créditos.
@@ -53,6 +53,27 @@ Atualizado em: 2026-07-13.
   - aluno acessou a turma;
   - professor visualizou pagamento no dashboard;
   - notificação interna `PAYMENT_RECEIVED` foi gravada no CMS do site.
+- Novo Worker `cursoredacao` validado em 2026-07-13:
+  - `/health` HTTP 200;
+  - webhook sem token HTTP 401;
+  - API key Sandbox autenticou ao criar cliente/cobrança PIX;
+  - cobrança PIX sandbox criada via `POST /api/payments/asaas/sandbox-homologation`;
+  - `PAYMENT_CREATED` chegou no endpoint novo e foi gravado em `payment_webhook_events`;
+  - `PAYMENT_CREATED` manteve pagamento `PENDING` e não liberou matrícula;
+  - sync do provedor confirmou status `PENDING` para a nova cobrança;
+  - reconciliação sandbox encontrou pagamento antigo já `RECEIVED`, atualizou `payments`, criou/ativou matrícula única e não duplicou ao repetir.
+
+## Reconciliação Sandbox
+
+- Endpoint protegido: `POST /api/payments/asaas/sandbox-reconciliation`.
+- Alias protegido: `POST /api/payments/asaas/reconciliation`.
+- Proteção: exige usuário autenticado `ADMIN`, `CORRETOR` ou `SUPERADMIN`.
+- Proteção adicional: só executa quando `ASAAS_ENV=sandbox`.
+- Parâmetros:
+  - `dry_run`: padrão `true`; usar `false` apenas em homologação controlada.
+  - `limit`: padrão `10`, máximo `50`.
+  - `site_slug`: opcional; professores ficam restritos ao próprio site.
+- A reconciliação consulta apenas pagamentos `PENDING` com `provider_payment_id`, normaliza status do Asaas e aplica matrícula idempotente quando o provedor retorna `RECEIVED` ou `CONFIRMED`.
 
 ## Arquivos Preparados
 

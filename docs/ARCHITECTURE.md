@@ -22,6 +22,8 @@
 - `src/uploads.ts`: validação temporária de upload base64.
 - `src/storage.ts`: interface de storage privado, provider local temporário e provider R2.
 - `src/payments.ts`: gateway e normalizadores Asaas.
+- `src/routes/payments.ts`: webhook, homologação sandbox e reconciliação sandbox de pagamentos pendentes.
+- `src/routes/superadmin.ts`: painel de saúde agregado para superadmin.
 - `src/email.ts`: provider de e-mail e templates transacionais.
 
 ## Multi-Tenant
