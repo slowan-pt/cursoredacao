@@ -6,6 +6,7 @@ import { superadminRoutes } from './routes/superadmin'
 import { adminRoutes } from './routes/admin'
 import { alunoRoutes } from './routes/aluno'
 import { siteRoutes } from './routes/site'
+import { paymentRoutes } from './routes/payments'
 import { getConfig } from './config'
 import { appSecurityHeaders } from './securityHeaders'
 import { logServerError, requestTelemetry } from './observability'
@@ -42,6 +43,7 @@ app.route('/api/auth', authRoutes)
 app.route('/api/superadmin', superadminRoutes)
 app.route('/api/admin', adminRoutes)
 app.route('/api/aluno', alunoRoutes)
+app.route('/api/payments', paymentRoutes)
 app.route('/', siteRoutes)
 
 app.notFound((c) => c.json({ error: 'Rota não encontrada' }, 404))
