@@ -35,6 +35,7 @@ Atualizado em: 2026-07-13.
 npm run security:scan
 npm run check:public
 npm run audit:static
+npm run typecheck:unused
 npm run smoke:prod
 npx tsc --noEmit
 git diff --check

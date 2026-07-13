@@ -308,15 +308,14 @@ app.get('/stats', async (c) => {
     })
   }
 
-  const [aguardando, finalizadas, alunosLista, turmasAbertas, site] = await Promise.all([
+  const [aguardando, finalizadas, alunosLista, turmasAbertas] = await Promise.all([
     sb.from('correcoes').select('id', { count: 'exact', head: true })
       .eq('site_id', siteId).in('status', PENDING_CORRECAO_STATUSES),
     sb.from('correcoes').select('id', { count: 'exact', head: true })
       .eq('site_id', siteId).eq('status', 'FINALIZADA'),
     sb.from('profiles').select('id, ativo').eq('site_id', siteId).eq('role', 'ALUNO'),
     sb.from('turmas').select('id', { count: 'exact', head: true })
-      .eq('site_id', siteId).eq('status', 'ABERTA'),
-    sb.from('sites').select('allowed_origins').eq('id', siteId).maybeSingle()
+      .eq('site_id', siteId).eq('status', 'ABERTA')
   ])
   const visibleAlunos = (alunosLista.data ?? []).filter((aluno) => !cms.deleted_students?.[aluno.id])
   const creditosAtivos = visibleAlunos.reduce((sum, aluno) => {

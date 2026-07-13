@@ -28,10 +28,6 @@ function makeCheckoutCode() {
   return `PG-${crypto.randomUUID().replaceAll('-', '').slice(0, 10).toUpperCase()}`
 }
 
-function makeTransactionId(code: string) {
-  return `SIM-${Date.now()}-${code.replace(/\W/g, '')}`
-}
-
 function tomorrowIsoDate() {
   const date = new Date()
   date.setDate(date.getDate() + 1)
@@ -1851,11 +1847,9 @@ bootProfessorEditMode()
 function renderTurmaPage(data: { site: any; turmas: any[] }, turma: any) {
   const { site } = data
   const cms = parseCms(site)
-  const layout = cms.layout
   const theme = normalizeTheme(cms.theme, site.cor_primaria, site.cor_accent)
   const settings = cms.turma_settings?.[turma.id] || {}
   const sitePath = `/redacao/${encodeURIComponent(site.slug)}`
-  const loginUrl = `${sitePath}/login`
   const checkoutUrl = `${sitePath}/checkout/${encodeURIComponent(turma.id)}`
   const price = moneyBR(turma.preco)
   const image = String(settings.imagem_url || '')

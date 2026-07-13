@@ -25,6 +25,7 @@
 - Script `npm run check:public` criado para validar metadados essenciais.
 - Script `npm run smoke:prod` criado para smoke remoto de `/health`, páginas públicas e assets.
 - Script `npm run audit:static` criado para bloquear marcadores temporários, `debugger`, `console.log` em código servido ao usuário, `document.write` fora do loader controlado e scripts locais que listem usuários.
+- Script `npm run typecheck:unused` adicionado e incluído no `check:all`.
 - `npm run check:all` passou.
 - `npm run smoke:prod` passou no fallback `workers.dev`.
 - `ENABLE_APP_RATE_LIMITING=false` foi documentado em `.env.example`, `wrangler.jsonc` e tipagem centralizada.

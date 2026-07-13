@@ -6,11 +6,12 @@
     "dev": "wrangler dev",
     "deploy": "wrangler deploy",
     "typecheck": "tsc --noEmit",
+    "typecheck:unused": "tsc --noEmit --noUnusedLocals --noUnusedParameters",
     "check:diff": "git diff --check",
     "check:public": "node scripts/check-public-metadata.mjs",
     "audit:static": "node scripts/audit-static.mjs",
     "smoke:prod": "node scripts/production-smoke.mjs",
-    "check:all": "npm run typecheck && npm run security:scan && npm run check:public && npm run audit:static && npm run check:diff",
+    "check:all": "npm run typecheck && npm run typecheck:unused && npm run security:scan && npm run check:public && npm run audit:static && npm run check:diff",
     "setup": "node scripts/setup.mjs",
     "security:scan": "node scripts/scan-secrets.mjs"
   },
