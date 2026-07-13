@@ -4,11 +4,57 @@ import { getAdmin } from '../supabase'
 import { requireAuth, requireRole } from '../middleware'
 import { dataUrlFromBytes } from '../uploads'
 import { getPrivateStorage, keyFromStoredObjectRef } from '../storage'
+import { getConfig } from '../config'
 
 const app = new Hono<{ Bindings: Env }>()
 
 function dbError() {
   return { error: 'Erro ao acessar os dados.' }
+}
+
+const FINANCIAL_ENTRY_STATUS = {
+  AWAITING_CLOSING: 'AWAITING_CLOSING',
+  IN_CLOSING: 'IN_CLOSING',
+  APPROVED: 'APPROVED',
+  PARTIALLY_PAID: 'PARTIALLY_PAID',
+  PAID: 'PAID',
+  CANCELED: 'CANCELED',
+  REVERSED: 'REVERSED',
+  PENDING_REVIEW: 'PENDING_REVIEW',
+  DISPUTED: 'DISPUTED'
+} as const
+
+const CLOSING_STATUS = {
+  DRAFT: 'DRAFT',
+  APPROVED: 'APPROVED',
+  PARTIALLY_PAID: 'PARTIALLY_PAID',
+  PAID: 'PAID',
+  CANCELED: 'CANCELED'
+} as const
+
+function financialUnavailable(env: Env) {
+  const flags = getConfig(env).flags
+  return !flags.financialModule
+}
+
+function teacherCompensationUnavailable(env: Env) {
+  const flags = getConfig(env).flags
+  return !flags.financialModule || !flags.teacherCompensation
+}
+
+function moneyToCents(value: unknown) {
+  if (typeof value === 'number') return Math.round(value * 100)
+  const normalized = String(value || '')
+    .trim()
+    .replace(/[^\d,.-]/g, '')
+    .replace(/\./g, '')
+    .replace(',', '.')
+  const parsed = Number(normalized)
+  return Number.isFinite(parsed) ? Math.round(parsed * 100) : 0
+}
+
+function centsToMoney(value: unknown) {
+  return Math.round(Number(value || 0)) / 100
 }
 
 app.use('*', requireAuth, requireRole('ADMIN', 'SUPERADMIN', 'CORRETOR'))
@@ -196,6 +242,212 @@ function assignmentMetaFor(child: any, correcao: any) {
   return { assigned, corrected, pendingDays }
 }
 
+async function appendFinancialNotification(sb: ReturnType<typeof getAdmin>, siteId: string, notification: any) {
+  const { data: site } = await sb.from('sites').select('allowed_origins').eq('id', siteId).maybeSingle()
+  const cms = parseCms(site)
+  const notifications = Array.isArray(cms.notifications) ? cms.notifications : []
+  notifications.unshift({
+    id: crypto.randomUUID(),
+    type: 'FINANCIAL',
+    read: false,
+    created_at: new Date().toISOString(),
+    ...notification
+  })
+  cms.notifications = notifications.slice(0, 100)
+  await sb.from('sites').update({ allowed_origins: withCmsOrigins(site?.allowed_origins || [], cms) }).eq('id', siteId)
+}
+
+async function logFinancialAudit(sb: ReturnType<typeof getAdmin>, payload: {
+  siteId: string
+  actorId?: string | null
+  targetTable: string
+  targetId?: string | null
+  action: string
+  previous?: unknown
+  next?: unknown
+  metadata?: Record<string, unknown>
+}) {
+  await sb.from('financial_audit_logs').insert({
+    site_id: payload.siteId,
+    actor_id: payload.actorId || null,
+    target_table: payload.targetTable,
+    target_id: payload.targetId || null,
+    action: payload.action,
+    previous_data_json: payload.previous || null,
+    new_data_json: payload.next || null,
+    metadata: payload.metadata || {}
+  })
+}
+
+async function resolveParentProfessorId(sb: ReturnType<typeof getAdmin>, siteId: string, childUserId: string | null | undefined) {
+  const { data } = await sb.from('profiles')
+    .select('id')
+    .eq('site_id', siteId)
+    .in('role', ['ADMIN', 'CORRETOR'])
+    .eq('ativo', true)
+    .neq('id', childUserId || '')
+    .order('created_at', { ascending: true })
+    .limit(1)
+    .maybeSingle()
+  return data?.id || null
+}
+
+async function resolveCorrectionCompensationRule(sb: ReturnType<typeof getAdmin>, siteId: string, child: any, correcao: any) {
+  const today = new Date().toISOString().slice(0, 10)
+  const { data: rules, error } = await sb.from('correction_compensation_rules')
+    .select('id, site_id, child_professor_id, turma_id, correction_type, amount_cents, valid_from, valid_until, active, priority, notes')
+    .eq('site_id', siteId)
+    .eq('active', true)
+    .lte('valid_from', today)
+    .order('priority', { ascending: true })
+  if (error) return { error }
+
+  const usable = (rules || []).filter((rule: any) =>
+    (!rule.valid_until || rule.valid_until >= today) &&
+    (!rule.child_professor_id || rule.child_professor_id === child?.user_id) &&
+    (!rule.turma_id || rule.turma_id === correcao?.turma_id)
+  )
+  const exactChildTurma = usable.find((rule: any) => rule.child_professor_id === child?.user_id && rule.turma_id === correcao?.turma_id)
+  const exactChild = usable.find((rule: any) => rule.child_professor_id === child?.user_id && !rule.turma_id)
+  const exactTurma = usable.find((rule: any) => !rule.child_professor_id && rule.turma_id === correcao?.turma_id)
+  const selected = exactChildTurma || exactChild || exactTurma
+  if (selected) {
+    return {
+      amount_cents: Number(selected.amount_cents || 0),
+      rule_id: selected.id,
+      rule_source: selected === exactChildTurma ? 'CHILD_TURMA' : selected === exactChild ? 'CHILD' : 'TURMA',
+      snapshot: selected
+    }
+  }
+
+  const legacyCents = moneyToCents(child?.valor_correcao)
+  if (legacyCents > 0) {
+    return {
+      amount_cents: legacyCents,
+      rule_id: null,
+      rule_source: 'LEGACY_CHILD_CMS',
+      snapshot: {
+        child_id: child?.id || null,
+        child_user_id: child?.user_id || null,
+        valor_correcao: child?.valor_correcao || 0
+      }
+    }
+  }
+
+  const { data: settings } = await sb.from('financial_settings')
+    .select('id, default_correction_amount_cents, currency')
+    .eq('site_id', siteId)
+    .maybeSingle()
+  const defaultCents = Number(settings?.default_correction_amount_cents || 0)
+  if (defaultCents > 0) {
+    return {
+      amount_cents: defaultCents,
+      rule_id: null,
+      rule_source: 'SITE_DEFAULT',
+      snapshot: settings
+    }
+  }
+
+  return { missing: true }
+}
+
+async function ensureCorrectionCompensationEntry(
+  env: Env,
+  sb: ReturnType<typeof getAdmin>,
+  actor: any,
+  siteId: string,
+  cms: any,
+  correcao: any
+) {
+  if (teacherCompensationUnavailable(env)) return { skipped: true, reason: 'feature_disabled' }
+  if (correcao?.status !== 'FINALIZADA') return { skipped: true, reason: 'not_finalized' }
+  const assigned = assignedChildFor(cms, correcao)
+  if (!assigned?.user_id) return { skipped: true, reason: 'not_assigned_to_child' }
+
+  const { data: existing } = await sb.from('correction_compensation_entries')
+    .select('id, status, amount_cents')
+    .eq('correction_id', correcao.id)
+    .maybeSingle()
+  if (existing) return { entry: existing, idempotent: true }
+
+  const resolved = await resolveCorrectionCompensationRule(sb, siteId, assigned, correcao)
+  if ('error' in resolved) return { skipped: true, reason: 'rule_lookup_failed' }
+  if ('missing' in resolved) {
+    await appendFinancialNotification(sb, siteId, {
+      title: 'Configuração financeira pendente',
+      message: `A correção "${correcao.titulo || 'Redação'}" foi finalizada por ${assigned.nome || 'corretor'}, mas não há regra de remuneração configurada.`,
+      severity: 'warning',
+      key: `financial-rule-missing:${correcao.id}`,
+      correction_id: correcao.id,
+      child_professor_id: assigned.user_id
+    })
+    await logFinancialAudit(sb, {
+      siteId,
+      actorId: actor?.sub,
+      targetTable: 'correcoes',
+      targetId: correcao.id,
+      action: 'COMPENSATION_RULE_MISSING',
+      metadata: { child_professor_id: assigned.user_id, turma_id: correcao.turma_id || null }
+    })
+    return { skipped: true, reason: 'rule_missing' }
+  }
+
+  const meta = assignmentMetaFor(assigned, correcao)
+  const parentId = await resolveParentProfessorId(sb, siteId, assigned.user_id)
+  const payload = {
+    site_id: siteId,
+    correction_id: correcao.id,
+    child_professor_id: assigned.user_id,
+    parent_professor_id: parentId,
+    aluno_id: correcao.aluno_id || null,
+    turma_id: correcao.turma_id || null,
+    rule_id: resolved.rule_id,
+    correction_type: 'CORRECAO',
+    status: FINANCIAL_ENTRY_STATUS.AWAITING_CLOSING,
+    amount_cents: resolved.amount_cents,
+    currency: 'BRL',
+    assigned_at: meta.assigned,
+    corrected_at: correcao.finalizada_em || correcao.updated_at || new Date().toISOString(),
+    rule_snapshot_json: { source: resolved.rule_source, rule: resolved.snapshot },
+    metadata: { correction_title: correcao.titulo || null },
+    created_by: actor?.sub || null,
+    updated_by: actor?.sub || null
+  }
+  const { data, error } = await sb.from('correction_compensation_entries')
+    .insert(payload)
+    .select('id, status, amount_cents')
+    .single()
+  if (error) {
+    if (String(error.code) === '23505') {
+      const { data: again } = await sb.from('correction_compensation_entries')
+        .select('id, status, amount_cents')
+        .eq('correction_id', correcao.id)
+        .maybeSingle()
+      return { entry: again, idempotent: true }
+    }
+    return { skipped: true, reason: 'entry_insert_failed' }
+  }
+  await logFinancialAudit(sb, {
+    siteId,
+    actorId: actor?.sub,
+    targetTable: 'correction_compensation_entries',
+    targetId: data.id,
+    action: 'COMPENSATION_CREATED',
+    next: payload,
+    metadata: { correction_id: correcao.id }
+  })
+  await appendFinancialNotification(sb, siteId, {
+    title: 'Correção remunerada gerada',
+    message: `${assigned.nome || 'Corretor'} finalizou uma correção. Valor gerado: R$ ${centsToMoney(resolved.amount_cents).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}.`,
+    severity: 'info',
+    key: `compensation-created:${correcao.id}`,
+    correction_id: correcao.id,
+    child_professor_id: assigned.user_id,
+    amount_cents: resolved.amount_cents
+  })
+  return { entry: data, created: true }
+}
+
 function normalizeAssignmentInput(input: any, previous: any = {}) {
   const turmaIds = Array.isArray(input?.turma_ids) ? [...new Set(input.turma_ids.filter(Boolean))] : []
   const alunoIds = Array.isArray(input?.aluno_ids) ? [...new Set(input.aluno_ids.filter(Boolean))] : []
@@ -352,9 +604,16 @@ app.get('/site', async (c) => {
   if (error) return c.json(dbError(), 500)
   const cms = parseCms(data)
   const child = findChildTeacher(cms, user)
+  const flags = getConfig(c.env).flags
   return c.json({
     ...data,
     cms,
+    feature_flags: {
+      financial_module: flags.financialModule,
+      teacher_compensation: flags.teacherCompensation,
+      financial_exports: flags.financialExports,
+      financial_charts: flags.financialCharts
+    },
     current_child_teacher: child ? {
       id: child.id,
       nome: child.nome,
@@ -498,6 +757,9 @@ app.patch('/correcoes/:id', async (c) => {
     .select()
     .single()
   if (error) return c.json(dbError(), 500)
+  if (data.status === 'FINALIZADA') {
+    await ensureCorrectionCompensationEntry(c.env, sb, user, access.siteId, access.cms, data)
+  }
   return c.json(data)
 })
 
@@ -1296,6 +1558,336 @@ app.post('/turmas', async (c) => {
     .insert({ ...body, site_id: siteId }).select().single()
   if (error) return c.json(dbError(), 500)
   return c.json(data, 201)
+})
+
+async function financialContext(c: any) {
+  const user = c.get('user')
+  const sb = getAdmin(c.env)
+  const siteId = await resolveSiteId(sb, user)
+  if (!siteId) return { error: 'Professor sem site vinculado.', status: 400 as const }
+  const cms = await getSiteCms(sb, siteId)
+  const child = findChildTeacher(cms, user)
+  return { user, sb, siteId, cms, child }
+}
+
+async function listFinancialEntries(sb: ReturnType<typeof getAdmin>, siteId: string, childUserId?: string | null, status?: string | null) {
+  let query = sb.from('correction_compensation_entries')
+    .select('id, site_id, correction_id, child_professor_id, parent_professor_id, aluno_id, turma_id, rule_id, closing_id, correction_type, status, amount_cents, currency, assigned_at, corrected_at, approved_at, paid_at, rule_snapshot_json, metadata, created_at, updated_at')
+    .eq('site_id', siteId)
+    .order('corrected_at', { ascending: false })
+    .limit(500)
+  if (childUserId) query = query.eq('child_professor_id', childUserId)
+  if (status && status !== 'ALL') query = query.eq('status', status)
+  const { data, error } = await query
+  if (error) return { error }
+  const rows = data || []
+  const alunoIds = [...new Set(rows.map((row: any) => row.aluno_id).filter(Boolean))]
+  const turmaIds = [...new Set(rows.map((row: any) => row.turma_id).filter(Boolean))]
+  const childIds = [...new Set(rows.map((row: any) => row.child_professor_id).filter(Boolean))]
+  const correctionIds = [...new Set(rows.map((row: any) => row.correction_id).filter(Boolean))]
+  const [{ data: alunos }, { data: turmas }, { data: filhos }, { data: correcoes }] = await Promise.all([
+    alunoIds.length ? sb.from('profiles').select('id, nome').eq('site_id', siteId).in('id', alunoIds) : Promise.resolve({ data: [] as any[] }),
+    turmaIds.length ? sb.from('turmas').select('id, nome').eq('site_id', siteId).in('id', turmaIds) : Promise.resolve({ data: [] as any[] }),
+    childIds.length ? sb.from('profiles').select('id, nome').eq('site_id', siteId).in('id', childIds) : Promise.resolve({ data: [] as any[] }),
+    correctionIds.length ? sb.from('correcoes').select('id, titulo').eq('site_id', siteId).in('id', correctionIds) : Promise.resolve({ data: [] as any[] })
+  ])
+  const alunoMap = new Map((alunos || []).map((item: any) => [item.id, item.nome]))
+  const turmaMap = new Map((turmas || []).map((item: any) => [item.id, item.nome]))
+  const filhoMap = new Map((filhos || []).map((item: any) => [item.id, item.nome]))
+  const corrMap = new Map((correcoes || []).map((item: any) => [item.id, item.titulo]))
+  return {
+    data: rows.map((row: any) => ({
+      ...row,
+      amount: centsToMoney(row.amount_cents),
+      aluno_nome: alunoMap.get(row.aluno_id) || null,
+      turma_nome: turmaMap.get(row.turma_id) || null,
+      child_professor_nome: filhoMap.get(row.child_professor_id) || null,
+      correcao_titulo: corrMap.get(row.correction_id) || row.metadata?.correction_title || null,
+      rule_source: row.rule_snapshot_json?.source || null,
+      rule_snapshot_json: undefined
+    }))
+  }
+}
+
+function summarizeFinancialEntries(entries: any[], payouts: any[] = []) {
+  const now = new Date()
+  const today = now.toISOString().slice(0, 10)
+  const month = today.slice(0, 7)
+  const year = today.slice(0, 4)
+  const total = entries.reduce((sum, item) => sum + Number(item.amount_cents || 0), 0)
+  const paid = entries.filter((item) => item.status === FINANCIAL_ENTRY_STATUS.PAID).reduce((sum, item) => sum + Number(item.amount_cents || 0), 0)
+  const awaiting = entries.filter((item) => item.status === FINANCIAL_ENTRY_STATUS.AWAITING_CLOSING).reduce((sum, item) => sum + Number(item.amount_cents || 0), 0)
+  const inClosing = entries.filter((item) => [FINANCIAL_ENTRY_STATUS.IN_CLOSING, FINANCIAL_ENTRY_STATUS.APPROVED, FINANCIAL_ENTRY_STATUS.PARTIALLY_PAID].includes(item.status)).reduce((sum, item) => sum + Number(item.amount_cents || 0), 0)
+  const todayRows = entries.filter((item) => String(item.corrected_at || '').startsWith(today))
+  const monthRows = entries.filter((item) => String(item.corrected_at || '').startsWith(month))
+  const yearRows = entries.filter((item) => String(item.corrected_at || '').startsWith(year))
+  return {
+    corrections_today: todayRows.length,
+    corrections_month: monthRows.length,
+    corrections_year: yearRows.length,
+    amount_today: centsToMoney(todayRows.reduce((sum, item) => sum + Number(item.amount_cents || 0), 0)),
+    amount_month: centsToMoney(monthRows.reduce((sum, item) => sum + Number(item.amount_cents || 0), 0)),
+    amount_year: centsToMoney(yearRows.reduce((sum, item) => sum + Number(item.amount_cents || 0), 0)),
+    amount_total: centsToMoney(total),
+    awaiting_closing: centsToMoney(awaiting),
+    in_closing: centsToMoney(inClosing),
+    paid: centsToMoney(paid),
+    pending: centsToMoney(Math.max(0, total - paid)),
+    average_per_correction: entries.length ? centsToMoney(Math.round(total / entries.length)) : 0,
+    last_payment: payouts[0] || null
+  }
+}
+
+app.get('/financial/summary', async (c) => {
+  if (financialUnavailable(c.env)) return c.json({ error: 'Módulo financeiro desativado.' }, 503)
+  const ctx = await financialContext(c)
+  if ('error' in ctx) return c.json({ error: ctx.error }, ctx.status)
+  const childUserId = ctx.child?.user_id || null
+  const entries = await listFinancialEntries(ctx.sb, ctx.siteId, childUserId)
+  if ('error' in entries) return c.json(dbError(), 500)
+  let payoutQuery = ctx.sb.from('teacher_payouts')
+    .select('id, closing_id, amount_cents, status, paid_at, payment_method, reference, created_at')
+    .eq('site_id', ctx.siteId)
+    .order('created_at', { ascending: false })
+    .limit(20)
+  if (childUserId) payoutQuery = payoutQuery.eq('child_professor_id', childUserId)
+  const { data: payouts } = await payoutQuery
+  return c.json({
+    sandbox: c.env.ASAAS_ENV === 'sandbox',
+    role: childUserId ? 'CHILD_TEACHER' : 'PARENT_TEACHER',
+    summary: summarizeFinancialEntries(entries.data, payouts || [])
+  })
+})
+
+app.get('/financial/compensations', async (c) => {
+  if (financialUnavailable(c.env)) return c.json({ error: 'Módulo financeiro desativado.' }, 503)
+  const ctx = await financialContext(c)
+  if ('error' in ctx) return c.json({ error: ctx.error }, ctx.status)
+  const status = c.req.query('status')?.trim().toUpperCase() || null
+  const childId = ctx.child?.user_id || c.req.query('child_professor_id') || null
+  if (ctx.child && childId !== ctx.child.user_id) return c.json({ error: 'Acesso negado.' }, 403)
+  const entries = await listFinancialEntries(ctx.sb, ctx.siteId, childId, status)
+  if ('error' in entries) return c.json(dbError(), 500)
+  return c.json({ data: entries.data })
+})
+
+app.get('/financial/payables', async (c) => {
+  if (financialUnavailable(c.env)) return c.json({ error: 'Módulo financeiro desativado.' }, 503)
+  const ctx = await financialContext(c)
+  if ('error' in ctx) return c.json({ error: ctx.error }, ctx.status)
+  if (ctx.child) return c.json({ error: 'Corretores filhos não acessam contas a pagar do professor.' }, 403)
+  const entries = await listFinancialEntries(ctx.sb, ctx.siteId, c.req.query('child_professor_id') || null, c.req.query('status') || FINANCIAL_ENTRY_STATUS.AWAITING_CLOSING)
+  if ('error' in entries) return c.json(dbError(), 500)
+  return c.json({ data: entries.data })
+})
+
+app.get('/financial/closings', async (c) => {
+  if (financialUnavailable(c.env)) return c.json({ error: 'Módulo financeiro desativado.' }, 503)
+  const ctx = await financialContext(c)
+  if ('error' in ctx) return c.json({ error: ctx.error }, ctx.status)
+  let query = ctx.sb.from('teacher_payment_closings')
+    .select('id, site_id, child_professor_id, parent_professor_id, period_start, period_end, status, entries_count, gross_amount_cents, adjustments_amount_cents, final_amount_cents, currency, approved_at, paid_at, notes, created_at, updated_at')
+    .eq('site_id', ctx.siteId)
+    .order('created_at', { ascending: false })
+    .limit(100)
+  if (ctx.child) query = query.eq('child_professor_id', ctx.child.user_id)
+  const { data, error } = await query
+  if (error) return c.json(dbError(), 500)
+  return c.json({ data: (data || []).map((row: any) => ({ ...row, gross_amount: centsToMoney(row.gross_amount_cents), final_amount: centsToMoney(row.final_amount_cents) })) })
+})
+
+app.post('/financial/closings', async (c) => {
+  if (financialUnavailable(c.env)) return c.json({ error: 'Módulo financeiro desativado.' }, 503)
+  const ctx = await financialContext(c)
+  if ('error' in ctx) return c.json({ error: ctx.error }, ctx.status)
+  if (ctx.child) return c.json({ error: 'Corretores filhos não criam fechamentos.' }, 403)
+  const body = await c.req.json()
+  const childProfessorId = String(body.child_professor_id || '')
+  const entryIds = Array.isArray(body.entry_ids) ? [...new Set(body.entry_ids.filter(Boolean).map(String))] : []
+  if (!childProfessorId || !entryIds.length) return c.json({ error: 'Informe professor filho e lançamentos.' }, 400)
+  const { data: entries, error: entryErr } = await ctx.sb.from('correction_compensation_entries')
+    .select('id, amount_cents, child_professor_id, status, site_id, corrected_at')
+    .eq('site_id', ctx.siteId)
+    .eq('child_professor_id', childProfessorId)
+    .in('id', entryIds)
+  if (entryErr) return c.json(dbError(), 500)
+  if ((entries || []).length !== entryIds.length) return c.json({ error: 'Um ou mais lançamentos não foram encontrados.' }, 404)
+  if ((entries || []).some((item: any) => item.status !== FINANCIAL_ENTRY_STATUS.AWAITING_CLOSING)) {
+    return c.json({ error: 'Somente lançamentos aguardando fechamento podem entrar em fechamento.' }, 409)
+  }
+  const gross = (entries || []).reduce((sum: number, item: any) => sum + Number(item.amount_cents || 0), 0)
+  const dates = (entries || []).map((item: any) => String(item.corrected_at || '').slice(0, 10)).filter(Boolean).sort()
+  const { data: closing, error: closingErr } = await ctx.sb.from('teacher_payment_closings')
+    .insert({
+      site_id: ctx.siteId,
+      child_professor_id: childProfessorId,
+      parent_professor_id: ctx.user.sub,
+      period_start: body.period_start || dates[0] || new Date().toISOString().slice(0, 10),
+      period_end: body.period_end || dates[dates.length - 1] || new Date().toISOString().slice(0, 10),
+      status: CLOSING_STATUS.DRAFT,
+      entries_count: entries?.length || 0,
+      gross_amount_cents: gross,
+      adjustments_amount_cents: 0,
+      final_amount_cents: gross,
+      notes: typeof body.notes === 'string' ? body.notes.trim() : null,
+      created_by: ctx.user.sub,
+      updated_by: ctx.user.sub
+    })
+    .select()
+    .single()
+  if (closingErr || !closing) return c.json(dbError(), 500)
+  const { error: updErr } = await ctx.sb.from('correction_compensation_entries')
+    .update({ closing_id: closing.id, status: FINANCIAL_ENTRY_STATUS.IN_CLOSING, updated_by: ctx.user.sub, updated_at: new Date().toISOString() })
+    .eq('site_id', ctx.siteId)
+    .eq('child_professor_id', childProfessorId)
+    .in('id', entryIds)
+    .eq('status', FINANCIAL_ENTRY_STATUS.AWAITING_CLOSING)
+  if (updErr) return c.json(dbError(), 500)
+  await logFinancialAudit(ctx.sb, {
+    siteId: ctx.siteId,
+    actorId: ctx.user.sub,
+    targetTable: 'teacher_payment_closings',
+    targetId: closing.id,
+    action: 'CLOSING_CREATED',
+    next: { closing, entry_ids: entryIds }
+  })
+  return c.json({ ...closing, gross_amount: centsToMoney(gross), final_amount: centsToMoney(gross) }, 201)
+})
+
+app.patch('/financial/closings/:id/approve', async (c) => {
+  if (financialUnavailable(c.env)) return c.json({ error: 'Módulo financeiro desativado.' }, 503)
+  const ctx = await financialContext(c)
+  if ('error' in ctx) return c.json({ error: ctx.error }, ctx.status)
+  if (ctx.child) return c.json({ error: 'Corretores filhos não aprovam fechamentos.' }, 403)
+  const now = new Date().toISOString()
+  const { data, error } = await ctx.sb.from('teacher_payment_closings')
+    .update({ status: CLOSING_STATUS.APPROVED, approved_at: now, updated_by: ctx.user.sub, updated_at: now })
+    .eq('id', c.req.param('id'))
+    .eq('site_id', ctx.siteId)
+    .in('status', [CLOSING_STATUS.DRAFT])
+    .select()
+    .single()
+  if (error || !data) return c.json({ error: 'Fechamento não encontrado ou não pode ser aprovado.' }, 404)
+  await ctx.sb.from('correction_compensation_entries')
+    .update({ status: FINANCIAL_ENTRY_STATUS.APPROVED, updated_by: ctx.user.sub, updated_at: now })
+    .eq('site_id', ctx.siteId)
+    .eq('closing_id', data.id)
+    .eq('status', FINANCIAL_ENTRY_STATUS.IN_CLOSING)
+  await logFinancialAudit(ctx.sb, { siteId: ctx.siteId, actorId: ctx.user.sub, targetTable: 'teacher_payment_closings', targetId: data.id, action: 'CLOSING_APPROVED', next: data })
+  return c.json(data)
+})
+
+app.post('/financial/closings/:id/payouts', async (c) => {
+  if (financialUnavailable(c.env)) return c.json({ error: 'Módulo financeiro desativado.' }, 503)
+  const ctx = await financialContext(c)
+  if ('error' in ctx) return c.json({ error: ctx.error }, ctx.status)
+  if (ctx.child) return c.json({ error: 'Corretores filhos não registram pagamentos.' }, 403)
+  const body = await c.req.json()
+  const amountCents = Math.round(Number(body.amount_cents || 0))
+  if (!Number.isFinite(amountCents) || amountCents <= 0) return c.json({ error: 'Valor inválido.' }, 400)
+  const { data: closing, error: closeErr } = await ctx.sb.from('teacher_payment_closings')
+    .select('id, site_id, child_professor_id, status, final_amount_cents')
+    .eq('id', c.req.param('id'))
+    .eq('site_id', ctx.siteId)
+    .maybeSingle()
+  if (closeErr || !closing) return c.json({ error: 'Fechamento não encontrado.' }, 404)
+  if (closing.status === CLOSING_STATUS.CANCELED) return c.json({ error: 'Fechamento cancelado não pode receber pagamento.' }, 409)
+  const { data: previous } = await ctx.sb.from('teacher_payouts')
+    .select('amount_cents')
+    .eq('site_id', ctx.siteId)
+    .eq('closing_id', closing.id)
+    .neq('status', 'CANCELED')
+  const paid = (previous || []).reduce((sum: number, item: any) => sum + Number(item.amount_cents || 0), 0)
+  const balance = Number(closing.final_amount_cents || 0) - paid
+  if (amountCents > balance) return c.json({ error: 'Valor maior que o saldo do fechamento.' }, 409)
+  const now = new Date().toISOString()
+  const { data: payout, error: payoutErr } = await ctx.sb.from('teacher_payouts')
+    .insert({
+      site_id: ctx.siteId,
+      closing_id: closing.id,
+      child_professor_id: closing.child_professor_id,
+      amount_cents: amountCents,
+      status: 'PAID',
+      payment_method: String(body.payment_method || 'MANUAL').trim(),
+      reference: typeof body.reference === 'string' ? body.reference.trim() : null,
+      paid_at: body.paid_at || now,
+      notes: typeof body.notes === 'string' ? body.notes.trim() : null,
+      created_by: ctx.user.sub,
+      updated_by: ctx.user.sub
+    })
+    .select()
+    .single()
+  if (payoutErr || !payout) return c.json(dbError(), 500)
+  const nextPaid = paid + amountCents
+  const fullyPaid = nextPaid >= Number(closing.final_amount_cents || 0)
+  const closingStatus = fullyPaid ? CLOSING_STATUS.PAID : CLOSING_STATUS.PARTIALLY_PAID
+  await ctx.sb.from('teacher_payment_closings')
+    .update({ status: closingStatus, paid_at: fullyPaid ? now : null, updated_by: ctx.user.sub, updated_at: now })
+    .eq('id', closing.id)
+    .eq('site_id', ctx.siteId)
+  await ctx.sb.from('correction_compensation_entries')
+    .update({ status: fullyPaid ? FINANCIAL_ENTRY_STATUS.PAID : FINANCIAL_ENTRY_STATUS.PARTIALLY_PAID, paid_at: fullyPaid ? now : null, updated_by: ctx.user.sub, updated_at: now })
+    .eq('site_id', ctx.siteId)
+    .eq('closing_id', closing.id)
+  await logFinancialAudit(ctx.sb, { siteId: ctx.siteId, actorId: ctx.user.sub, targetTable: 'teacher_payouts', targetId: payout.id, action: 'PAYOUT_REGISTERED', next: payout })
+  await appendFinancialNotification(ctx.sb, ctx.siteId, {
+    title: 'Pagamento registrado',
+    message: `Pagamento de R$ ${centsToMoney(amountCents).toLocaleString('pt-BR', { minimumFractionDigits: 2 })} registrado para um fechamento.`,
+    severity: 'success',
+    key: `payout:${payout.id}`,
+    closing_id: closing.id,
+    child_professor_id: closing.child_professor_id
+  })
+  return c.json({ ...payout, amount: centsToMoney(payout.amount_cents), closing_status: closingStatus }, 201)
+})
+
+app.get('/financial/payouts', async (c) => {
+  if (financialUnavailable(c.env)) return c.json({ error: 'Módulo financeiro desativado.' }, 503)
+  const ctx = await financialContext(c)
+  if ('error' in ctx) return c.json({ error: ctx.error }, ctx.status)
+  let query = ctx.sb.from('teacher_payouts')
+    .select('id, closing_id, child_professor_id, amount_cents, status, payment_method, paid_at, reference, notes, created_at')
+    .eq('site_id', ctx.siteId)
+    .order('created_at', { ascending: false })
+    .limit(100)
+  if (ctx.child) query = query.eq('child_professor_id', ctx.child.user_id)
+  const { data, error } = await query
+  if (error) return c.json(dbError(), 500)
+  return c.json({ data: (data || []).map((row: any) => ({ ...row, amount: centsToMoney(row.amount_cents), reference: row.reference ? `...${String(row.reference).slice(-6)}` : null })) })
+})
+
+app.get('/financial/audit', async (c) => {
+  if (financialUnavailable(c.env)) return c.json({ error: 'Módulo financeiro desativado.' }, 503)
+  const ctx = await financialContext(c)
+  if ('error' in ctx) return c.json({ error: ctx.error }, ctx.status)
+  if (ctx.child) return c.json({ error: 'Corretores filhos não acessam auditoria financeira.' }, 403)
+  const { data, error } = await ctx.sb.from('financial_audit_logs')
+    .select('id, target_table, target_id, action, metadata, created_at')
+    .eq('site_id', ctx.siteId)
+    .order('created_at', { ascending: false })
+    .limit(100)
+  if (error) return c.json(dbError(), 500)
+  return c.json({ data: data || [] })
+})
+
+app.post('/financial/compensations/:id/dispute', async (c) => {
+  if (financialUnavailable(c.env)) return c.json({ error: 'Módulo financeiro desativado.' }, 503)
+  const ctx = await financialContext(c)
+  if ('error' in ctx) return c.json({ error: ctx.error }, ctx.status)
+  if (!ctx.child) return c.json({ error: 'Somente o corretor filho pode contestar por aqui.' }, 403)
+  const body = await c.req.json().catch(() => ({}))
+  const reason = String(body.reason || '').trim()
+  if (reason.length < 3) return c.json({ error: 'Informe o motivo da contestação.' }, 400)
+  const { data, error } = await ctx.sb.from('correction_compensation_entries')
+    .update({ status: FINANCIAL_ENTRY_STATUS.DISPUTED, metadata: { dispute_reason: reason }, updated_by: ctx.user.sub, updated_at: new Date().toISOString() })
+    .eq('id', c.req.param('id'))
+    .eq('site_id', ctx.siteId)
+    .eq('child_professor_id', ctx.child.user_id)
+    .select('id, status')
+    .single()
+  if (error || !data) return c.json({ error: 'Lançamento não encontrado.' }, 404)
+  await logFinancialAudit(ctx.sb, { siteId: ctx.siteId, actorId: ctx.user.sub, targetTable: 'correction_compensation_entries', targetId: data.id, action: 'COMPENSATION_DISPUTED', metadata: { reason } })
+  return c.json(data)
 })
 
 app.get('/payments', async (c) => {

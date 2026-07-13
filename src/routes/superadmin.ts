@@ -48,6 +48,10 @@ async function safeCount(query: any) {
   return error ? null : count ?? 0
 }
 
+function centsToMoney(value: unknown) {
+  return Math.round(Number(value || 0)) / 100
+}
+
 app.get('/stats', async (c) => {
   const sb = getAdmin(c.env)
   const [sites, profiles] = await Promise.all([
@@ -121,6 +125,55 @@ app.get('/health', async (c) => {
       '006_performance_indexes': 'aplicada e confirmada por script administrativo em 2026-07-13'
     },
     last_deploy: 'verificado via Wrangler'
+  })
+})
+
+app.get('/financial', async (c) => {
+  const sb = getAdmin(c.env)
+  const [{ data: sites }, { data: payments }, { data: entries }, { data: closings }, { data: payouts }] = await Promise.all([
+    sb.from('sites').select('id, slug, nome_prof, ativo').order('nome_prof'),
+    sb.from('payments').select('site_id, status, amount_cents, paid_at').eq('provider', 'ASAAS'),
+    sb.from('correction_compensation_entries').select('site_id, status, amount_cents, child_professor_id, corrected_at'),
+    sb.from('teacher_payment_closings').select('site_id, status, final_amount_cents, period_end, paid_at'),
+    sb.from('teacher_payouts').select('site_id, status, amount_cents, paid_at')
+  ])
+  const siteRows = sites || []
+  const payRows = payments || []
+  const entryRows = entries || []
+  const closingRows = closings || []
+  const payoutRows = payouts || []
+  const bySite = siteRows.map((site: any) => {
+    const sitePayments = payRows.filter((row: any) => row.site_id === site.id)
+    const siteEntries = entryRows.filter((row: any) => row.site_id === site.id)
+    const siteClosings = closingRows.filter((row: any) => row.site_id === site.id)
+    const sitePayouts = payoutRows.filter((row: any) => row.site_id === site.id)
+    const revenue = sitePayments.filter((row: any) => ['RECEIVED', 'CONFIRMED'].includes(row.status)).reduce((sum: number, row: any) => sum + Number(row.amount_cents || 0), 0)
+    const due = siteEntries.filter((row: any) => !['PAID', 'CANCELED', 'REVERSED'].includes(row.status)).reduce((sum: number, row: any) => sum + Number(row.amount_cents || 0), 0)
+    const paid = sitePayouts.filter((row: any) => row.status !== 'CANCELED').reduce((sum: number, row: any) => sum + Number(row.amount_cents || 0), 0)
+    return {
+      site_id: site.id,
+      slug: site.slug,
+      nome_prof: site.nome_prof,
+      ativo: site.ativo,
+      revenue: centsToMoney(revenue),
+      due_to_child_teachers: centsToMoney(due),
+      paid_to_child_teachers: centsToMoney(paid),
+      pending_closings: siteClosings.filter((row: any) => row.status !== 'PAID' && row.status !== 'CANCELED').length,
+      child_teachers_count: new Set(siteEntries.map((row: any) => row.child_professor_id).filter(Boolean)).size
+    }
+  })
+  const totalRevenue = payRows.filter((row: any) => ['RECEIVED', 'CONFIRMED'].includes(row.status)).reduce((sum: number, row: any) => sum + Number(row.amount_cents || 0), 0)
+  const totalDue = entryRows.filter((row: any) => !['PAID', 'CANCELED', 'REVERSED'].includes(row.status)).reduce((sum: number, row: any) => sum + Number(row.amount_cents || 0), 0)
+  const totalPaid = payoutRows.filter((row: any) => row.status !== 'CANCELED').reduce((sum: number, row: any) => sum + Number(row.amount_cents || 0), 0)
+  return c.json({
+    summary: {
+      revenue: centsToMoney(totalRevenue),
+      due_to_child_teachers: centsToMoney(totalDue),
+      paid_to_child_teachers: centsToMoney(totalPaid),
+      pending_to_child_teachers: centsToMoney(Math.max(0, totalDue - totalPaid)),
+      open_closings: closingRows.filter((row: any) => row.status !== 'PAID' && row.status !== 'CANCELED').length
+    },
+    sites: bySite
   })
 })
 
