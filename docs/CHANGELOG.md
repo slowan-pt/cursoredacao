@@ -49,6 +49,8 @@ Todas as mudanças relevantes deste projeto devem ser registradas aqui.
 - Rota guardada `POST /api/payments/asaas/webhook` adicionada e publicada com `ENABLE_PAYMENTS=false`.
 - Migration `005_payments.sql` aplicada no Supabase após backup de metadados do schema.
 - Asaas segue bloqueado por ausência de `ASAAS_API_KEY`; Resend segue bloqueado por ausência de `RESEND_API_KEY`.
+- Webhook Asaas ajustado para liberar matrícula/créditos automaticamente quando um pagamento existente chega como `CONFIRMED` ou `RECEIVED`.
+- Homologação completa Asaas segue bloqueada porque `ASAAS_API_KEY` não existe e o valor do `ASAAS_WEBHOOK_TOKEN` do Worker não pode ser lido de volta.
 - Documentação operacional:
   - `docs/ARCHITECTURE.md`
   - `docs/ROADMAP.md`

@@ -675,7 +675,7 @@ Resumo anterior do `git diff --stat`:
 
 ## Verificação do Webhook Asaas — 2026-07-12
 
-Status: parcial.
+Status: parcial, bloqueado por credenciais externas.
 
 Evidências:
 
@@ -686,11 +686,16 @@ Evidências:
 - Correção aplicada: o webhook agora fica ativo quando o token está configurado, mesmo com checkout/pagamentos desligados.
 - Teste sem token retornou `401`, comportamento esperado.
 - `payment_webhook_events` permanecia com 0 eventos antes do teste autenticado.
+- Nova correção aplicada: webhook com status `CONFIRMED` ou `RECEIVED` agora atualiza pagamento, vincula o aluno à turma, ativa o aluno e registra créditos de envio via CMS/fallback.
+- Deploy validado após a correção: `68e7b1f4-1dae-4207-9f23-88d8f3a52356`.
+- Teste sem token após o deploy retornou `401`, comportamento esperado.
+- Banco conferido após o teste sem token: `payments=0`, `payment_webhook_events=0`.
 
 Limite encontrado:
 
 - O valor de `ASAAS_WEBHOOK_TOKEN` não pode ser lido de volta pelo Wrangler/Cloudflare, pois secrets são write-only.
 - Não foi possível fazer o POST autenticado com o valor real sem o usuário colar o token novamente ou sem o Asaas disparar um evento de teste.
+- Não existe `ASAAS_API_KEY` localmente nem como secret do Worker; portanto não é possível criar cobrança sandbox automaticamente.
 
 Próximo teste seguro:
 
@@ -698,6 +703,8 @@ Próximo teste seguro:
 2. Verificar resposta `200` ou `202`.
 3. Conferir inserção em `payment_webhook_events`.
 4. Criar um registro de pagamento sandbox com `external_reference` controlado e repetir o webhook para validar atualização em `payments`.
+5. Configurar `ASAAS_API_KEY` sandbox para permitir criação automática de cobrança de R$ 5,00.
+6. Repetir o ciclo completo: cobrança `PENDING`, webhook `CONFIRMED/RECEIVED`, matrícula automática e login do aluno.
 - Ainda não há persistência real de eventos em `payment_webhook_events`.
 - Matrícula por pagamento real continua pendente e deve depender de webhook confiável.
 

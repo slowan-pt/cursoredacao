@@ -12,6 +12,8 @@ Atualizado em: 2026-07-12.
 - `ASAAS_WEBHOOK_TOKEN` existe no Worker; `ASAAS_API_KEY` ainda não existe.
 - Migration `005_payments.sql` aplicada no banco remoto em 2026-07-12.
 - Rota `POST /api/payments/asaas/webhook` preparada e fechada por `ENABLE_PAYMENTS=false`.
+- A rota de webhook fica ativa com token mesmo quando `ENABLE_PAYMENTS=false`, para não perder eventos de pagamento.
+- Ao receber pagamento `CONFIRMED` ou `RECEIVED` para um registro existente, o webhook vincula o aluno à turma, ativa o aluno e registra créditos.
 
 ## Arquivos Preparados
 
@@ -86,6 +88,6 @@ ASAAS_ENV=sandbox
 - Testar rota de webhook com `ENABLE_PAYMENTS=true` em sandbox.
 - Criar endpoint de checkout real.
 - Persistir cobrança em `payments`.
-- Liberar matrícula somente no processamento idempotente do webhook.
+- Validar matrícula automática em homologação real com `ASAAS_API_KEY` sandbox.
 - Definir política para boleto/cartão além de PIX.
 - Criar testes com mocks.
