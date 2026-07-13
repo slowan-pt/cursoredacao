@@ -24,7 +24,7 @@
     "directory": "./public",
     "binding": "ASSETS",
     "not_found_handling": "404-page",
-    "run_worker_first": ["/api/*", "/s/*"]
+    "run_worker_first": ["/health", "/api/*", "/s/*"]
   },
   "r2_buckets": [
     {
