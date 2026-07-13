@@ -1,5 +1,21 @@
 # Redação com Estratégia — Status do Projeto
 
+## Módulo financeiro interno — Ciclo A — 2026-07-13
+
+- Status: implementado localmente, aguardando revisão.
+- Branch atual: `main`.
+- Arquitetura preservada: Cloudflare Workers, Hono, Supabase PostgreSQL/Auth, frontend estático e Wrangler.
+- Escopo deste ciclo: auditoria inicial, feature flags e migration não destrutiva do ledger financeiro.
+- Arquivos principais: `src/config.ts`, `src/types.ts`, `.env.example`, `wrangler.jsonc`, `migrations/007_financial_module.sql`, `docs/FINANCIAL_MODULE.md`.
+- Migration remota: não aplicada neste ciclo.
+- Deploy: não realizado neste ciclo.
+- Evidência da auditoria:
+  - pagamentos de alunos já usam `payments` e `payment_webhook_events`;
+  - professores filhos ainda ficam no CMS do site;
+  - correções finalizadas gravam `status=FINALIZADA`, `prof_id` e `finalizada_em`;
+  - ainda não há tabela própria de valores devidos a corretores filhos.
+- Próxima ação recomendada: aplicar a migration em janela controlada e iniciar o Ciclo B, gerando um lançamento único em `correction_compensation_entries` quando uma redação direcionada a professor filho for finalizada.
+
 ## Atualização de Produção — 2026-07-13
 
 - Branch atual: `main`.

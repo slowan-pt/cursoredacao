@@ -14,6 +14,10 @@ export type AppConfig = {
     oauth: boolean
     publicCheckoutSimulated: boolean
     appRateLimiting: boolean
+    financialModule: boolean
+    teacherCompensation: boolean
+    financialExports: boolean
+    financialCharts: boolean
   }
 }
 
@@ -76,7 +80,11 @@ export function getConfig(env: Env): AppConfig {
       emails: bool(env.ENABLE_EMAILS, false),
       oauth: bool(env.ENABLE_OAUTH, false),
       publicCheckoutSimulated: bool(env.ENABLE_PUBLIC_CHECKOUT_SIMULATED, publicCheckoutDefault),
-      appRateLimiting: bool(env.ENABLE_APP_RATE_LIMITING, false)
+      appRateLimiting: bool(env.ENABLE_APP_RATE_LIMITING, false),
+      financialModule: bool(env.ENABLE_FINANCIAL_MODULE, false),
+      teacherCompensation: bool(env.ENABLE_TEACHER_COMPENSATION, false),
+      financialExports: bool(env.ENABLE_FINANCIAL_EXPORTS, false),
+      financialCharts: bool(env.ENABLE_FINANCIAL_CHARTS, false)
     }
   }
 }

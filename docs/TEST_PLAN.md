@@ -27,6 +27,9 @@ Atualizado em: 2026-07-13.
 
 ## Não Verificado Automaticamente Neste Ciclo
 
+- Módulo financeiro interno: migration `007_financial_module.sql` criada, mas ainda não aplicada em ambiente remoto.
+- Geração automática de valores a pagar para professor filho ao finalizar correção.
+- Fechamento manual e pagamento manual de professor filho.
 - Corretor filho acessando somente correções atribuídas em cenário com dados reais suficientes.
 - Custom domain `redacaocomestrategia.com.br`.
 - Envio real via Resend.
