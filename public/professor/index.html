@@ -4821,6 +4821,11 @@ function freehandSvg(points, color, thickness) {
   return `<svg class="freehand-svg" viewBox="0 0 100 100" preserveAspectRatio="none"><path d="${d}" fill="none" stroke="${color}" stroke-width="${Math.max(0.2, thickness / 2)}" stroke-linecap="round" stroke-linejoin="round"/></svg>`
 }
 
+function freehandSavedSvg(points, color, thickness) {
+  const d = points.map((p, i) => `${i ? 'L' : 'M'} ${p.xp.toFixed(3)} ${p.yp.toFixed(3)}`).join(' ')
+  return `<svg class="freehand-svg" viewBox="0 0 100 100" preserveAspectRatio="none" aria-hidden="true"><path d="${d}" fill="none" stroke="${color}" stroke-width="${Math.max(0.25, Number(thickness || 1) / 2)}" stroke-linecap="round" stroke-linejoin="round" vector-effect="non-scaling-stroke"/></svg>`
+}
+
 function startFreehandDrag(evt) {
   const p = layerPoint(evt)
   const svgWrap = document.createElement('div')
@@ -5807,6 +5812,9 @@ async function createMarcacao({ tipo, trecho = '', comentario = '', cor = '#EF44
   try {
     const data = await postAnnotationPayload(body)
     if (draft) draft.remove()
+    currentCorrecao.anotacoes = [...(currentCorrecao.anotacoes || []), data]
+    renderAnnotationOverlay(currentCorrecao.anotacoes)
+    renderAnnotationList(currentCorrecao.anotacoes)
     pushAnnotationHistory({ type: 'create', annotation: cloneAnnotation(data) })
   } catch (err) {
     const el = document.getElementById('alert-correcao')
@@ -5831,22 +5839,28 @@ function renderAnnotationOverlay(anotacoes) {
     const meta = parseAnnotationMeta(a)
     box.id = `annotation-${a.id}`
     box.className = `annotation-box saved ${tipo === 'SUBLINHADO' ? 'underline' : ''} ${tipo === 'LIVRE' ? 'freehand-saved' : ''}`
-    box.style.left = `${a.x_inicio}%`
-    box.style.top = `${a.y_inicio}%`
-    box.style.width = `${Math.max((a.x_fim || 0) - (a.x_inicio || 0), 1)}%`
-    box.style.height = `${Math.max((a.y_fim || 0) - (a.y_inicio || 0), tipo === 'SUBLINHADO' ? 1 : 2)}%`
     box.style.borderColor = a.cor || '#EF4444'
     if (tipo === 'LIVRE' && meta.points?.length) {
-      box.style.position = 'absolute'
-      box.style.inset = '0'
+      box.style.left = '0'
+      box.style.top = '0'
+      box.style.width = '100%'
+      box.style.height = '100%'
       box.style.border = '0'
       box.style.background = 'transparent'
-      box.style.pointerEvents = 'none'
-      box.innerHTML = freehandSvg(meta.points, a.cor || '#EF4444', thickness)
+      box.style.pointerEvents = 'auto'
+      box.innerHTML = freehandSavedSvg(meta.points, a.cor || '#EF4444', thickness)
     } else if (tipo === 'SUBLINHADO') {
+      box.style.left = `${a.x_inicio}%`
+      box.style.top = `${a.y_inicio}%`
+      box.style.width = `${Math.max((a.x_fim || 0) - (a.x_inicio || 0), 1)}%`
+      box.style.height = `${Math.max((a.y_fim || 0) - (a.y_inicio || 0), 1)}%`
       box.style.setProperty('border-bottom-width', `${thickness}px`, 'important')
       box.style.background = 'transparent'
     } else {
+      box.style.left = `${a.x_inicio}%`
+      box.style.top = `${a.y_inicio}%`
+      box.style.width = `${Math.max((a.x_fim || 0) - (a.x_inicio || 0), 1)}%`
+      box.style.height = `${Math.max((a.y_fim || 0) - (a.y_inicio || 0), 2)}%`
       box.style.borderWidth = `${thickness}px`
       box.style.background = hexToRgba(a.cor || '#EF4444', 0.32)
     }
