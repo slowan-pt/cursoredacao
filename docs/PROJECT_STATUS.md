@@ -671,7 +671,33 @@ Resumo anterior do `git diff --stat`:
 
 ### Riscos encontrados
 
-- Ainda não existe rota de webhook Asaas.
+- Rota de webhook Asaas criada e publicada; teste autenticado ainda depende do valor real do secret ou disparo pelo painel Asaas.
+
+## Verificação do Webhook Asaas — 2026-07-12
+
+Status: parcial.
+
+Evidências:
+
+- Rota publicada: `POST /api/payments/asaas/webhook`.
+- `ASAAS_WEBHOOK_TOKEN` existe como secret no Worker `cursoreducao`.
+- Tabelas `payments` e `payment_webhook_events` existem no Supabase.
+- Antes da correção, a rota retornava `503` porque dependia de `ENABLE_PAYMENTS=false`.
+- Correção aplicada: o webhook agora fica ativo quando o token está configurado, mesmo com checkout/pagamentos desligados.
+- Teste sem token retornou `401`, comportamento esperado.
+- `payment_webhook_events` permanecia com 0 eventos antes do teste autenticado.
+
+Limite encontrado:
+
+- O valor de `ASAAS_WEBHOOK_TOKEN` não pode ser lido de volta pelo Wrangler/Cloudflare, pois secrets são write-only.
+- Não foi possível fazer o POST autenticado com o valor real sem o usuário colar o token novamente ou sem o Asaas disparar um evento de teste.
+
+Próximo teste seguro:
+
+1. Enviar um evento de teste pelo painel do Asaas, ou colar temporariamente o token em um prompt seguro local.
+2. Verificar resposta `200` ou `202`.
+3. Conferir inserção em `payment_webhook_events`.
+4. Criar um registro de pagamento sandbox com `external_reference` controlado e repetir o webhook para validar atualização em `payments`.
 - Ainda não há persistência real de eventos em `payment_webhook_events`.
 - Matrícula por pagamento real continua pendente e deve depender de webhook confiável.
 
