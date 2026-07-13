@@ -35,7 +35,7 @@ app.use('*', appSecurityHeaders)
 app.use('*', async (c, next) => {
   await next()
   const path = new URL(c.req.url).pathname
-  if (path.startsWith('/api/') || path === '/login.html' || path === '/login' || path === '/auth-callback.html' || path === '/auth-callback') {
+  if (path.startsWith('/api/') || path.startsWith('/redacao/') || path.startsWith('/s/') || path === '/login.html' || path === '/login' || path === '/auth-callback.html' || path === '/auth-callback') {
     c.header('Cache-Control', 'no-store')
   }
 })

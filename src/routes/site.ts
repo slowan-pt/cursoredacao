@@ -500,7 +500,8 @@ footer{background:#111;color:rgba(255,255,255,.45);padding:34px 6%;font-size:12p
 .editing .section [data-edit],.editing .post-card [data-edit]{outline-color:rgba(26,58,42,.28)}
 .editing [data-edit]:focus{outline-style:solid;background:rgba(255,255,255,.08)}
 .edit-add{height:34px;padding:8px 12px}
-.edit-block,[data-move-key]{position:relative;touch-action:none;will-change:transform}
+.edit-block,[data-move-key]{position:relative;will-change:transform}
+.editing .edit-block,.editing [data-move-key]{touch-action:none}
 .block-tools{display:none;position:absolute;right:10px;top:18px;z-index:130;flex-direction:column;gap:8px}
 .editing .block-tools{display:flex}
 .block-tools button{width:72px;min-height:40px;border:2px solid #111;border-radius:7px;background:#fff;color:#d65f8e;font-size:11px;font-weight:900;cursor:pointer;box-shadow:4px 4px 0 #111}
