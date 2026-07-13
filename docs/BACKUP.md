@@ -1,5 +1,7 @@
 # Backup
 
+Atualizado em: 2026-07-13.
+
 ## Banco Supabase
 
 Backup de produção deve ser feito pelo painel/CLI do Supabase antes de migrations ou mudanças estruturais.
@@ -15,4 +17,10 @@ Antes de limpar histórico:
 
 ## Arquivos
 
-Uploads definitivos devem ficar no Cloudflare R2. Quando R2 estiver ativo, definir rotina de backup/retention compatível com o plano usado.
+Uploads definitivos ficam no Cloudflare R2 quando `ENABLE_R2_UPLOADS=true`.
+
+Pendência operacional:
+
+1. Definir retenção/versionamento do bucket `redacao-uploads`.
+2. Exportar metadados `storage_files` junto do backup do banco.
+3. Testar restauração de um objeto fictício e validação pela rota autenticada.

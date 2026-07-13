@@ -60,6 +60,9 @@ export function validateIncomingArquivo(env: Env, arquivoUrl: unknown): Validate
   }
 
   if (!value.startsWith('data:')) {
+    if (isProduction(env) || config.flags.r2Uploads) {
+      return { ok: false as const, error: 'Arquivo inválido. Envie um PDF, JPEG ou PNG diretamente pelo formulário.' }
+    }
     return { ok: true as const, tipoArq: value.toLowerCase().includes('.pdf') ? 'PDF' : 'IMAGEM' }
   }
 

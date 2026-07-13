@@ -2,6 +2,29 @@
 
 Atualizado em: 2026-07-13.
 
+## Resultado Remoto MVP — 2026-07-13
+
+- `npm run check:all`: passou.
+- `/health`: HTTP 200, `service=redacao`, `version=1.0.0`.
+- Login professor: passou.
+- Login aluno: passou.
+- Aluno tentando acessar rota administrativa de pagamentos/notificações: HTTP 403.
+- Professor tentando acessar rota de aluno: HTTP 403.
+- Professor tentando alterar turma de outro site: HTTP 404 controlado.
+- Uploads R2 fictícios PDF, JPEG e PNG: passaram.
+- MIME inválido, PNG corrompido, URL externa falsa e arquivo acima do limite: rejeitados.
+- Exclusão controlada de redação de teste: bloqueou reabertura e marcou metadados R2 como `DELETED`.
+- Painel financeiro: `/api/admin/payments?limit=5&status=ALL` retornou HTTP 200 e `sandbox=true`.
+- Notificações internas: `/api/admin/notifications` retornou HTTP 200 para professor e HTTP 403 para aluno.
+
+## Não Verificado Automaticamente Neste Ciclo
+
+- Corretor filho acessando somente correções atribuídas em cenário com dados reais suficientes.
+- Custom domain `redacaocomestrategia.com.br`.
+- Envio real via Resend.
+- Cobrança Asaas de produção.
+- Revogação server-side de JWT após logout.
+
 ## Validações Automatizadas Disponíveis
 
 ```bash

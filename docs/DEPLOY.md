@@ -1,17 +1,18 @@
 # Deploy Manual — Cloudflare Workers
 
-Atualizado em: 2026-07-12.
+Atualizado em: 2026-07-13.
 
 Este projeto usa Cloudflare Workers com Wrangler. Não usar Docker/VPS para a arquitetura atual.
 
 ## Estado Atual do Worker
 
 - Worker padrão: `cursoreducao`.
-- Último deploy validado: `70d38840-7c8d-4cac-96dd-6347ac92a41d`.
+- Último deploy validado: `720e4f78-c4d6-4f2f-95ad-552292343fd0`.
 - URL atual: `https://cursoreducao.slowgithub.workers.dev`.
 - `APP_ENV=production`.
 - `ENABLE_R2_UPLOADS=true`.
-- `ENABLE_PAYMENTS=false`.
+- `ENABLE_PAYMENTS=true`.
+- `ASAAS_ENV=sandbox`.
 - `ENABLE_PUBLIC_CHECKOUT_SIMULATED=false`.
 - `ENABLE_EMAILS=false`.
 - `ENABLE_OAUTH=false`.

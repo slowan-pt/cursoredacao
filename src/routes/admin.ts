@@ -118,6 +118,15 @@ async function hydrateArquivoUrl(env: Env, correcao: any) {
   }
 }
 
+async function deleteStoredCorrectionFile(env: Env, sb: ReturnType<typeof getAdmin>, correcao: any) {
+  const key = keyFromStoredObjectRef(correcao?.arquivo_url)
+  if (!key) return
+  await getPrivateStorage(env).delete(key)
+  await sb.from('storage_files')
+    .update({ status: 'DELETED', deleted_at: new Date().toISOString() })
+    .eq('object_key', key)
+}
+
 async function resolveSiteId(sb: ReturnType<typeof getAdmin>, user: any) {
   if (user?.site_id) return user.site_id
   if (!user?.sub) return null
@@ -441,6 +450,7 @@ app.get('/correcoes/:id', async (c) => {
     .select('*, anotacoes(*)')
     .eq('id', c.req.param('id'))
     .eq('site_id', access.siteId)
+    .neq('status', 'EXCLUIDA_PELO_PROFESSOR')
     .maybeSingle()
   if (error) return c.json({ error: error.message }, 500)
   if (!data) return c.json({ error: 'Redação não encontrada neste site.' }, 404)
@@ -494,10 +504,19 @@ app.post('/correcoes/:id/excluir', async (c) => {
   const access = await requireCorrecaoAccess(sb, user, c.req.param('id'), 'excluir_redacoes')
   if ('error' in access) return c.json({ error: access.error }, access.status)
 
+  const { data: atual, error: atualErr } = await sb.from('correcoes')
+    .select('id, site_id, arquivo_url')
+    .eq('id', c.req.param('id'))
+    .eq('site_id', access.siteId)
+    .maybeSingle()
+  if (atualErr) return c.json({ error: atualErr.message }, 500)
+  if (!atual) return c.json({ error: 'Redação não encontrada neste site.' }, 404)
+
   const { data, error } = await sb.from('correcoes')
     .update({
       status: 'EXCLUIDA_PELO_PROFESSOR',
       prof_id: user.sub,
+      arquivo_url: '',
       updated_at: new Date().toISOString()
     })
     .eq('id', c.req.param('id'))
@@ -506,6 +525,9 @@ app.post('/correcoes/:id/excluir', async (c) => {
     .single()
 
   if (error) return c.json({ error: error.message }, 500)
+  try {
+    await deleteStoredCorrectionFile(c.env, sb, atual)
+  } catch {}
   return c.json(data)
 })
 
@@ -1278,15 +1300,21 @@ app.get('/payments', async (c) => {
   const sb = getAdmin(c.env)
   const siteId = await resolveSiteId(sb, user)
   if (!siteId) return c.json({ error: 'Professor sem site vinculado.' }, 400)
-  const { data: payments, error } = await sb.from('payments')
+  const statusFilter = new URL(c.req.url).searchParams.get('status')?.trim().toUpperCase()
+  const limit = Math.max(1, Math.min(100, Number(new URL(c.req.url).searchParams.get('limit') || 100)))
+  let query = sb.from('payments')
     .select('id, site_id, turma_id, aluno_id, payer_email, payer_name, provider, provider_payment_id, status, amount_cents, billing_type, checkout_code, created_at, paid_at, updated_at')
     .eq('site_id', siteId)
     .order('created_at', { ascending: false })
-    .limit(100)
-  if (error) return c.json({ error: error.message }, 500)
+    .limit(limit)
+  if (statusFilter && statusFilter !== 'ALL') query = query.eq('status', statusFilter)
+  const result = await query
+  const dataRows = result.data
+  const queryError = result.error
+  if (queryError) return c.json({ error: queryError.message }, 500)
 
-  const turmaIds = Array.from(new Set((payments || []).map((p: any) => p.turma_id).filter(Boolean)))
-  const alunoIds = Array.from(new Set((payments || []).map((p: any) => p.aluno_id).filter(Boolean)))
+  const turmaIds = Array.from(new Set((dataRows || []).map((p: any) => p.turma_id).filter(Boolean)))
+  const alunoIds = Array.from(new Set((dataRows || []).map((p: any) => p.aluno_id).filter(Boolean)))
   const [{ data: turmas }, { data: alunos }] = await Promise.all([
     turmaIds.length ? sb.from('turmas').select('id, nome').eq('site_id', siteId).in('id', turmaIds) : Promise.resolve({ data: [] as any[] }),
     alunoIds.length ? sb.from('profiles').select('id, nome, ativo').eq('site_id', siteId).in('id', alunoIds) : Promise.resolve({ data: [] as any[] })
@@ -1295,14 +1323,58 @@ app.get('/payments', async (c) => {
   const alunoById = new Map((alunos || []).map((a: any) => [a.id, a]))
 
   return c.json({
-    data: (payments || []).map((p: any) => ({
+    sandbox: c.env.ASAAS_ENV === 'sandbox',
+    data: (dataRows || []).map((p: any) => ({
       ...p,
+      provider_payment_id: undefined,
+      provider_payment_ref: p.provider_payment_id ? `...${String(p.provider_payment_id).slice(-6)}` : null,
       amount: Number(p.amount_cents || 0) / 100,
       turma_nome: turmaById.get(p.turma_id)?.nome || null,
       aluno_nome: alunoById.get(p.aluno_id)?.nome || p.payer_name || null,
       aluno_ativo: p.aluno_id ? alunoById.get(p.aluno_id)?.ativo !== false : null
     }))
   })
+})
+
+app.get('/notifications', async (c) => {
+  const user = c.get('user')
+  const sb = getAdmin(c.env)
+  const siteId = await resolveSiteId(sb, user)
+  if (!siteId) return c.json({ error: 'Professor sem site vinculado.' }, 400)
+  const { data: site, error } = await sb.from('sites').select('allowed_origins').eq('id', siteId).maybeSingle()
+  if (error || !site) return c.json({ error: error?.message || 'Site não encontrado.' }, 404)
+  const cms = parseCms(site)
+  const notifications = (cms.notifications || [])
+    .slice()
+    .sort((a: any, b: any) => String(b?.created_at || '').localeCompare(String(a?.created_at || '')))
+    .slice(0, 50)
+  return c.json({
+    unread_count: notifications.filter((item: any) => item?.read !== true).length,
+    data: notifications
+  })
+})
+
+app.patch('/notifications/:id/read', async (c) => {
+  const user = c.get('user')
+  const sb = getAdmin(c.env)
+  const siteId = await resolveSiteId(sb, user)
+  if (!siteId) return c.json({ error: 'Professor sem site vinculado.' }, 400)
+  const { data: site, error } = await sb.from('sites').select('allowed_origins').eq('id', siteId).maybeSingle()
+  if (error || !site) return c.json({ error: error?.message || 'Site não encontrado.' }, 404)
+  const cms = parseCms(site)
+  const id = c.req.param('id')
+  let found = false
+  cms.notifications = (cms.notifications || []).map((item: any) => {
+    if (String(item?.id || '') !== id) return item
+    found = true
+    return { ...item, read: true, read_at: new Date().toISOString() }
+  })
+  if (!found) return c.json({ error: 'Notificação não encontrada.' }, 404)
+  const { error: saveErr } = await sb.from('sites')
+    .update({ allowed_origins: withCmsOrigins(site.allowed_origins, cms) })
+    .eq('id', siteId)
+  if (saveErr) return c.json({ error: saveErr.message }, 500)
+  return c.json({ ok: true })
 })
 
 app.patch('/turmas/:id', async (c) => {
@@ -1323,9 +1395,10 @@ app.patch('/turmas/:id', async (c) => {
     .eq('id', c.req.param('id'))
     .eq('site_id', siteId)
     .select()
-    .single()
+    .maybeSingle()
 
   if (error) return c.json({ error: error.message }, 500)
+  if (!data) return c.json({ error: 'Turma não encontrada neste site.' }, 404)
   return c.json(data)
 })
 

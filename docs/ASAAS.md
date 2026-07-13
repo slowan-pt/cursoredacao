@@ -2,6 +2,19 @@
 
 Atualizado em: 2026-07-13.
 
+## Atualização MVP — 2026-07-13
+
+- Ambiente publicado continua em Sandbox: `ASAAS_ENV=sandbox`.
+- `ENABLE_PAYMENTS=true`.
+- Fluxo comercial público já foi validado com preço vindo exclusivamente de `turmas.preco`.
+- Painel financeiro do professor reforçado neste ciclo:
+  - filtro simples por status;
+  - indicação visual de Sandbox;
+  - referência da cobrança mascarada;
+  - listagem site-scoped por professor.
+- Notificações internas de pagamento ficam disponíveis em `/api/admin/notifications`.
+- Produção Asaas segue bloqueada até revisão de domínio, webhook produção, PIX real de baixo valor e política de reembolso/chargeback.
+
 ## Estado
 
 - Integração real está em homologação sandbox.

@@ -1,6 +1,6 @@
 # Security Runbook — Credenciais e Histórico Git
 
-Atualizado em: 2026-07-12.
+Atualizado em: 2026-07-13.
 
 Este runbook prepara ações manuais de segurança. Não execute etapas destrutivas sem revisão humana.
 
@@ -48,6 +48,21 @@ Este runbook prepara ações manuais de segurança. Não execute etapas destruti
 - Worker padrão `cursoreducao`: secrets `SUPABASE_SERVICE_KEY` e `SUPABASE_ANON_KEY` atualizados.
 - Testes professor/corretor e aluno: passaram.
 - Próximo ciclo: limpeza segura do histórico Git.
+
+## Segurança Aplicacional — MVP 2026-07-13
+
+- `npm run security:scan` passou sem padrões de segredo na working tree rastreável.
+- Aluno sem permissão recebe `403` em rotas administrativas.
+- Professor recebe `403` em rotas de aluno.
+- Alteração de turma fora do site do professor retorna `404` controlado.
+- Uploads novos exigem data URL válido em produção/R2; URLs externas falsas são rejeitadas.
+- Arquivos R2 excluídos pela exclusão controlada deixam de ser acessíveis pelas rotas da aplicação.
+
+## Pendências de Segurança
+
+- Revogação server-side de JWT após logout ainda não existe; usar banco/KV/Durable Object com `jti` ou versão de sessão.
+- Rate limiting efetivo ainda depende de configuração Cloudflare Rate Limiting/WAF/Durable Objects.
+- Custom domain oficial ainda não foi validado com cookies/CORS/links finais.
 
 ## Wrangler Secrets
 

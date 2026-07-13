@@ -1,5 +1,17 @@
 # Blockers
 
+## Revogação real de sessão após logout
+
+- Prioridade: importante para produção.
+- Situação: o logout remove o cookie do navegador com atributos consistentes, mas o JWT stateless emitido continua válido se o valor antigo for reutilizado manualmente até a expiração.
+- Impacto: em caso de captura de cookie antes do logout, o logout sozinho não invalida o token no backend.
+- Solução sugerida:
+  1. Criar `session_version` ou `revoked_sessions` no banco, KV ou Durable Object.
+  2. Incluir `jti` no JWT.
+  3. Validar `jti`/versão em `requireAuth`.
+  4. Revogar no logout e em bloqueio/inativação crítica.
+  5. Manter TTL curto para sessões sensíveis.
+
 ## Rotação de credenciais comprometidas
 
 - Prioridade: crítica.
@@ -31,6 +43,7 @@
 - Prioridade: crítica.
 - Impacto: impede publicar os commits locais no GitHub e concluir a validação remota pós-limpeza.
 - Situação: `https://github.com/slowan-pt/redacao.git` retorna `Repository not found`; URLs prováveis também foram testadas sem sucesso.
+- Observação 2026-07-13: `gh` não está instalado nesta máquina, então a checagem via GitHub CLI não pôde ser usada.
 - Solução sugerida:
   1. Confirmar se o repositório privado existe no GitHub.
   2. Confirmar se a conta autenticada localmente tem acesso.

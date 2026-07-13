@@ -1,5 +1,34 @@
 # Redação com Estratégia — Status do Projeto
 
+## Atualização MVP — 2026-07-13
+
+- Branch atual: `main`.
+- Working tree após este ciclo: alterações locais em código e docs, ainda não commitadas até a revisão final.
+- Worker publicado mais recente neste ciclo: `720e4f78-c4d6-4f2f-95ad-552292343fd0`.
+- Ambiente remoto testado: `https://cursoreducao.slowgithub.workers.dev`.
+- `APP_URL` no Worker aponta para `https://redacaocomestrategia.com.br`, mas o custom domain ainda depende de configuração/validação externa na Cloudflare.
+
+### Concluído e testado remotamente neste ciclo
+
+- R2 ativo para novos uploads com referências `r2:<object_key>`.
+- Upload fictício validado para PDF, JPEG e PNG pelo fluxo real do aluno.
+- Rejeições validadas: MIME inválido, PNG corrompido, URL externa falsa e arquivo acima de `MAX_UPLOAD_BYTES`.
+- Metadados `storage_files` gravados e marcados como `DELETED` após exclusão controlada.
+- Aluno e professor não acessam redação excluída pelo professor.
+- Professor recebe `404` controlado ao tentar alterar turma de outro site.
+- Professor visualiza `/api/admin/payments` com filtro, flag Sandbox e referência mascarada.
+- Professor visualiza notificações internas por `/api/admin/notifications`; aluno recebe `403`.
+- `/health` publicado e validado com HTTP 200.
+- `npm run check:all` passou após as alterações.
+
+### Parcial ou planejado
+
+- Logout limpa o cookie no navegador, mas JWT já emitido continua válido se alguém reutilizar manualmente o valor até expirar. Para revogação real é necessário estado compartilhado por banco/KV/Durable Object.
+- Rate limiting efetivo ainda depende de Cloudflare Rate Limiting/WAF/Durable Objects; não foi implementado contador em memória para evitar falsa proteção.
+- Resend está preparado em código/templates, mas `ENABLE_EMAILS=false` e não há envio real.
+- Domínio oficial ainda precisa ser ativado/validado no painel Cloudflare.
+- GitHub remoto segue pendente de acesso/push.
+
 ## Dados gerais
 
 - Data da atualização: 2026-07-13.

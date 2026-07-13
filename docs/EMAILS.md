@@ -1,6 +1,6 @@
 # E-mails Transacionais
 
-Atualizado em: 2026-07-12.
+Atualizado em: 2026-07-13.
 
 ## Estado
 
@@ -11,6 +11,13 @@ Atualizado em: 2026-07-12.
 - Nenhum e-mail real foi enviado neste ciclo.
 - Nenhuma chave real foi adicionada.
 - Nenhum e-mail real foi enviado nesta sessão.
+- `MockEmailProvider` preparado para validação local sem envio real.
+- Templates adicionais preparados em `src/email.ts`:
+  - pagamento aprovado para o aluno;
+  - pagamento vencido;
+  - reembolso/estorno;
+  - novo aluno pago para o professor;
+  - recuperação de senha, sem substituir o fluxo seguro do Supabase Auth.
 
 ## Arquivos Preparados
 
@@ -71,6 +78,17 @@ EMAIL_FROM="Redação com Estratégia <no-reply@redacaocomestrategia.com.br>"
   - informa atividade/turma;
   - direciona o aluno para visualizar a correção;
   - não envia e-mail sozinho.
+- `renderPaymentApprovedEmail`
+- `renderPaymentOverdueEmail`
+- `renderPaymentRefundedEmail`
+- `renderTeacherNewPaidStudentEmail`
+- `renderPasswordRecoveryEmail`
+
+## Ainda Não Integrado
+
+- Os templates não são disparados automaticamente enquanto `ENABLE_EMAILS=false`.
+- Falta configurar `RESEND_API_KEY` e domínio/remetente verificado.
+- Falta definir política de retry/idempotência para envio real.
 
 ## Regras de Segurança
 

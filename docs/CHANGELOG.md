@@ -6,6 +6,17 @@ Todas as mudanças relevantes deste projeto devem ser registradas aqui.
 
 ### Adicionado
 
+- Finalização incremental do MVP em 2026-07-13:
+  - upload R2 validado remotamente por PDF, PNG e JPEG fictícios via fluxo real do aluno;
+  - rejeição remota validada para MIME inválido, PNG corrompido, URL externa falsa e arquivo acima de `MAX_UPLOAD_BYTES`;
+  - exclusão controlada de redação agora remove a referência `arquivo_url`, bloqueia acesso direto e marca metadados R2 como `DELETED`;
+  - rota de detalhe do professor não retorna redações `EXCLUIDA_PELO_PROFESSOR`;
+  - atualização de turma fora do site do professor passou a retornar `404` controlado;
+  - painel financeiro do professor ganhou filtro de status, indicação de Sandbox, estado de carregamento e referência mascarada da cobrança;
+  - criadas rotas site-scoped `/api/admin/notifications` e `/api/admin/notifications/:id/read`;
+  - dashboard do professor passa a listar notificações internas sem depender de Resend;
+  - templates de e-mail preparados para pagamento aprovado, pagamento vencido, reembolso/estorno, novo aluno pago ao professor e recuperação de senha;
+  - deploys publicados durante o ciclo: `4c782c21-20c7-46b0-84be-b42047f0bd49`, `3e2fa71d-6f6e-4040-ba15-bd22ef6a50a6`, `720e4f78-c4d6-4f2f-95ad-552292343fd0`.
 - Consolidação local das alterações pendentes de checkout, aluno e professor/admin:
   - checkout público simulado com código único;
   - cadastro/login pago separados;

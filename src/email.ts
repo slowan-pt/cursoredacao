@@ -25,9 +25,32 @@ export type CorrectionReadyEmailInput = {
   resultUrl: string
 }
 
+export type PaymentStatusEmailInput = {
+  to: string
+  studentName: string
+  courseName: string
+  amount: string
+  statusUrl: string
+}
+
+export type TeacherPaymentEmailInput = {
+  to: string
+  teacherName: string
+  studentName: string
+  courseName: string
+  amount: string
+  dashboardUrl: string
+}
+
+export type PasswordRecoveryEmailInput = {
+  to: string
+  name: string
+  recoveryUrl: string
+}
+
 export type EmailResult = {
   sent: boolean
-  provider: 'disabled' | 'resend'
+  provider: 'disabled' | 'mock' | 'resend'
   id?: string
   reason?: string
 }
@@ -39,6 +62,15 @@ export interface EmailProvider {
 class DisabledEmailProvider implements EmailProvider {
   async send(): Promise<EmailResult> {
     return { sent: false, provider: 'disabled', reason: 'emails_disabled' }
+  }
+}
+
+export class MockEmailProvider implements EmailProvider {
+  async send(message: EmailMessage): Promise<EmailResult> {
+    if (!message.to || !message.subject || !message.html) {
+      return { sent: false, provider: 'mock', reason: 'invalid_message' }
+    }
+    return { sent: true, provider: 'mock', id: `mock_${crypto.randomUUID()}` }
   }
 }
 
@@ -120,6 +152,95 @@ export function renderCorrectionReadyEmail(input: CorrectionReadyEmailInput): Em
     subject: `Correção disponível — ${input.activityTitle}`,
     text: body,
     html: renderBasicEmail('Correção disponível', body, { label: 'Ver correção', url: input.resultUrl })
+  }
+}
+
+export function renderPaymentApprovedEmail(input: PaymentStatusEmailInput): EmailMessage {
+  const body = [
+    `Olá, ${input.studentName}.`,
+    '',
+    `Seu pagamento da turma "${input.courseName}" foi aprovado.`,
+    `Valor: ${input.amount}`,
+    '',
+    'Sua matrícula já pode ser acessada pela plataforma.'
+  ].join('\n')
+
+  return {
+    to: input.to,
+    subject: `Pagamento aprovado — ${input.courseName}`,
+    text: body,
+    html: renderBasicEmail('Pagamento aprovado', body, { label: 'Acessar minha turma', url: input.statusUrl })
+  }
+}
+
+export function renderPaymentOverdueEmail(input: PaymentStatusEmailInput): EmailMessage {
+  const body = [
+    `Olá, ${input.studentName}.`,
+    '',
+    `O pagamento da turma "${input.courseName}" consta como vencido.`,
+    `Valor: ${input.amount}`,
+    '',
+    'Se você já pagou, aguarde a compensação ou fale com o professor responsável.'
+  ].join('\n')
+
+  return {
+    to: input.to,
+    subject: `Pagamento vencido — ${input.courseName}`,
+    text: body,
+    html: renderBasicEmail('Pagamento vencido', body, { label: 'Ver situação', url: input.statusUrl })
+  }
+}
+
+export function renderPaymentRefundedEmail(input: PaymentStatusEmailInput): EmailMessage {
+  const body = [
+    `Olá, ${input.studentName}.`,
+    '',
+    `Registramos alteração de reembolso/estorno no pagamento da turma "${input.courseName}".`,
+    `Valor original: ${input.amount}`,
+    '',
+    'A situação do acesso será analisada conforme a política definida pelo professor/plataforma.'
+  ].join('\n')
+
+  return {
+    to: input.to,
+    subject: `Atualização do pagamento — ${input.courseName}`,
+    text: body,
+    html: renderBasicEmail('Atualização do pagamento', body, { label: 'Ver situação', url: input.statusUrl })
+  }
+}
+
+export function renderTeacherNewPaidStudentEmail(input: TeacherPaymentEmailInput): EmailMessage {
+  const body = [
+    `Olá, ${input.teacherName}.`,
+    '',
+    `${input.studentName} pagou a turma "${input.courseName}".`,
+    `Valor: ${input.amount}`,
+    '',
+    'A matrícula foi liberada automaticamente quando o webhook confirmou o pagamento.'
+  ].join('\n')
+
+  return {
+    to: input.to,
+    subject: `Novo aluno pago — ${input.courseName}`,
+    text: body,
+    html: renderBasicEmail('Novo aluno pago', body, { label: 'Abrir painel', url: input.dashboardUrl })
+  }
+}
+
+export function renderPasswordRecoveryEmail(input: PasswordRecoveryEmailInput): EmailMessage {
+  const body = [
+    `Olá, ${input.name}.`,
+    '',
+    'Recebemos uma solicitação de recuperação de senha.',
+    '',
+    'Use o link abaixo para continuar pelo fluxo seguro de autenticação.'
+  ].join('\n')
+
+  return {
+    to: input.to,
+    subject: 'Recuperação de senha',
+    text: `${body}\n\n${input.recoveryUrl}`,
+    html: renderBasicEmail('Recuperação de senha', body, { label: 'Redefinir senha', url: input.recoveryUrl })
   }
 }
 

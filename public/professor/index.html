@@ -199,9 +199,25 @@
       <div class="card" style="margin-top:18px">
         <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px">
           <strong>Pagamentos recentes</strong>
-          <span style="font-size:12px;color:var(--muted)">Asaas / Pix</span>
+          <div style="display:flex;align-items:center;gap:8px">
+            <span id="pagamentos-env-badge" class="tag tag-prog" style="display:none">Sandbox</span>
+            <select id="pagamentos-status-filter" onchange="loadPagamentosRecentes()" style="height:30px;border:1px solid var(--border);border-radius:8px;padding:0 8px;font-size:12px">
+              <option value="ALL">Todos</option>
+              <option value="PENDING">Pendentes</option>
+              <option value="RECEIVED">Recebidos</option>
+              <option value="CONFIRMED">Confirmados</option>
+              <option value="OVERDUE">Vencidos</option>
+            </select>
+          </div>
         </div>
         <div id="pagamentos-recentes"></div>
+      </div>
+      <div class="card" style="margin-top:18px">
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px">
+          <strong>Notificações internas</strong>
+          <span id="notifications-count" style="font-size:12px;color:var(--muted)">—</span>
+        </div>
+        <div id="notifications-list"></div>
       </div>
     </div>
 
@@ -1202,6 +1218,7 @@ async function init() {
   loadStats()
   loadCorrecoes('recentes')
   loadPagamentosRecentes()
+  loadNotifications()
 }
 
 function siteUrl(site) {
@@ -2681,12 +2698,16 @@ async function loadStats() {
 async function loadPagamentosRecentes() {
   const el = document.getElementById('pagamentos-recentes')
   if (!el || isChildTeacherMode()) return
-  const res = await fetch('/api/admin/payments')
+  const status = document.getElementById('pagamentos-status-filter')?.value || 'ALL'
+  el.innerHTML = '<div class="empty"><p>Carregando pagamentos...</p></div>'
+  const res = await fetch(`/api/admin/payments?limit=20&status=${encodeURIComponent(status)}`)
   if (!res.ok) {
     el.innerHTML = '<div class="empty"><p>Não foi possível carregar os pagamentos.</p></div>'
     return
   }
-  const { data } = await res.json()
+  const { data, sandbox } = await res.json()
+  const envBadge = document.getElementById('pagamentos-env-badge')
+  if (envBadge) envBadge.style.display = sandbox ? 'inline-flex' : 'none'
   const rows = (data || []).slice(0, 6)
   if (!rows.length) {
     el.innerHTML = '<div class="empty"><p>Nenhum pagamento registrado ainda.</p></div>'
@@ -2707,10 +2728,48 @@ async function loadPagamentosRecentes() {
             <span class="tag ${cls}">${esc(status)}</span>
             <span style="font-size:11px;font-weight:700;color:var(--brand)">${amount}</span>
             <span class="corr-date">Pago em: ${paidAt}</span>
+            ${p.provider_payment_ref ? `<span class="corr-date">Cobrança ${esc(p.provider_payment_ref)}</span>` : ''}
           </div>
         </div>
       </div>`
   }).join('')
+}
+
+async function loadNotifications() {
+  const el = document.getElementById('notifications-list')
+  if (!el || isChildTeacherMode()) return
+  el.innerHTML = '<div class="empty"><p>Carregando notificações...</p></div>'
+  const res = await fetch('/api/admin/notifications')
+  if (!res.ok) {
+    el.innerHTML = '<div class="empty"><p>Não foi possível carregar as notificações.</p></div>'
+    return
+  }
+  const { data, unread_count } = await res.json()
+  const counter = document.getElementById('notifications-count')
+  if (counter) counter.textContent = `${Number(unread_count || 0)} não lidas`
+  const rows = (data || []).slice(0, 6)
+  if (!rows.length) {
+    el.innerHTML = '<div class="empty"><p>Nenhuma notificação interna ainda.</p></div>'
+    return
+  }
+  el.innerHTML = rows.map(n => `
+    <div class="corr-card" style="margin-bottom:10px;${n.read ? 'opacity:.72' : ''}">
+      <div class="corr-thumb">${n.read ? '✓' : '🔔'}</div>
+      <div class="corr-info">
+        <div class="corr-aluno">${esc(n.title || 'Notificação')}</div>
+        <div class="corr-tema">${esc(n.message || '')}</div>
+        <div class="corr-meta">
+          <span class="tag ${n.read ? 'tag-done' : 'tag-pend'}">${n.read ? 'Lida' : 'Nova'}</span>
+          <span class="corr-date">${fmtDateTime(n.created_at)}</span>
+          ${n.read ? '' : `<button class="btn ghost" style="padding:4px 8px;font-size:11px" onclick="markNotificationRead('${esc(n.id)}')">Marcar lida</button>`}
+        </div>
+      </div>
+    </div>`).join('')
+}
+
+async function markNotificationRead(id) {
+  await fetch(`/api/admin/notifications/${encodeURIComponent(id)}/read`, { method: 'PATCH' })
+  loadNotifications()
 }
 
 const PROFESSOR_CHILD_PERMISSIONS = [
@@ -4185,6 +4244,7 @@ function refreshCorrecaoLists() {
   loadCorrecoes('pendentes', 'PENDENTES')
   loadCorrecoes('todas')
   loadPagamentosRecentes()
+  loadNotifications()
 }
 
 function updateCorrecaoTopbar(data = currentCorrecao) {
@@ -6471,7 +6531,7 @@ function showPage(name, link) {
     if (sub) sub.textContent = 'Somente redações direcionadas para você'
   }
   if (name === 'site') loadSite()
-  if (name === 'dashboard') { loadStats(); loadCorrecoes('recentes'); loadPagamentosRecentes() }
+  if (name === 'dashboard') { loadStats(); loadCorrecoes('recentes'); loadPagamentosRecentes(); loadNotifications() }
   if (name === 'pendentes') loadCorrecoes('pendentes', 'PENDENTES')
   if (name === 'todas') loadCorrecoes('todas')
   if (name === 'turmas') loadTurmas()

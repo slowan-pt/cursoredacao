@@ -1,5 +1,7 @@
 # Restore
 
+Atualizado em: 2026-07-13.
+
 ## Código
 
 1. Clonar o repositório autorizado.
@@ -19,6 +21,7 @@
 1. Restaurar objetos R2 se o bucket estiver ativo.
 2. Validar metadados em `storage_files`.
 3. Testar download autenticado.
+4. Confirmar que redações excluídas continuam bloqueadas mesmo se o objeto existir no bucket.
 
 ## Pós-Restore
 
