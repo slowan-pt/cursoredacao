@@ -7,7 +7,7 @@ Este projeto usa Cloudflare Workers com Wrangler. Não usar Docker/VPS para a ar
 ## Estado Atual do Worker
 
 - Worker padrão: `cursoreducao`.
-- Último deploy validado: `7affce56-5b5e-4216-9cbc-3e1e254259f5`.
+- Último deploy validado: `1dde43a6-f8a1-4f4b-91b0-bbe665ae26dc`.
 - URL atual: `https://cursoreducao.slowgithub.workers.dev`.
 - `APP_ENV=production`.
 - `ENABLE_R2_UPLOADS=true`.

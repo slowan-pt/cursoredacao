@@ -5,6 +5,10 @@ import { requireAuth, requireRole } from '../middleware'
 
 const app = new Hono<{ Bindings: Env }>()
 
+function dbError() {
+  return { error: 'Erro ao acessar os dados.' }
+}
+
 app.use('*', requireAuth, requireRole('SUPERADMIN'))
 
 function slugifySiteName(value: string) {
@@ -40,7 +44,7 @@ app.get('/stats', async (c) => {
 app.get('/sites', async (c) => {
   const sb = getAdmin(c.env)
   const { data, error } = await sb.from('sites').select('*').order('created_at', { ascending: false })
-  if (error) return c.json({ error: error.message }, 500)
+  if (error) return c.json(dbError(), 500)
   return c.json({ data })
 })
 
@@ -48,7 +52,7 @@ app.post('/sites', async (c) => {
   const body = await c.req.json()
   const sb = getAdmin(c.env)
   const { data, error } = await sb.from('sites').insert(body).select().single()
-  if (error) return c.json({ error: error.message }, 500)
+  if (error) return c.json(dbError(), 500)
   return c.json(data, 201)
 })
 
@@ -66,7 +70,7 @@ app.patch('/sites/:id', async (c) => {
     .select()
     .single()
 
-  if (error) return c.json({ error: error.message }, 500)
+  if (error) return c.json(dbError(), 500)
   return c.json(data)
 })
 
@@ -76,7 +80,7 @@ app.get('/users', async (c) => {
     .from('profiles')
     .select('id, nome, role, site_id, ativo, created_at, sites(nome_prof, slug)')
     .order('created_at', { ascending: false })
-  if (error) return c.json({ error: error.message }, 500)
+  if (error) return c.json(dbError(), 500)
   const { data: authUsers } = await sb.auth.admin.listUsers({ page: 1, perPage: 1000 })
   const emailById = new Map((authUsers?.users || []).map((user) => [user.id, user.email || '']))
   return c.json({ data: (data || []).map((profile) => ({ ...profile, email: emailById.get(profile.id) || '' })) })
@@ -92,7 +96,7 @@ app.post('/users', async (c) => {
     user_metadata: { nome, role },
     email_confirm: true
   })
-  if (error) return c.json({ error: error.message }, 500)
+  if (error) return c.json(dbError(), 500)
 
   await sb.from('profiles').update({ nome, role, site_id: site_id || null }).eq('id', data.user.id)
   return c.json({ id: data.user.id, email, nome, role }, 201)
@@ -142,7 +146,7 @@ app.post('/users/:id/approve-professor', async (c) => {
     .select('id, nome, role, site_id, ativo, sites(nome_prof, slug)')
     .single()
 
-  if (error) return c.json({ error: error.message }, 500)
+  if (error) return c.json(dbError(), 500)
   return c.json(data)
 })
 
@@ -165,7 +169,7 @@ app.patch('/users/:id', async (c) => {
 
   if (Object.keys(authUpdate).length) {
     const { error: authError } = await sb.auth.admin.updateUserById(c.req.param('id'), authUpdate)
-    if (authError) return c.json({ error: authError.message }, 500)
+    if (authError) return c.json(dbError(), 500)
   }
 
   if (!Object.keys(update).length) {
@@ -174,7 +178,7 @@ app.patch('/users/:id', async (c) => {
       .select('id, nome, role, site_id, ativo, created_at, sites(nome_prof, slug)')
       .eq('id', c.req.param('id'))
       .single()
-    if (currentError) return c.json({ error: currentError.message }, 500)
+    if (currentError) return c.json(dbError(), 500)
     return c.json(current)
   }
 
@@ -185,7 +189,7 @@ app.patch('/users/:id', async (c) => {
     .select('id, nome, role, site_id, ativo, created_at, sites(nome_prof, slug)')
     .single()
 
-  if (error) return c.json({ error: error.message }, 500)
+  if (error) return c.json(dbError(), 500)
   return c.json(data)
 })
 

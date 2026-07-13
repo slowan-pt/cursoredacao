@@ -9,6 +9,10 @@ import { expiredSessionCookieOptions, getConfig, sessionCookieOptions } from '..
 const auth = new Hono<{ Bindings: Env }>()
 const CMS_PREFIX = 'CMS:'
 
+function dbError() {
+  return { error: 'Erro ao acessar os dados.' }
+}
+
 function parseCms(site: any) {
   const raw = (site?.allowed_origins || []).find((item: string) => String(item).startsWith(CMS_PREFIX))
   const base = {
@@ -222,7 +226,7 @@ auth.post('/login', async (c) => {
       return c.json({ error: 'Acesso bloqueado. Fale com o professor responsável pelo site.' }, 403)
     }
     const paid = await applyPaidCheckoutForStudent(c.env, requestedSiteId, data.user.id, String(data.user.email || '').toLowerCase())
-    if (paid.error) return c.json({ error: paid.error.message }, 500)
+    if (paid.error) return c.json(dbError(), 500)
     if (paid.activated) profile.ativo = true
   }
 
@@ -282,14 +286,14 @@ auth.post('/register', async (c) => {
     user_metadata: { nome, role: 'ALUNO' },
     email_confirm: true
   })
-  if (error) return c.json({ error: error.message }, 400)
+  if (error) return c.json({ error: 'Não foi possível criar o cadastro com estes dados.' }, 400)
 
   const paid = await applyPaidCheckoutForStudent(c.env, siteId, data.user.id, email, {
     checkoutCode: body.checkout_code,
     turmaId: body.turma_id,
     requireCode: Boolean(body.turma_id)
   })
-  if (paid.error) return c.json({ error: paid.error.message }, 500)
+  if (paid.error) return c.json(dbError(), 500)
 
   await sb.from('profiles').update({
     nome,

@@ -6,6 +6,10 @@ import { getPaymentGateway } from '../payments'
 
 const app = new Hono<{ Bindings: Env }>()
 
+function dbError() {
+  return { error: 'Erro ao acessar os dados.' }
+}
+
 function esc(value: unknown) {
   return String(value ?? '')
     .replaceAll('&', '&amp;')
@@ -2217,7 +2221,7 @@ app.post('/api/site/:slug/checkout', async (c) => {
     .eq('id', turmaId)
     .eq('site_id', site.id)
     .maybeSingle()
-  if (turmaErr) return c.json({ error: turmaErr.message }, 500)
+  if (turmaErr) return c.json(dbError(), 500)
   if (!turma || turma.status !== 'ABERTA') return c.json({ error: 'Turma não encontrada ou fechada.' }, 404)
   const amount = Number(turma.preco || 0)
   if (!Number.isFinite(amount) || amount <= 0) return c.json({ error: 'Esta turma não possui preço válido para checkout.' }, 400)
@@ -2285,7 +2289,7 @@ app.post('/api/site/:slug/checkout', async (c) => {
       }
     }
     const save = await saveCms(c.env, site.id, cms)
-    if (save.error) return c.json({ error: save.error.message }, 500)
+    if (save.error) return c.json(dbError(), 500)
     return c.json({
       ok: true,
       reused: true,
@@ -2421,7 +2425,7 @@ app.post('/api/site/:slug/checkout', async (c) => {
   }
 
   const save = await saveCms(c.env, site.id, cms)
-  if (save.error) return c.json({ error: save.error.message }, 500)
+  if (save.error) return c.json(dbError(), 500)
   return c.json({
     ok: true,
     status: charge.status || 'PENDING',

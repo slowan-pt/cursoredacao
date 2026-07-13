@@ -10,6 +10,10 @@ import { getPrivateStorage, keyFromStoredObjectRef, storedObjectRef } from '../s
 
 const app = new Hono<{ Bindings: Env }>()
 
+function dbError() {
+  return { error: 'Erro ao acessar os dados.' }
+}
+
 app.use('*', requireAuth, requireRole('ALUNO', 'ADMIN', 'SUPERADMIN'))
 app.use('*', async (c, next) => {
   const user = c.get('user')
@@ -197,7 +201,7 @@ app.get('/correcoes', async (c) => {
     .eq('aluno_id', user.sub)
     .neq('status', 'EXCLUIDA_PELO_PROFESSOR')
     .order('created_at', { ascending: false })
-  if (error) return c.json({ error: error.message }, 500)
+  if (error) return c.json(dbError(), 500)
   return c.json({ data })
 })
 
@@ -259,7 +263,7 @@ app.post('/correcoes', async (c) => {
       return c.json({ error: 'Você precisa estar matriculado nesta turma para enviar redações.' }, 403)
     }
   } else {
-    if (matErr) return c.json({ error: matErr.message }, 500)
+    if (matErr) return c.json(dbError(), 500)
     if (!matricula) return c.json({ error: 'Você precisa estar matriculado nesta turma para enviar redações.' }, 403)
   }
 
@@ -287,7 +291,7 @@ app.post('/correcoes', async (c) => {
     status: 'AGUARDANDO'
   }).select().single()
 
-  if (error) return c.json({ error: error.message }, 500)
+  if (error) return c.json(dbError(), 500)
 
   if (shouldStorePrivately) {
     let storedKey: string | null = null
@@ -379,7 +383,7 @@ app.patch('/correcoes/:id', async (c) => {
         return c.json({ error: 'Você precisa estar matriculado nesta turma para usar este envio.' }, 403)
       }
     } else {
-      if (matErr) return c.json({ error: matErr.message }, 500)
+      if (matErr) return c.json(dbError(), 500)
       if (!matricula) return c.json({ error: 'Você precisa estar matriculado nesta turma para usar este envio.' }, 403)
     }
     if (cms.turma_settings?.[body.turma_id]?.envios_abertos === false) {
@@ -425,7 +429,7 @@ app.patch('/correcoes/:id', async (c) => {
 
   if (error) {
     if (newStoredKey) await getPrivateStorage(c.env).delete(newStoredKey)
-    return c.json({ error: error.message }, 500)
+    return c.json(dbError(), 500)
   }
   const oldStoredKey = keyFromStoredObjectRef(atual.arquivo_url)
   if (newStoredKey && oldStoredKey && oldStoredKey !== newStoredKey) {
@@ -457,7 +461,7 @@ app.get('/turmas', async (c) => {
       .filter(([, alunosById]: [string, any]) => alunosById?.[user.sub]?.ativo !== false && !!alunosById?.[user.sub])
       .map(([turmaId]) => turmaId)
   } else {
-    if (matErr) return c.json({ error: matErr.message }, 500)
+    if (matErr) return c.json(dbError(), 500)
     ids = Array.from(new Set((matriculas ?? []).map((m) => m.turma_id).filter(Boolean)))
   }
   if (!ids.length) return c.json({ data: [] })
@@ -470,7 +474,7 @@ app.get('/turmas', async (c) => {
       .in('id', ids),
     sb.from('sites').select('allowed_origins').eq('id', profile.site_id).maybeSingle()
   ])
-  if (error) return c.json({ error: error.message }, 500)
+  if (error) return c.json(dbError(), 500)
   const cms = cmsFromSite || parseCms(site)
   return c.json({
     data: (data ?? []).map((t) => ({
@@ -503,7 +507,7 @@ app.get('/turmas-disponiveis', async (c) => {
       .order('created_at', { ascending: false }),
     sb.from('sites').select('allowed_origins').eq('id', profile.site_id).maybeSingle()
   ])
-  if (error) return c.json({ error: error.message }, 500)
+  if (error) return c.json(dbError(), 500)
   const cms = parseCms(site)
 
   let enrolledIds = new Set<string>()
@@ -517,7 +521,7 @@ app.get('/turmas-disponiveis', async (c) => {
       .filter(([, alunosById]: [string, any]) => alunosById?.[user.sub]?.ativo !== false && !!alunosById?.[user.sub])
       .map(([turmaId]) => turmaId))
   } else {
-    if (matErr) return c.json({ error: matErr.message }, 500)
+    if (matErr) return c.json(dbError(), 500)
     enrolledIds = new Set((matriculas ?? []).map((m) => m.turma_id).filter(Boolean))
   }
 
@@ -556,7 +560,7 @@ app.post('/matriculas/pagar', async (c) => {
       .in('id', turmaIds),
     sb.from('sites').select('allowed_origins').eq('id', profile.site_id).maybeSingle()
   ])
-  if (turmaErr) return c.json({ error: turmaErr.message }, 500)
+  if (turmaErr) return c.json(dbError(), 500)
   if ((turmas ?? []).length !== turmaIds.length) return c.json({ error: 'Uma ou mais turmas não estão disponíveis.' }, 400)
 
   const cms = parseCms(site)
@@ -587,7 +591,7 @@ app.post('/matriculas/pagar', async (c) => {
       }
     })
   } else if (upsertErr) {
-    return c.json({ error: upsertErr.message }, 500)
+    return c.json(dbError(), 500)
   }
 
   const total = (turmas ?? []).reduce((sum, t) => sum + Number(t.preco || 0), 0)
@@ -607,7 +611,7 @@ app.post('/matriculas/pagar', async (c) => {
   }
 
   const save = await saveCms(c.env, profile.site_id, cms)
-  if (save.error) return c.json({ error: save.error.message }, 500)
+  if (save.error) return c.json(dbError(), 500)
 
   await sb.from('profiles').update({ ativo: true }).eq('id', user.sub).eq('role', 'ALUNO')
   const config = getConfig(c.env)

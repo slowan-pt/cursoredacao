@@ -6,7 +6,7 @@
 - Último commit antes desta rodada: `f4e2e4a feat: harden MVP storage and professor notifications`.
 - GitHub remoto atual: `https://github.com/slowan-pt/cursoredacao.git`.
 - Working tree antes da rodada: limpo.
-- Worker publicado nesta rodada: `7affce56-5b5e-4216-9cbc-3e1e254259f5`.
+- Worker publicado nesta rodada: `1dde43a6-f8a1-4f4b-91b0-bbe665ae26dc`.
 - URL remota validada: `https://cursoreducao.slowgithub.workers.dev`.
 - `APP_URL` continua apontando para `https://redacaocomestrategia.com.br`.
 - Custom domain oficial ainda não está ativo. A tentativa via Wrangler/API Cloudflare falhou com HTTP 400 na criação de domain records, então o `wrangler.jsonc` ficou sem `routes` de custom domain para manter deploys seguros.
@@ -41,6 +41,7 @@
 - `scripts/migrate.mjs` corrigido para não descartar statements SQL precedidos por comentários de linha.
 - Headers `Cache-Control: no-store` adicionados para `/api/*`, `/login.html` e `/auth-callback.html`.
 - Rotas `/login` e `/auth-callback` passaram a ser servidas via Worker para garantir `Cache-Control: no-store` nos assets sensíveis.
+- Rotas administrativas, aluno, site, auth e superadmin passaram a retornar mensagem genérica para falhas internas de banco/serviço, evitando vazamento de detalhes de Supabase.
 
 ### Não Concluído Por Depender De Ação Manual
 

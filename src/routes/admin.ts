@@ -7,6 +7,10 @@ import { getPrivateStorage, keyFromStoredObjectRef } from '../storage'
 
 const app = new Hono<{ Bindings: Env }>()
 
+function dbError() {
+  return { error: 'Erro ao acessar os dados.' }
+}
+
 app.use('*', requireAuth, requireRole('ADMIN', 'SUPERADMIN', 'CORRETOR'))
 app.use('*', async (c, next) => {
   const user = c.get('user')
@@ -249,7 +253,7 @@ async function requireCorrecaoAccess(
     .eq('id', correcaoId)
     .eq('site_id', siteId)
     .maybeSingle()
-  if (error) return { error: error.message, status: 500 as const }
+  if (error) return { error: dbError().error, status: 500 as const }
   if (!correcao) return { error: 'Redação não encontrada neste site.', status: 404 as const }
   const cms = await getSiteCms(sb, siteId)
   const child = findChildTeacher(cms, user)
@@ -289,7 +293,7 @@ app.get('/stats', async (c) => {
       .select('id, status, aluno_id, turma_id')
       .eq('site_id', siteId)
       .neq('status', 'EXCLUIDA_PELO_PROFESSOR')
-    if (corrErr) return c.json({ error: corrErr.message }, 500)
+    if (corrErr) return c.json(dbError(), 500)
 
     const visible = annotateCorrecoesForUser(cms, user, correcoes ?? [])
     const alunoIds = new Set(visible.map((row) => row.aluno_id).filter(Boolean))
@@ -345,7 +349,7 @@ app.get('/site', async (c) => {
     .eq('id', user.site_id)
     .single()
 
-  if (error) return c.json({ error: error.message }, 500)
+  if (error) return c.json(dbError(), 500)
   const cms = parseCms(data)
   const child = findChildTeacher(cms, user)
   return c.json({
@@ -377,7 +381,7 @@ app.patch('/site', async (c) => {
       .select('allowed_origins')
       .eq('id', user.site_id)
       .single()
-    if (currentErr) return c.json({ error: currentErr.message }, 500)
+    if (currentErr) return c.json(dbError(), 500)
     update.allowed_origins = withCmsOrigins(current?.allowed_origins, body.cms)
   }
   if (!Object.keys(update).length) return c.json({ error: 'Nada para atualizar' }, 400)
@@ -388,7 +392,7 @@ app.patch('/site', async (c) => {
     .select('id, slug, domain_custom, nome_prof, bio_prof, foto_url, cor_primaria, cor_accent, logo_url, ativo, allowed_origins')
     .single()
 
-  if (error) return c.json({ error: error.message }, 500)
+  if (error) return c.json(dbError(), 500)
   return c.json({ ...data, cms: parseCms(data), allowed_origins: undefined })
 })
 
@@ -413,7 +417,7 @@ app.get('/correcoes', async (c) => {
   else if (status) q = q.eq('status', status)
 
   const { data, error } = await q
-  if (error) return c.json({ error: error.message }, 500)
+  if (error) return c.json(dbError(), 500)
 
   const alunoIds = [...new Set((data ?? []).map((c) => c.aluno_id).filter(Boolean))]
   const turmaIds = [...new Set((data ?? []).map((c) => c.turma_id).filter(Boolean))]
@@ -451,7 +455,7 @@ app.get('/correcoes/:id', async (c) => {
     .eq('site_id', access.siteId)
     .neq('status', 'EXCLUIDA_PELO_PROFESSOR')
     .maybeSingle()
-  if (error) return c.json({ error: error.message }, 500)
+  if (error) return c.json(dbError(), 500)
   if (!data) return c.json({ error: 'Redação não encontrada neste site.' }, 404)
 
   const [{ data: aluno }, { data: turma }] = await Promise.all([
@@ -493,7 +497,7 @@ app.patch('/correcoes/:id', async (c) => {
     .eq('site_id', access.siteId)
     .select()
     .single()
-  if (error) return c.json({ error: error.message }, 500)
+  if (error) return c.json(dbError(), 500)
   return c.json(data)
 })
 
@@ -508,7 +512,7 @@ app.post('/correcoes/:id/excluir', async (c) => {
     .eq('id', c.req.param('id'))
     .eq('site_id', access.siteId)
     .maybeSingle()
-  if (atualErr) return c.json({ error: atualErr.message }, 500)
+  if (atualErr) return c.json(dbError(), 500)
   if (!atual) return c.json({ error: 'Redação não encontrada neste site.' }, 404)
 
   const { data, error } = await sb.from('correcoes')
@@ -523,7 +527,7 @@ app.post('/correcoes/:id/excluir', async (c) => {
     .select()
     .single()
 
-  if (error) return c.json({ error: error.message }, 500)
+  if (error) return c.json(dbError(), 500)
   try {
     await deleteStoredCorrectionFile(c.env, sb, atual)
   } catch {}
@@ -552,7 +556,7 @@ app.post('/correcoes/:id/anotacoes', async (c) => {
     const { tipo_erro_id, pontos, categoria, ...rest } = payload
     ;({ data, error } = await sb.from('anotacoes').insert(rest).select().single())
   }
-  if (error) return c.json({ error: error.message }, 500)
+  if (error) return c.json(dbError(), 500)
   return c.json(data, 201)
 })
 
@@ -595,7 +599,7 @@ app.patch('/correcoes/:id/anotacoes/:aid', async (c) => {
       .select()
       .single())
   }
-  if (error) return c.json({ error: error.message }, 500)
+  if (error) return c.json(dbError(), 500)
   return c.json(data)
 })
 
@@ -653,7 +657,7 @@ app.post('/professores-filhos', async (c) => {
     site_id: siteId,
     ativo: true
   })
-  if (profileErr) return c.json({ error: profileErr.message }, 500)
+  if (profileErr) return c.json(dbError(), 500)
 
   const child = {
     id: crypto.randomUUID(),
@@ -674,7 +678,7 @@ app.post('/professores-filhos', async (c) => {
   const { error: saveErr } = await sb.from('sites')
     .update({ allowed_origins: withCmsOrigins(site?.allowed_origins || [], cms) })
     .eq('id', siteId)
-  if (saveErr) return c.json({ error: saveErr.message }, 500)
+  if (saveErr) return c.json(dbError(), 500)
 
   return c.json(child, 201)
 })
@@ -718,7 +722,7 @@ app.patch('/professores-filhos/:id', async (c) => {
         lockQuery = lockQuery.in('aluno_id', removedAlunos)
       }
       const { data: locked, error: lockErr } = await lockQuery
-      if (lockErr) return c.json({ error: lockErr.message }, 500)
+      if (lockErr) return c.json(dbError(), 500)
       if ((locked || []).length) return c.json({ error: 'Há correções já finalizadas nesse direcionamento. Reabra a correção antes de remover do corretor.' }, 409)
     }
   }
@@ -743,7 +747,7 @@ app.patch('/professores-filhos/:id', async (c) => {
   const { error: saveErr } = await sb.from('sites')
     .update({ allowed_origins: withCmsOrigins(site?.allowed_origins || [], cms) })
     .eq('id', siteId)
-  if (saveErr) return c.json({ error: saveErr.message }, 500)
+  if (saveErr) return c.json(dbError(), 500)
   return c.json(updated)
 })
 
@@ -771,7 +775,7 @@ app.delete('/professores-filhos/:id', async (c) => {
   const { error: saveErr } = await sb.from('sites')
     .update({ allowed_origins: withCmsOrigins(site?.allowed_origins || [], cms) })
     .eq('id', siteId)
-  if (saveErr) return c.json({ error: saveErr.message }, 500)
+  if (saveErr) return c.json(dbError(), 500)
   return c.json({ ok: true })
 })
 
@@ -787,7 +791,7 @@ app.get('/alunos', async (c) => {
     .order('nome'),
     sb.from('sites').select('allowed_origins').eq('id', siteId).maybeSingle()
   ])
-  if (error) return c.json({ error: error.message }, 500)
+  if (error) return c.json(dbError(), 500)
   const cms = parseCms(site)
   const child = findChildTeacher(cms, user)
   let visible = data ?? []
@@ -824,7 +828,7 @@ app.patch('/alunos/:id', async (c) => {
     .select('id, nome, ativo, created_at')
     .single()
 
-  if (error) return c.json({ error: error.message }, 500)
+  if (error) return c.json(dbError(), 500)
 
   if (typeof body.ativo === 'boolean') {
     const siteId = await resolveSiteId(sb, user)
@@ -855,7 +859,7 @@ app.delete('/alunos/:id', async (c) => {
     .eq('site_id', siteId)
     .eq('role', 'ALUNO')
     .maybeSingle()
-  if (alunoErr) return c.json({ error: alunoErr.message }, 500)
+  if (alunoErr) return c.json(dbError(), 500)
   if (!aluno) return c.json({ error: 'Aluno não encontrado neste site.' }, 404)
 
   await sb.from('profiles').update({ ativo: false }).eq('id', alunoId).eq('site_id', siteId).eq('role', 'ALUNO')
@@ -874,7 +878,7 @@ app.delete('/alunos/:id', async (c) => {
   const { error: saveErr } = await sb.from('sites')
     .update({ allowed_origins: withCmsOrigins(site?.allowed_origins || [], cms) })
     .eq('id', siteId)
-  if (saveErr) return c.json({ error: saveErr.message }, 500)
+  if (saveErr) return c.json(dbError(), 500)
   return c.json({ ok: true })
 })
 
@@ -892,14 +896,14 @@ app.patch('/alunos/:id/creditos', async (c) => {
     .eq('site_id', user.site_id)
     .eq('role', 'ALUNO')
     .maybeSingle()
-  if (alunoErr) return c.json({ error: alunoErr.message }, 500)
+  if (alunoErr) return c.json(dbError(), 500)
   if (!aluno) return c.json({ error: 'Aluno não encontrado neste site.' }, 404)
 
   const { data: site, error: siteErr } = await sb.from('sites')
     .select('allowed_origins')
     .eq('id', user.site_id)
     .single()
-  if (siteErr) return c.json({ error: siteErr.message }, 500)
+  if (siteErr) return c.json(dbError(), 500)
 
   const cms = parseCms(site)
   const creditos = Math.max(0, Math.floor(Number(body.creditos) || 0))
@@ -916,7 +920,7 @@ app.patch('/alunos/:id/creditos', async (c) => {
   const { error } = await sb.from('sites')
     .update({ allowed_origins: withCmsOrigins(site.allowed_origins, cms) })
     .eq('id', user.site_id)
-  if (error) return c.json({ error: error.message }, 500)
+  if (error) return c.json(dbError(), 500)
 
   return c.json({ id: alunoId, creditos_info: cms.student_credits[alunoId] })
 })
@@ -930,7 +934,7 @@ app.get('/turmas', async (c) => {
     ,
     sb.from('sites').select('allowed_origins').eq('id', user.site_id).maybeSingle()
   ])
-  if (error) return c.json({ error: error.message }, 500)
+  if (error) return c.json(dbError(), 500)
   const cms = parseCms(site)
 
   const { data: matriculas, error: matErr } = await sb.from('turma_alunos')
@@ -968,7 +972,7 @@ app.get('/turmas', async (c) => {
       }))
     })
   }
-  if (matErr) return c.json({ error: matErr.message }, 500)
+  if (matErr) return c.json(dbError(), 500)
 
   const counts = new Map<string, { ativos: number; inativos: number; total: number }>()
   ;(matriculas ?? []).forEach((m) => {
@@ -1038,7 +1042,7 @@ app.patch('/turmas/:id/settings', async (c) => {
     .eq('id', siteId)
     .select('allowed_origins')
     .single()
-  if (error) return c.json({ error: error.message }, 500)
+  if (error) return c.json(dbError(), 500)
   return c.json({ settings: parseCms(data).turma_settings?.[turmaId] })
 })
 
@@ -1085,7 +1089,7 @@ app.get('/turmas/:id/alunos', async (c) => {
       storage: 'cms'
     })
   }
-  if (error) return c.json({ error: error.message }, 500)
+  if (error) return c.json(dbError(), 500)
 
   const { data: site } = await sb.from('sites').select('allowed_origins').eq('id', user.site_id).maybeSingle()
   const cms = parseCms(site)
@@ -1122,7 +1126,7 @@ app.post('/turmas/:id/alunos', async (c) => {
 
   if (missingTurmaAlunos(error)) {
     const { data: site, error: siteErr } = await sb.from('sites').select('allowed_origins').eq('id', user.site_id).single()
-    if (siteErr) return c.json({ error: siteErr.message }, 500)
+    if (siteErr) return c.json(dbError(), 500)
     const cms = parseCms(site)
     cms.enrollments = cms.enrollments || {}
     cms.enrollments[turmaId] = {
@@ -1135,10 +1139,10 @@ app.post('/turmas/:id/alunos', async (c) => {
       }
     }
     const { error: saveErr } = await sb.from('sites').update({ allowed_origins: withCmsOrigins(site.allowed_origins, cms) }).eq('id', user.site_id)
-    if (saveErr) return c.json({ error: saveErr.message }, 500)
+    if (saveErr) return c.json(dbError(), 500)
     return c.json({ site_id: user.site_id, turma_id: turmaId, aluno_id, ativo: true, origem: 'PROFESSOR' }, 201)
   }
-  if (error) return c.json({ error: error.message }, 500)
+  if (error) return c.json(dbError(), 500)
   return c.json(data, 201)
 })
 
@@ -1161,16 +1165,16 @@ app.patch('/turmas/:id/alunos/:alunoId', async (c) => {
     const turmaId = c.req.param('id')
     const alunoId = c.req.param('alunoId')
     const { data: site, error: siteErr } = await sb.from('sites').select('allowed_origins').eq('id', user.site_id).single()
-    if (siteErr) return c.json({ error: siteErr.message }, 500)
+    if (siteErr) return c.json(dbError(), 500)
     const cms = parseCms(site)
     const current = cms.enrollments?.[turmaId]?.[alunoId]
     if (!current) return c.json({ error: 'Aluno não está vinculado a esta turma.' }, 404)
     cms.enrollments[turmaId][alunoId] = { ...current, ativo: body.ativo, updated_at: new Date().toISOString() }
     const { error: saveErr } = await sb.from('sites').update({ allowed_origins: withCmsOrigins(site.allowed_origins, cms) }).eq('id', user.site_id)
-    if (saveErr) return c.json({ error: saveErr.message }, 500)
+    if (saveErr) return c.json(dbError(), 500)
     return c.json({ turma_id: turmaId, aluno_id: alunoId, ...cms.enrollments[turmaId][alunoId] })
   }
-  if (error) return c.json({ error: error.message }, 500)
+  if (error) return c.json(dbError(), 500)
   return c.json(data)
 })
 
@@ -1199,17 +1203,17 @@ app.delete('/turmas/:id/alunos/:alunoId', async (c) => {
     const turmaId = c.req.param('id')
     const alunoId = c.req.param('alunoId')
     const { data: site, error: siteErr } = await sb.from('sites').select('allowed_origins').eq('id', user.site_id).single()
-    if (siteErr) return c.json({ error: siteErr.message }, 500)
+    if (siteErr) return c.json(dbError(), 500)
     const cms = parseCms(site)
     const current = cms.enrollments?.[turmaId]?.[alunoId]
     if (!current) return c.json({ error: 'Aluno não está vinculado a esta turma.' }, 404)
     if (hardDelete) delete cms.enrollments[turmaId][alunoId]
     else cms.enrollments[turmaId][alunoId] = { ...current, ativo: false, updated_at: new Date().toISOString() }
     const { error: saveErr } = await sb.from('sites').update({ allowed_origins: withCmsOrigins(site.allowed_origins, cms) }).eq('id', user.site_id)
-    if (saveErr) return c.json({ error: saveErr.message }, 500)
+    if (saveErr) return c.json(dbError(), 500)
     return c.json({ turma_id: turmaId, aluno_id: alunoId, ativo: hardDelete ? false : cms.enrollments[turmaId]?.[alunoId]?.ativo })
   }
-  if (error) return c.json({ error: error.message }, 500)
+  if (error) return c.json(dbError(), 500)
   return c.json(data)
 })
 
@@ -1243,7 +1247,7 @@ app.post('/turmas/:id/transferir', async (c) => {
     .upsert(rows, { onConflict: 'turma_id,aluno_id' })
   if (missingTurmaAlunos(upsertErr)) {
     const { data: site, error: siteErr } = await sb.from('sites').select('allowed_origins').eq('id', user.site_id).single()
-    if (siteErr) return c.json({ error: siteErr.message }, 500)
+    if (siteErr) return c.json(dbError(), 500)
     const cms = parseCms(site)
     cms.enrollments = cms.enrollments || {}
     cms.enrollments[destinoTurmaId] = cms.enrollments[destinoTurmaId] || {}
@@ -1265,17 +1269,17 @@ app.post('/turmas/:id/transferir', async (c) => {
       }
     })
     const { error: saveErr } = await sb.from('sites').update({ allowed_origins: withCmsOrigins(site.allowed_origins, cms) }).eq('id', user.site_id)
-    if (saveErr) return c.json({ error: saveErr.message }, 500)
+    if (saveErr) return c.json(dbError(), 500)
     return c.json({ ok: true, transferidos: alunoIds.length, storage: 'cms' })
   }
-  if (upsertErr) return c.json({ error: upsertErr.message }, 500)
+  if (upsertErr) return c.json(dbError(), 500)
 
   const { error: originErr } = await sb.from('turma_alunos')
     .update({ ativo: false })
     .eq('site_id', user.site_id)
     .eq('turma_id', origemTurmaId)
     .in('aluno_id', alunoIds)
-  if (originErr) return c.json({ error: originErr.message }, 500)
+  if (originErr) return c.json(dbError(), 500)
 
   return c.json({ ok: true, transferidos: alunoIds.length })
 })
@@ -1290,7 +1294,7 @@ app.post('/turmas', async (c) => {
   if (!siteId) return c.json({ error: 'Professor sem site vinculado. Faça login novamente ou peça ao admin para vincular um site.' }, 400)
   const { data, error } = await sb.from('turmas')
     .insert({ ...body, site_id: siteId }).select().single()
-  if (error) return c.json({ error: error.message }, 500)
+  if (error) return c.json(dbError(), 500)
   return c.json(data, 201)
 })
 
@@ -1310,7 +1314,7 @@ app.get('/payments', async (c) => {
   const result = await query
   const dataRows = result.data
   const queryError = result.error
-  if (queryError) return c.json({ error: queryError.message }, 500)
+  if (queryError) return c.json(dbError(), 500)
 
   const turmaIds = Array.from(new Set((dataRows || []).map((p: any) => p.turma_id).filter(Boolean)))
   const alunoIds = Array.from(new Set((dataRows || []).map((p: any) => p.aluno_id).filter(Boolean)))
@@ -1372,7 +1376,7 @@ app.patch('/notifications/:id/read', async (c) => {
   const { error: saveErr } = await sb.from('sites')
     .update({ allowed_origins: withCmsOrigins(site.allowed_origins, cms) })
     .eq('id', siteId)
-  if (saveErr) return c.json({ error: saveErr.message }, 500)
+  if (saveErr) return c.json(dbError(), 500)
   return c.json({ ok: true })
 })
 
@@ -1396,7 +1400,7 @@ app.patch('/turmas/:id', async (c) => {
     .select()
     .maybeSingle()
 
-  if (error) return c.json({ error: error.message }, 500)
+  if (error) return c.json(dbError(), 500)
   if (!data) return c.json({ error: 'Turma não encontrada neste site.' }, 404)
   return c.json(data)
 })
@@ -1415,7 +1419,7 @@ app.delete('/turmas/:id', async (c) => {
     .eq('id', turmaId)
     .eq('site_id', siteId)
     .maybeSingle()
-  if (turmaErr) return c.json({ error: turmaErr.message }, 500)
+  if (turmaErr) return c.json(dbError(), 500)
   if (!turma) return c.json({ error: 'Turma não encontrada neste site.' }, 404)
 
   const { data: site } = await sb.from('sites').select('allowed_origins').eq('id', siteId).maybeSingle()
@@ -1425,8 +1429,8 @@ app.delete('/turmas/:id', async (c) => {
     sb.from('correcoes').select('id', { count: 'exact', head: true }).eq('site_id', siteId).eq('turma_id', turmaId)
   ])
 
-  if (alunosErr && !missingTurmaAlunos(alunosErr)) return c.json({ error: alunosErr.message }, 500)
-  if (corrErr) return c.json({ error: corrErr.message }, 500)
+  if (alunosErr && !missingTurmaAlunos(alunosErr)) return c.json(dbError(), 500)
+  if (corrErr) return c.json(dbError(), 500)
 
   const cmsLinkedAlunos = Object.values(cms.enrollments?.[turmaId] || {})
     .filter((item: any) => item?.ativo !== false).length
@@ -1445,7 +1449,7 @@ app.delete('/turmas/:id', async (c) => {
       .update({ status: 'EXCLUIDA_PELO_PROFESSOR', updated_at: new Date().toISOString() })
       .eq('site_id', siteId)
       .eq('turma_id', turmaId)
-    if (hideCorrecoesErr) return c.json({ error: hideCorrecoesErr.message }, 500)
+    if (hideCorrecoesErr) return c.json(dbError(), 500)
   }
 
   if (cms.turma_settings?.[turmaId]) {
@@ -1454,7 +1458,7 @@ app.delete('/turmas/:id', async (c) => {
   }
 
   const { error } = await sb.from('turmas').delete().eq('id', turmaId).eq('site_id', siteId)
-  if (error) return c.json({ error: error.message }, 500)
+  if (error) return c.json(dbError(), 500)
   return c.json({ ok: true })
 })
 
@@ -1468,7 +1472,7 @@ app.get('/tipos-erro', async (c) => {
   if (error?.message?.match(/tipos_erro|relation|does not exist/i)) {
     return c.json({ data: [], warning: 'Rode a migração 003 no Supabase para ativar o corretor automático.' })
   }
-  if (error) return c.json({ error: error.message }, 500)
+  if (error) return c.json(dbError(), 500)
   return c.json({ data })
 })
 
@@ -1488,7 +1492,7 @@ app.post('/tipos-erro', async (c) => {
   if (error?.message?.match(/tipos_erro|relation|does not exist/i)) {
     return c.json({ error: 'Rode a migração 003 no Supabase para ativar o corretor automático.' }, 501)
   }
-  if (error) return c.json({ error: error.message }, 500)
+  if (error) return c.json(dbError(), 500)
   return c.json(data, 201)
 })
 
@@ -1503,7 +1507,7 @@ app.patch('/tipos-erro/:id', async (c) => {
   if (!Object.keys(patch).length) return c.json({ error: 'Nada para atualizar' }, 400)
   const { data, error } = await sb.from('tipos_erro').update(patch)
     .eq('id', c.req.param('id')).eq('site_id', user.site_id).select().single()
-  if (error) return c.json({ error: error.message }, 500)
+  if (error) return c.json(dbError(), 500)
   return c.json(data)
 })
 
@@ -1512,7 +1516,7 @@ app.delete('/tipos-erro/:id', async (c) => {
   const sb = getAdmin(c.env)
   const { error } = await sb.from('tipos_erro').delete()
     .eq('id', c.req.param('id')).eq('site_id', user.site_id)
-  if (error) return c.json({ error: error.message }, 500)
+  if (error) return c.json(dbError(), 500)
   return c.json({ ok: true })
 })
 
@@ -1526,7 +1530,7 @@ app.get('/turmas/:id/tipos-erro', async (c) => {
   if (catErr?.message?.match(/tipos_erro|relation|does not exist/i)) {
     return c.json({ data: [], ativos: [] })
   }
-  if (catErr) return c.json({ error: catErr.message }, 500)
+  if (catErr) return c.json(dbError(), 500)
 
   const { data: assoc } = await sb.from('turma_tipos_erro')
     .select('*').eq('turma_id', turmaId).eq('site_id', user.site_id)
@@ -1567,7 +1571,7 @@ app.put('/turmas/:id/tipos-erro', async (c) => {
   if (error?.message?.match(/turma_tipos_erro|relation|does not exist/i)) {
     return c.json({ error: 'Rode a migração 003 no Supabase.' }, 501)
   }
-  if (error) return c.json({ error: error.message }, 500)
+  if (error) return c.json(dbError(), 500)
   return c.json({ ok: true })
 })
 

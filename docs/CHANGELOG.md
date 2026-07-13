@@ -18,9 +18,10 @@ Todas as mudanças relevantes deste projeto devem ser registradas aqui.
   - parser de `scripts/migrate.mjs` corrigido para executar statements precedidos por comentários de linha;
   - respostas sensíveis de API, login e callback agora recebem `Cache-Control: no-store`;
   - rotas `/login` e `/auth-callback` passaram a ser interceptadas pelo Worker para validar headers no smoke remoto;
+  - mensagens internas de erro de banco/serviço deixaram de ser propagadas ao cliente nas rotas principais;
   - removidas variáveis/função não utilizadas encontradas por `tsc --noUnusedLocals --noUnusedParameters`;
   - `npm run typecheck:unused` incluído no `check:all`;
-  - deploy publicado: `7affce56-5b5e-4216-9cbc-3e1e254259f5`;
+  - deploy publicado: `1dde43a6-f8a1-4f4b-91b0-bbe665ae26dc`;
   - docs novas: domínio, Supabase Auth, Asaas produção, rate limiting, observabilidade e checklist de lançamento;
   - rascunhos jurídicos adicionados em `docs/legal/`;
   - deploy publicado: `2c4d20c0-4454-47d4-9b9f-5e5df70dece5`;
