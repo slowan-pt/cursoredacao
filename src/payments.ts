@@ -19,6 +19,14 @@ export type CreatePixChargeInput = {
   externalReference: string
 }
 
+export type CreateCustomerInput = {
+  name: string
+  email?: string
+  cpfCnpj?: string
+  externalReference?: string
+  notificationDisabled?: boolean
+}
+
 export type AsaasWebhookPayload = {
   id?: string
   event?: string
@@ -45,7 +53,9 @@ export type NormalizedPaymentWebhook = {
 }
 
 export type PaymentGateway = {
+  createCustomer(input: CreateCustomerInput): Promise<any>
   createPixCharge(input: CreatePixChargeInput): Promise<unknown>
+  getPixQrCode(paymentId: string): Promise<any>
 }
 
 const ASAAS_BASE_URLS = {
@@ -119,7 +129,15 @@ export function normalizeAsaasWebhookPayload(payload: unknown): NormalizedPaymen
 }
 
 class DisabledPaymentGateway implements PaymentGateway {
+  async createCustomer(): Promise<unknown> {
+    throw new Error('Pagamentos temporariamente indisponíveis.')
+  }
+
   async createPixCharge(): Promise<unknown> {
+    throw new Error('Pagamentos temporariamente indisponíveis.')
+  }
+
+  async getPixQrCode(): Promise<unknown> {
     throw new Error('Pagamentos temporariamente indisponíveis.')
   }
 }
@@ -156,6 +174,25 @@ class AsaasGateway implements PaymentGateway {
         description: input.description,
         externalReference: input.externalReference
       })
+    })
+  }
+
+  async createCustomer(input: CreateCustomerInput) {
+    return this.request('/customers', {
+      method: 'POST',
+      body: JSON.stringify({
+        name: input.name,
+        email: input.email,
+        cpfCnpj: input.cpfCnpj,
+        externalReference: input.externalReference,
+        notificationDisabled: input.notificationDisabled ?? true
+      })
+    })
+  }
+
+  async getPixQrCode(paymentId: string) {
+    return this.request(`/payments/${encodeURIComponent(paymentId)}/pixQrCode`, {
+      method: 'GET'
     })
   }
 }

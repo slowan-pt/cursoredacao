@@ -1,7 +1,8 @@
 import { Hono } from 'hono'
 import type { Env } from '../types'
 import { getAdmin } from '../supabase'
-import { normalizeAsaasWebhookPayload, validateAsaasWebhookToken } from '../payments'
+import { getPaymentGateway, normalizeAsaasWebhookPayload, validateAsaasWebhookToken } from '../payments'
+import { requireAuth } from '../middleware'
 
 const app = new Hono<{ Bindings: Env }>()
 const CMS_PREFIX = 'CMS:'
@@ -43,6 +44,12 @@ function missingTurmaAlunos(error: any) {
 
 function isPaidStatus(status: string) {
   return status === 'CONFIRMED' || status === 'RECEIVED'
+}
+
+function tomorrowIsoDate() {
+  const date = new Date()
+  date.setDate(date.getDate() + 1)
+  return date.toISOString().slice(0, 10)
 }
 
 async function grantPaidEnrollment(sb: ReturnType<typeof getAdmin>, payment: any) {
@@ -188,6 +195,129 @@ app.post('/asaas/webhook', async (c) => {
     .eq('id', inserted.id)
 
   return c.json({ ok: true })
+})
+
+app.post('/asaas/sandbox-homologation', requireAuth, async (c) => {
+  const user = c.get('user')
+  if (user.role !== 'ADMIN' && user.role !== 'SUPERADMIN') {
+    return c.json({ error: 'Acesso negado.' }, 403)
+  }
+  if (c.env.ASAAS_ENV !== 'sandbox') {
+    return c.json({ error: 'Homologação automática permitida apenas em sandbox.' }, 403)
+  }
+  if (!c.env.ASAAS_API_KEY) {
+    return c.json({ error: 'ASAAS_API_KEY ausente.' }, 503)
+  }
+
+  const body = await c.req.json().catch(() => ({}))
+  const sb = getAdmin(c.env)
+  const siteSlug = String(body.site_slug || 'puppin-teste')
+  const alunoEmail = String(body.aluno_email || 'aluno.puppin@gmail.com').toLowerCase()
+
+  const { data: site, error: siteErr } = await sb.from('sites')
+    .select('id, slug')
+    .eq('slug', siteSlug)
+    .maybeSingle()
+  if (siteErr || !site) return c.json({ error: 'Site de homologação não encontrado.' }, 404)
+  if (user.role === 'ADMIN' && user.site_id !== site.id) return c.json({ error: 'Acesso negado para este site.' }, 403)
+
+  const [{ data: aluno }, { data: turma }] = await Promise.all([
+    sb.from('profiles')
+      .select('id, nome, role, site_id')
+      .eq('site_id', site.id)
+      .eq('role', 'ALUNO')
+      .eq('ativo', true)
+      .in('id', [
+        ...(await sb.auth.admin.listUsers()).data.users
+          .filter((item) => String(item.email || '').toLowerCase() === alunoEmail)
+          .map((item) => item.id)
+      ])
+      .maybeSingle(),
+    sb.from('turmas')
+      .select('id, nome')
+      .eq('site_id', site.id)
+      .eq('status', 'ABERTA')
+      .order('created_at', { ascending: false })
+      .limit(1)
+      .maybeSingle()
+  ])
+  if (!aluno) return c.json({ error: 'Aluno de homologação não encontrado ou não ativo.' }, 404)
+  if (!turma) return c.json({ error: 'Turma aberta de homologação não encontrada.' }, 404)
+
+  const externalReference = `ASAAS-HML-${crypto.randomUUID()}`
+  const amountCents = 500
+  const { data: payment, error: paymentErr } = await sb.from('payments')
+    .insert({
+      site_id: site.id,
+      turma_id: turma.id,
+      aluno_id: aluno.id,
+      payer_email: alunoEmail,
+      payer_name: aluno.nome || 'Aluno Homologação',
+      provider: 'ASAAS',
+      external_reference: externalReference,
+      status: 'PENDING',
+      amount_cents: amountCents,
+      billing_type: 'PIX'
+    })
+    .select('id, external_reference')
+    .single()
+  if (paymentErr) return c.json({ error: 'Não foi possível criar o pagamento local.' }, 500)
+
+  const gateway = getPaymentGateway(c.env)
+  try {
+    const customer = await gateway.createCustomer({
+      name: aluno.nome || 'Aluno Homologação',
+      email: alunoEmail,
+      cpfCnpj: String(body.cpf_cnpj || '11144477735'),
+      externalReference: `ALUNO:${aluno.id}`,
+      notificationDisabled: true
+    })
+    const charge: any = await gateway.createPixCharge({
+      customerId: String(customer.id),
+      value: 5,
+      dueDate: tomorrowIsoDate(),
+      description: `Homologação ${site.slug} - ${turma.nome}`,
+      externalReference
+    })
+    const qrCode = await gateway.getPixQrCode(String(charge.id))
+    await sb.from('payments')
+      .update({
+        provider_payment_id: charge.id,
+        provider_customer_id: customer.id,
+        status: charge.status || 'PENDING',
+        raw_summary: {
+          sandbox: true,
+          customer_id: customer.id,
+          payment_id: charge.id,
+          external_reference: externalReference
+        },
+        updated_at: new Date().toISOString()
+      })
+      .eq('id', payment.id)
+
+    return c.json({
+      ok: true,
+      payment_id: payment.id,
+      provider_payment_id: charge.id,
+      external_reference: externalReference,
+      status: charge.status || 'PENDING',
+      value: 5,
+      pix: {
+        encodedImage: qrCode.encodedImage || null,
+        payload: qrCode.payload || null,
+        expirationDate: qrCode.expirationDate || null
+      }
+    })
+  } catch (err: any) {
+    await sb.from('payments')
+      .update({
+        status: 'FAILED',
+        raw_summary: { sandbox: true, error: err?.message || 'asaas_error' },
+        updated_at: new Date().toISOString()
+      })
+      .eq('id', payment.id)
+    return c.json({ error: 'Falha na comunicação com Asaas Sandbox.' }, 502)
+  }
 })
 
 export { app as paymentRoutes }
