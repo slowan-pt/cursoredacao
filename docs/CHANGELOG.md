@@ -10,9 +10,15 @@ Todas as mudanças relevantes deste projeto devem ser registradas aqui.
   - adicionados `robots.txt`, `sitemap.xml`, `site.webmanifest` e `favicon.svg`;
   - páginas públicas principais passaram a declarar canonical, manifest, favicon e metadados do domínio oficial;
   - criado `npm run check:public`;
+  - criado `npm run audit:static`;
   - criado `npm run smoke:prod`;
   - `check:all` agora valida metadados públicos;
   - `ENABLE_APP_RATE_LIMITING=false` documentado em `.env.example`, `wrangler.jsonc` e tipos;
+  - migration `006_performance_indexes.sql` preparada com índices não destrutivos para consultas de perfis, turmas, correções, matrículas, pagamentos e webhooks;
+  - parser de `scripts/migrate.mjs` corrigido para executar statements precedidos por comentários de linha;
+  - respostas sensíveis de API, login e callback agora recebem `Cache-Control: no-store`;
+  - rotas `/login` e `/auth-callback` passaram a ser interceptadas pelo Worker para validar headers no smoke remoto;
+  - deploy publicado: `7affce56-5b5e-4216-9cbc-3e1e254259f5`;
   - docs novas: domínio, Supabase Auth, Asaas produção, rate limiting, observabilidade e checklist de lançamento;
   - rascunhos jurídicos adicionados em `docs/legal/`;
   - deploy publicado: `2c4d20c0-4454-47d4-9b9f-5e5df70dece5`;

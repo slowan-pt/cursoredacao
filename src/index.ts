@@ -32,12 +32,47 @@ app.use('*', secureHeaders({
   xContentTypeOptions: 'nosniff'
 }))
 app.use('*', appSecurityHeaders)
+app.use('*', async (c, next) => {
+  await next()
+  const path = new URL(c.req.url).pathname
+  if (path.startsWith('/api/') || path === '/login.html' || path === '/login' || path === '/auth-callback.html' || path === '/auth-callback') {
+    c.header('Cache-Control', 'no-store')
+  }
+})
 
 app.get('/health', (c) => c.json({
   ok: true,
   service: 'redacao',
   version: getConfig(c.env).appVersion
 }))
+
+app.get('/login.html', async (c) => {
+  const response = await c.env.ASSETS.fetch(c.req.raw)
+  const headers = new Headers(response.headers)
+  headers.set('Cache-Control', 'no-store')
+  return new Response(response.body, { status: response.status, headers })
+})
+
+app.get('/login', async (c) => {
+  const response = await c.env.ASSETS.fetch(c.req.raw)
+  const headers = new Headers(response.headers)
+  headers.set('Cache-Control', 'no-store')
+  return new Response(response.body, { status: response.status, headers })
+})
+
+app.get('/auth-callback.html', async (c) => {
+  const response = await c.env.ASSETS.fetch(c.req.raw)
+  const headers = new Headers(response.headers)
+  headers.set('Cache-Control', 'no-store')
+  return new Response(response.body, { status: response.status, headers })
+})
+
+app.get('/auth-callback', async (c) => {
+  const response = await c.env.ASSETS.fetch(c.req.raw)
+  const headers = new Headers(response.headers)
+  headers.set('Cache-Control', 'no-store')
+  return new Response(response.body, { status: response.status, headers })
+})
 
 app.route('/api/auth', authRoutes)
 app.route('/api/superadmin', superadminRoutes)

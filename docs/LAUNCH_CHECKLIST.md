@@ -8,6 +8,7 @@ Atualizado em: 2026-07-13.
 - [ ] `www` redirecionando para o dominio raiz.
 - [ ] HTTPS valido.
 - [ ] Supabase Site URL e Redirect URLs atualizadas.
+- [ ] Migration `006_performance_indexes.sql` aplicada no Supabase.
 - [ ] `npm run check:all` passando.
 - [ ] `npm run smoke:prod` passando no dominio oficial.
 - [ ] R2 validado em upload e download.
@@ -37,4 +38,3 @@ Atualizado em: 2026-07-13.
 - [ ] SSO.
 - [ ] Editor visual avancado.
 - [ ] Mercado Pago.
-

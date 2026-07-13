@@ -9,6 +9,18 @@ import { fileURLToPath } from 'url'
 const { Client } = pg
 const __dirname = path.dirname(fileURLToPath(import.meta.url))
 
+function splitSqlStatements(sql) {
+  const withoutLineComments = sql
+    .split(/\r?\n/)
+    .map((line) => line.trimStart().startsWith('--') ? '' : line)
+    .join('\n')
+
+  return withoutLineComments
+    .split(';')
+    .map((statement) => statement.trim())
+    .filter(Boolean)
+}
+
 async function migrate() {
   console.log('📦 Executando migration no Supabase...')
 
@@ -32,11 +44,7 @@ async function migrate() {
       console.log(`\n▶ ${file}`)
       const sql = fs.readFileSync(path.join(migrationsDir, file), 'utf8')
 
-      // Executa cada statement separado por ";"
-      const statements = sql
-        .split(';')
-        .map(s => s.trim())
-        .filter(s => s.length > 0 && !s.startsWith('--'))
+      const statements = splitSqlStatements(sql)
 
       for (const stmt of statements) {
         try {

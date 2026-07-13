@@ -6,7 +6,7 @@
 - Último commit antes desta rodada: `f4e2e4a feat: harden MVP storage and professor notifications`.
 - GitHub remoto atual: `https://github.com/slowan-pt/cursoredacao.git`.
 - Working tree antes da rodada: limpo.
-- Worker publicado nesta rodada: `2c4d20c0-4454-47d4-9b9f-5e5df70dece5`.
+- Worker publicado nesta rodada: `7affce56-5b5e-4216-9cbc-3e1e254259f5`.
 - URL remota validada: `https://cursoreducao.slowgithub.workers.dev`.
 - `APP_URL` continua apontando para `https://redacaocomestrategia.com.br`.
 - Custom domain oficial ainda não está ativo. A tentativa via Wrangler/API Cloudflare falhou com HTTP 400 na criação de domain records, então o `wrangler.jsonc` ficou sem `routes` de custom domain para manter deploys seguros.
@@ -24,6 +24,7 @@
   - `public/auth-callback.html`.
 - Script `npm run check:public` criado para validar metadados essenciais.
 - Script `npm run smoke:prod` criado para smoke remoto de `/health`, páginas públicas e assets.
+- Script `npm run audit:static` criado para bloquear marcadores temporários, `debugger`, `console.log` em código servido ao usuário, `document.write` fora do loader controlado e scripts locais que listem usuários.
 - `npm run check:all` passou.
 - `npm run smoke:prod` passou no fallback `workers.dev`.
 - `ENABLE_APP_RATE_LIMITING=false` foi documentado em `.env.example`, `wrangler.jsonc` e tipagem centralizada.
@@ -35,11 +36,16 @@
   - `docs/OBSERVABILITY.md`;
   - `docs/LAUNCH_CHECKLIST.md`;
   - rascunhos jurídicos em `docs/legal/`.
+- Migration não destrutiva preparada para índices de performance: `migrations/006_performance_indexes.sql`.
+- `scripts/migrate.mjs` corrigido para não descartar statements SQL precedidos por comentários de linha.
+- Headers `Cache-Control: no-store` adicionados para `/api/*`, `/login.html` e `/auth-callback.html`.
+- Rotas `/login` e `/auth-callback` passaram a ser servidas via Worker para garantir `Cache-Control: no-store` nos assets sensíveis.
 
 ### Não Concluído Por Depender De Ação Manual
 
 - Ativar `redacaocomestrategia.com.br` e `www.redacaocomestrategia.com.br` como custom domains do Worker no painel Cloudflare.
 - Configurar Site URL e Redirect URLs no Supabase para o domínio oficial.
+- Aplicar `migrations/006_performance_indexes.sql` em janela segura no Supabase.
 - Criar e validar domínio/API key no Resend.
 - Ativar Asaas produção e fazer PIX real de baixo valor.
 - Criar regras reais de rate limiting no Cloudflare WAF/Rate Limiting ou implementar Durable Objects.

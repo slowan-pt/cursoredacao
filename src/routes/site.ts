@@ -2166,8 +2166,11 @@ fetch(${JSON.stringify(assetPath)}, { cache: 'no-store' })
     document.write(html)
     document.close()
   })
-  .catch((err) => {
-    document.body.innerHTML = '<div>' + (err && err.message ? err.message : 'Erro ao carregar.') + '</div>'
+  .catch(() => {
+    document.body.textContent = ''
+    const box = document.createElement('div')
+    box.textContent = 'Erro ao carregar a area interna.'
+    document.body.appendChild(box)
   })
 </script>
 </body>

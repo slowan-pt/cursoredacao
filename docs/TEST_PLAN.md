@@ -6,6 +6,7 @@ Atualizado em: 2026-07-13.
 
 - `npm run check:all`: passou.
 - `npm run smoke:prod`: passou no fallback `https://cursoreducao.slowgithub.workers.dev`.
+- O smoke remoto valida `Cache-Control: no-store` em `/login`.
 - `/health`: HTTP 200, `service=redacao`, `version=1.0.0`.
 - Login professor: passou.
 - Login aluno: passou.
@@ -26,12 +27,14 @@ Atualizado em: 2026-07-13.
 - Cobrança Asaas de produção.
 - Revogação server-side de JWT após logout.
 - Smoke remoto pelo domínio oficial `https://redacaocomestrategia.com.br`, porque o custom domain ainda não está ativo.
+- Aplicação real da migration `006_performance_indexes.sql` no Supabase, pois depende de janela operacional.
 
 ## Validações Automatizadas Disponíveis
 
 ```bash
 npm run security:scan
 npm run check:public
+npm run audit:static
 npm run smoke:prod
 npx tsc --noEmit
 git diff --check

@@ -8,14 +8,14 @@ const baseUrl = readBaseUrl()
 const checks = [
   { label: 'health', path: '/health', expectJson: true },
   { label: 'home', path: '/' },
-  { label: 'login', path: '/login.html' },
+  { label: 'login', path: '/login', expectNoStore: true },
   { label: 'site puppin-teste', path: '/redacao/puppin-teste' },
   { label: 'robots', path: '/robots.txt' },
   { label: 'sitemap', path: '/sitemap.xml' },
   { label: 'manifest', path: '/site.webmanifest' }
 ]
 
-async function fetchCheck({ label, path, expectJson }) {
+async function fetchCheck({ label, path, expectJson, expectNoStore }) {
   const response = await fetch(`${baseUrl}${path}`, {
     headers: { 'user-agent': 'redacao-smoke/1.0' }
   })
@@ -27,6 +27,9 @@ async function fetchCheck({ label, path, expectJson }) {
     }
   } else {
     await response.text()
+  }
+  if (expectNoStore && !/no-store/i.test(response.headers.get('cache-control') || '')) {
+    throw new Error(`${label}: Cache-Control no-store ausente`)
   }
   return `${label}: OK ${response.status}`
 }
