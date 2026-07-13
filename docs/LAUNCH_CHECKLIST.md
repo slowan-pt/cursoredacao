@@ -18,8 +18,9 @@ Atualizado em: 2026-07-13.
 - [x] Painel de saúde superadmin criado.
 - [x] Módulo financeiro ativado em homologação controlada com `ENABLE_FINANCIAL_MODULE=true`.
 - [x] Operações críticas do financeiro migradas para RPC SQL transacional.
-- [ ] Geração de lançamento por correção finalizada de professor filho validada.
-- [ ] Fechamento e pagamento manual parcial/total validados.
+- [x] Geração de lançamento financeiro validada em cenário fictício controlado.
+- [x] Fechamento e pagamento manual parcial/total validados por smoke financeiro.
+- [ ] UI completa de seleção, ajuste, cancelamento e estorno validada.
 - [ ] Backup Supabase revisado.
 - [ ] Restore testado em ambiente seguro.
 - [ ] Politica de reembolso/cancelamento aprovada.

@@ -13,7 +13,8 @@ Todas as mudanças relevantes deste projeto devem ser registradas aqui.
   - backend passou a chamar RPCs nas operações críticas do financeiro;
   - migrador SQL passou a respeitar blocos dollar-quoted de PL/pgSQL;
   - interface financeira ganhou aviso explícito de homologação/Sandbox;
-  - flags internas `ENABLE_FINANCIAL_MODULE` e `ENABLE_TEACHER_COMPENSATION` preparadas para ativação controlada, mantendo exports/charts desligados.
+  - flags internas `ENABLE_FINANCIAL_MODULE` e `ENABLE_TEACHER_COMPENSATION` ativadas em homologação controlada, mantendo exports/charts desligados;
+  - adicionado `npm run financial:smoke` para validar transações financeiras com dados fictícios e sem dinheiro real.
 - Módulo financeiro interno — Ciclo A:
   - adicionadas flags `ENABLE_FINANCIAL_MODULE`, `ENABLE_TEACHER_COMPENSATION`, `ENABLE_FINANCIAL_EXPORTS` e `ENABLE_FINANCIAL_CHARTS`;
   - criada migration não destrutiva `007_financial_module.sql` com tabelas de configurações financeiras, regras de remuneração, lançamentos de correção, fechamentos, pagamentos manuais, ajustes e auditoria;

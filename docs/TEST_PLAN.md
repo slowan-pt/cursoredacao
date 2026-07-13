@@ -31,13 +31,34 @@ Atualizado em: 2026-07-13.
 - Migration `009_financial_transactions.sql`: aplicada no Supabase.
 - RPCs confirmadas por consulta somente leitura: 6 de 6 encontradas.
 - `npm run financial:backfill:dry-run`: passou; `missing_compensation_entries=0`.
+- `npm run financial:backfill:dry-run -- --since=2026-01-01 --limit=100`: passou; sem gravação e sem pendências.
+- `npm run financial:smoke`: passou com dados fictícios `FIN_SMOKE_*`.
+- Smoke validou:
+  - idempotência de fechamento;
+  - tentativa duplicada com chave diferente;
+  - corrida concorrente com duas conexões;
+  - pagamento parcial;
+  - retry de pagamento parcial com a mesma idempotency key;
+  - pagamento total;
+  - bloqueio de pagamento acima do saldo parcial;
+  - cancelamento liberando lançamento;
+  - estorno voltando fechamento para `APPROVED`;
+  - bloqueio de professor de outro site;
+  - auditoria.
+- Smoke remoto via API:
+  - login professor pai HTTP 200;
+  - `/api/admin/financial/summary`, `payables`, `closings` e `audit` HTTP 200;
+  - login professor filho HTTP 200 e `summary.role=CHILD_TEACHER`;
+  - `/api/superadmin/financial` HTTP 200;
+  - fechamento/aprovação/pagamento manual fictício via API HTTP 201/200/201;
+  - `/api/admin/notifications` HTTP 200 após pagamento fictício.
 - Não foi executado backfill real.
 - Não foi usado Asaas produção.
-- Pendente: cenário completo com dados fictícios no painel para fechamento, ajuste, aprovação, pagamento parcial, pagamento total, cancelamento e estorno.
+- Pendente: cenário visual completo no painel para seleção múltipla, ajuste, cancelamento e estorno.
 
 ## Não Verificado Automaticamente Neste Ciclo
 
-- Fluxo financeiro completo com flags ligadas em homologação: correção real de professor filho, fechamento e pagamento manual.
+- Fluxo financeiro visual completo com botões de ajuste, cancelamento e estorno.
 - Exportação CSV do módulo financeiro.
 - Criação de fechamento por RPC SQL transacional em fluxo visual real.
 - Corretor filho acessando somente correções atribuídas em cenário com dados reais suficientes.

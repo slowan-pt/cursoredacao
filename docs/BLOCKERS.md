@@ -1,13 +1,14 @@
 # Blockers
 
-## Módulo financeiro: transações de fechamento
+## Módulo financeiro: validação visual final
 
-- Prioridade: importante antes de uso em alto volume.
+- Prioridade: importante antes de liberar para usuários reais em volume.
 - Situação atual:
   - Lançamento por correção é idempotente por `correction_id`.
-  - Fechamento e pagamento manual funcionam por sequência controlada de operações via Supabase REST.
-  - Ainda não há RPC SQL transacional para criação/aprovação/pagamento de fechamento.
-- Próxima ação: mover fechamento/pagamento para função SQL transacional com validação de saldo, status e idempotência.
+  - Fechamento, aprovação, ajuste, pagamento, cancelamento e estorno usam RPC SQL transacional.
+  - Smoke financeiro direto no banco validou idempotência, concorrência, pagamento parcial, pagamento total, bloqueio de excesso, cancelamento, estorno, multi-tenant e auditoria.
+  - Fluxo remoto via API validou professor pai, professor filho, superadmin, fechamento, aprovação, pagamento fictício e notificação interna.
+- Próxima ação: evoluir a UI para seleção múltipla de lançamentos e botões completos de ajuste/cancelamento/estorno, mantendo os endpoints já transacionais.
 
 ## Dominio oficial ainda nao ativo
 

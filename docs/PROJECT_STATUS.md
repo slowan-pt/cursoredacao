@@ -11,8 +11,9 @@
 - Interface: telas `Meus Ganhos` e `Financeiro` exibem aviso de "Módulo financeiro em homologação"; exportações e gráficos seguem desligados.
 - Flags preparadas para ativação controlada no Worker: `ENABLE_FINANCIAL_MODULE=true` e `ENABLE_TEACHER_COMPENSATION=true`; `ENABLE_FINANCIAL_EXPORTS=false` e `ENABLE_FINANCIAL_CHARTS=false`.
 - Backfill: apenas dry-run executado, sem criação retroativa de dívidas; resultado atual: `0` lançamentos pendentes.
-- Testes: `npm run check:all` passou; validação de existência das 6 RPCs passou.
-- Risco pendente: ainda falta ciclo manual com dados fictícios reais no painel para fechamento, ajuste, pagamento parcial/total e estorno antes de considerar produção financeira definitiva.
+- Testes: `npm run check:all` passou; validação de existência das 6 RPCs passou; `npm run financial:smoke` passou com dados fictícios.
+- Validação remota: professor pai, professor filho e superadmin acessaram endpoints financeiros; fluxo via API criou fechamento, aprovou, registrou pagamento fictício e gerou notificação interna.
+- Risco pendente: ainda falta UI completa para seleção múltipla, ajuste, cancelamento e estorno; por enquanto essas operações estão seguras no backend/RPC, mas não plenamente confortáveis na tela.
 
 ## Módulo financeiro interno — Ciclo A — 2026-07-13
 

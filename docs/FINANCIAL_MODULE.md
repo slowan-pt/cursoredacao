@@ -30,6 +30,10 @@ Organizar o financeiro operacional da plataforma sem trocar a arquitetura atual.
 - As RPCs usam locks no banco para reduzir risco de pagamento duplicado ou fechamento concorrente.
 - O frontend não calcula saldo final nem status financeiro definitivo; esses dados vêm do backend/banco.
 - Exports e gráficos continuam atrás de flags desligadas.
+- Validações executadas:
+  - `npm run financial:smoke` criou dados fictícios `FIN_SMOKE_*` e validou fechamento idempotente, tentativa duplicada, corrida concorrente, pagamento parcial, retry de pagamento, pagamento total, bloqueio de excesso, cancelamento e estorno;
+  - fluxo remoto via `/api/admin/financial/*` validou fechamento, aprovação, pagamento manual fictício e notificação interna;
+  - professor pai, professor filho e superadmin acessaram endpoints financeiros com HTTP 200 no Worker publicado.
 
 ## Ciclo A implementado
 
@@ -58,7 +62,7 @@ Organizar o financeiro operacional da plataforma sem trocar a arquitetura atual.
   - `Financeiro` para professor pai.
 - Script dry-run criado: `npm run financial:backfill:dry-run -- --since=YYYY-MM-DD --limit=100`.
 - Teste estrutural adicionado ao `npm run check:all`: `npm run check:financial`.
-- As flags continuam desligadas por padrão em `wrangler.jsonc`; menus financeiros só aparecem quando `ENABLE_FINANCIAL_MODULE=true`.
+- As flags financeiras internas estão ativas em homologação controlada no Worker publicado; exports e gráficos continuam desligados.
 
 ## Modelo de dados preparado
 
@@ -84,11 +88,10 @@ Todos os valores monetários são armazenados em centavos.
 
 ## Próximos ciclos
 
-1. Validar com dados fictícios controlados uma correção finalizada por professor filho com flags financeiras ligadas em homologação.
-2. Criar tela completa de seleção múltipla de lançamentos e ações de ajuste/cancelamento/estorno.
-3. Criar upload de comprovante de pagamento manual em R2.
-4. Adicionar exportação CSV e alertas superadmin de divergência.
-5. Criar testes de integração com dados controlados.
+1. Criar tela completa de seleção múltipla de lançamentos e ações de ajuste/cancelamento/estorno.
+2. Criar upload de comprovante de pagamento manual em R2.
+3. Adicionar exportação CSV e alertas superadmin de divergência.
+4. Ampliar testes automatizados de integração com login HTTP e cenários visuais.
 
 ## Rollback
 

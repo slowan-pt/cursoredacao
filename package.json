@@ -11,6 +11,7 @@
     "check:public": "node scripts/check-public-metadata.mjs",
     "audit:static": "node scripts/audit-static.mjs",
     "check:financial": "node scripts/check-financial-module.mjs",
+    "financial:smoke": "node scripts/financial-transaction-smoke.mjs",
     "financial:backfill:dry-run": "node scripts/financial-backfill-dry-run.mjs",
     "preview:emails": "node scripts/preview-emails.mjs",
     "smoke:prod": "node scripts/production-smoke.mjs",
