@@ -203,17 +203,17 @@ app.post('/asaas/webhook', async (c) => {
     if (missingPaymentTables(paymentResult.error)) {
       return c.json({ error: 'Pagamentos ainda não estão preparados no banco.' }, 503)
     }
-    return c.json({ error: 'Webhook registrado, mas pagamento não foi atualizado.' }, 202)
+    return c.json({ ok: true, processed: false, reason: 'payment_update_failed' })
   }
   if (!paymentResult.data) {
-    return c.json({ ok: true, processed: false, reason: 'payment_not_found' }, 202)
+    return c.json({ ok: true, processed: false, reason: 'payment_not_found' })
   }
 
   let grantResult: { granted: boolean; reason?: string } = { granted: false, reason: 'not_paid' }
   if (paid) {
     grantResult = await grantPaidEnrollment(sb, paymentResult.data)
     if (!grantResult.granted) {
-      return c.json({ ok: true, processed: false, reason: grantResult.reason || 'enrollment_not_granted' }, 202)
+      return c.json({ ok: true, processed: false, reason: grantResult.reason || 'enrollment_not_granted' })
     }
   }
 
