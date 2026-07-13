@@ -24,14 +24,6 @@ const FINANCIAL_ENTRY_STATUS = {
   DISPUTED: 'DISPUTED'
 } as const
 
-const CLOSING_STATUS = {
-  DRAFT: 'DRAFT',
-  APPROVED: 'APPROVED',
-  PARTIALLY_PAID: 'PARTIALLY_PAID',
-  PAID: 'PAID',
-  CANCELED: 'CANCELED'
-} as const
-
 function financialUnavailable(env: Env) {
   const flags = getConfig(env).flags
   return !flags.financialModule
@@ -1638,6 +1630,17 @@ function summarizeFinancialEntries(entries: any[], payouts: any[] = []) {
   }
 }
 
+function getIdempotencyKey(c: any, body: any, operation: string) {
+  const explicit = String(c.req.header('Idempotency-Key') || body?.idempotency_key || '').trim()
+  return explicit || `${operation}:${crypto.randomUUID()}`
+}
+
+function financialRpcError(error: any) {
+  const message = String(error?.message || '').trim()
+  if (!message) return dbError()
+  return { error: message.replace(/^ERROR:\s*/i, '') }
+}
+
 app.get('/financial/summary', async (c) => {
   if (financialUnavailable(c.env)) return c.json({ error: 'Módulo financeiro desativado.' }, 503)
   const ctx = await financialContext(c)
@@ -1705,53 +1708,23 @@ app.post('/financial/closings', async (c) => {
   const childProfessorId = String(body.child_professor_id || '')
   const entryIds = Array.isArray(body.entry_ids) ? [...new Set(body.entry_ids.filter(Boolean).map(String))] : []
   if (!childProfessorId || !entryIds.length) return c.json({ error: 'Informe professor filho e lançamentos.' }, 400)
-  const { data: entries, error: entryErr } = await ctx.sb.from('correction_compensation_entries')
-    .select('id, amount_cents, child_professor_id, status, site_id, corrected_at')
-    .eq('site_id', ctx.siteId)
-    .eq('child_professor_id', childProfessorId)
-    .in('id', entryIds)
-  if (entryErr) return c.json(dbError(), 500)
-  if ((entries || []).length !== entryIds.length) return c.json({ error: 'Um ou mais lançamentos não foram encontrados.' }, 404)
-  if ((entries || []).some((item: any) => item.status !== FINANCIAL_ENTRY_STATUS.AWAITING_CLOSING)) {
-    return c.json({ error: 'Somente lançamentos aguardando fechamento podem entrar em fechamento.' }, 409)
-  }
-  const gross = (entries || []).reduce((sum: number, item: any) => sum + Number(item.amount_cents || 0), 0)
-  const dates = (entries || []).map((item: any) => String(item.corrected_at || '').slice(0, 10)).filter(Boolean).sort()
-  const { data: closing, error: closingErr } = await ctx.sb.from('teacher_payment_closings')
-    .insert({
-      site_id: ctx.siteId,
-      child_professor_id: childProfessorId,
-      parent_professor_id: ctx.user.sub,
-      period_start: body.period_start || dates[0] || new Date().toISOString().slice(0, 10),
-      period_end: body.period_end || dates[dates.length - 1] || new Date().toISOString().slice(0, 10),
-      status: CLOSING_STATUS.DRAFT,
-      entries_count: entries?.length || 0,
-      gross_amount_cents: gross,
-      adjustments_amount_cents: 0,
-      final_amount_cents: gross,
-      notes: typeof body.notes === 'string' ? body.notes.trim() : null,
-      created_by: ctx.user.sub,
-      updated_by: ctx.user.sub
-    })
-    .select()
-    .single()
-  if (closingErr || !closing) return c.json(dbError(), 500)
-  const { error: updErr } = await ctx.sb.from('correction_compensation_entries')
-    .update({ closing_id: closing.id, status: FINANCIAL_ENTRY_STATUS.IN_CLOSING, updated_by: ctx.user.sub, updated_at: new Date().toISOString() })
-    .eq('site_id', ctx.siteId)
-    .eq('child_professor_id', childProfessorId)
-    .in('id', entryIds)
-    .eq('status', FINANCIAL_ENTRY_STATUS.AWAITING_CLOSING)
-  if (updErr) return c.json(dbError(), 500)
-  await logFinancialAudit(ctx.sb, {
-    siteId: ctx.siteId,
-    actorId: ctx.user.sub,
-    targetTable: 'teacher_payment_closings',
-    targetId: closing.id,
-    action: 'CLOSING_CREATED',
-    next: { closing, entry_ids: entryIds }
+  const { data, error } = await ctx.sb.rpc('create_teacher_closing', {
+    p_site_id: ctx.siteId,
+    p_parent_professor_id: ctx.user.sub,
+    p_child_professor_id: childProfessorId,
+    p_entry_ids: entryIds,
+    p_period_start: body.period_start || null,
+    p_period_end: body.period_end || null,
+    p_notes: typeof body.notes === 'string' ? body.notes.trim() : null,
+    p_idempotency_key: getIdempotencyKey(c, body, 'create_teacher_closing')
   })
-  return c.json({ ...closing, gross_amount: centsToMoney(gross), final_amount: centsToMoney(gross) }, 201)
+  if (error) return c.json(financialRpcError(error), 409)
+  return c.json({
+    ...data,
+    id: data?.closing_id,
+    gross_amount: centsToMoney(data?.gross_amount_cents),
+    final_amount: centsToMoney(data?.final_amount_cents)
+  }, 201)
 })
 
 app.patch('/financial/closings/:id/approve', async (c) => {
@@ -1759,21 +1732,14 @@ app.patch('/financial/closings/:id/approve', async (c) => {
   const ctx = await financialContext(c)
   if ('error' in ctx) return c.json({ error: ctx.error }, ctx.status)
   if (ctx.child) return c.json({ error: 'Corretores filhos não aprovam fechamentos.' }, 403)
-  const now = new Date().toISOString()
-  const { data, error } = await ctx.sb.from('teacher_payment_closings')
-    .update({ status: CLOSING_STATUS.APPROVED, approved_at: now, updated_by: ctx.user.sub, updated_at: now })
-    .eq('id', c.req.param('id'))
-    .eq('site_id', ctx.siteId)
-    .in('status', [CLOSING_STATUS.DRAFT])
-    .select()
-    .single()
-  if (error || !data) return c.json({ error: 'Fechamento não encontrado ou não pode ser aprovado.' }, 404)
-  await ctx.sb.from('correction_compensation_entries')
-    .update({ status: FINANCIAL_ENTRY_STATUS.APPROVED, updated_by: ctx.user.sub, updated_at: now })
-    .eq('site_id', ctx.siteId)
-    .eq('closing_id', data.id)
-    .eq('status', FINANCIAL_ENTRY_STATUS.IN_CLOSING)
-  await logFinancialAudit(ctx.sb, { siteId: ctx.siteId, actorId: ctx.user.sub, targetTable: 'teacher_payment_closings', targetId: data.id, action: 'CLOSING_APPROVED', next: data })
+  const body = await c.req.json().catch(() => ({}))
+  const { data, error } = await ctx.sb.rpc('approve_teacher_closing', {
+    p_site_id: ctx.siteId,
+    p_parent_professor_id: ctx.user.sub,
+    p_closing_id: c.req.param('id'),
+    p_idempotency_key: getIdempotencyKey(c, body, 'approve_teacher_closing')
+  })
+  if (error) return c.json(financialRpcError(error), 409)
   return c.json(data)
 })
 
@@ -1785,60 +1751,86 @@ app.post('/financial/closings/:id/payouts', async (c) => {
   const body = await c.req.json()
   const amountCents = Math.round(Number(body.amount_cents || 0))
   if (!Number.isFinite(amountCents) || amountCents <= 0) return c.json({ error: 'Valor inválido.' }, 400)
-  const { data: closing, error: closeErr } = await ctx.sb.from('teacher_payment_closings')
-    .select('id, site_id, child_professor_id, status, final_amount_cents')
-    .eq('id', c.req.param('id'))
-    .eq('site_id', ctx.siteId)
-    .maybeSingle()
-  if (closeErr || !closing) return c.json({ error: 'Fechamento não encontrado.' }, 404)
-  if (closing.status === CLOSING_STATUS.CANCELED) return c.json({ error: 'Fechamento cancelado não pode receber pagamento.' }, 409)
-  const { data: previous } = await ctx.sb.from('teacher_payouts')
-    .select('amount_cents')
-    .eq('site_id', ctx.siteId)
-    .eq('closing_id', closing.id)
-    .neq('status', 'CANCELED')
-  const paid = (previous || []).reduce((sum: number, item: any) => sum + Number(item.amount_cents || 0), 0)
-  const balance = Number(closing.final_amount_cents || 0) - paid
-  if (amountCents > balance) return c.json({ error: 'Valor maior que o saldo do fechamento.' }, 409)
-  const now = new Date().toISOString()
-  const { data: payout, error: payoutErr } = await ctx.sb.from('teacher_payouts')
-    .insert({
-      site_id: ctx.siteId,
-      closing_id: closing.id,
-      child_professor_id: closing.child_professor_id,
-      amount_cents: amountCents,
-      status: 'PAID',
-      payment_method: String(body.payment_method || 'MANUAL').trim(),
-      reference: typeof body.reference === 'string' ? body.reference.trim() : null,
-      paid_at: body.paid_at || now,
-      notes: typeof body.notes === 'string' ? body.notes.trim() : null,
-      created_by: ctx.user.sub,
-      updated_by: ctx.user.sub
-    })
-    .select()
-    .single()
-  if (payoutErr || !payout) return c.json(dbError(), 500)
-  const nextPaid = paid + amountCents
-  const fullyPaid = nextPaid >= Number(closing.final_amount_cents || 0)
-  const closingStatus = fullyPaid ? CLOSING_STATUS.PAID : CLOSING_STATUS.PARTIALLY_PAID
-  await ctx.sb.from('teacher_payment_closings')
-    .update({ status: closingStatus, paid_at: fullyPaid ? now : null, updated_by: ctx.user.sub, updated_at: now })
-    .eq('id', closing.id)
-    .eq('site_id', ctx.siteId)
-  await ctx.sb.from('correction_compensation_entries')
-    .update({ status: fullyPaid ? FINANCIAL_ENTRY_STATUS.PAID : FINANCIAL_ENTRY_STATUS.PARTIALLY_PAID, paid_at: fullyPaid ? now : null, updated_by: ctx.user.sub, updated_at: now })
-    .eq('site_id', ctx.siteId)
-    .eq('closing_id', closing.id)
-  await logFinancialAudit(ctx.sb, { siteId: ctx.siteId, actorId: ctx.user.sub, targetTable: 'teacher_payouts', targetId: payout.id, action: 'PAYOUT_REGISTERED', next: payout })
+  const { data, error } = await ctx.sb.rpc('register_teacher_payout', {
+    p_site_id: ctx.siteId,
+    p_parent_professor_id: ctx.user.sub,
+    p_closing_id: c.req.param('id'),
+    p_amount_cents: amountCents,
+    p_payment_method: String(body.payment_method || 'MANUAL').trim(),
+    p_reference: typeof body.reference === 'string' ? body.reference.trim() : null,
+    p_notes: typeof body.notes === 'string' ? body.notes.trim() : null,
+    p_paid_at: body.paid_at || null,
+    p_idempotency_key: getIdempotencyKey(c, body, 'register_teacher_payout')
+  })
+  if (error) return c.json(financialRpcError(error), 409)
   await appendFinancialNotification(ctx.sb, ctx.siteId, {
     title: 'Pagamento registrado',
     message: `Pagamento de R$ ${centsToMoney(amountCents).toLocaleString('pt-BR', { minimumFractionDigits: 2 })} registrado para um fechamento.`,
     severity: 'success',
-    key: `payout:${payout.id}`,
-    closing_id: closing.id,
-    child_professor_id: closing.child_professor_id
+    key: `payout:${data?.payout_id}`,
+    closing_id: data?.closing_id,
+    child_professor_id: null
   })
-  return c.json({ ...payout, amount: centsToMoney(payout.amount_cents), closing_status: closingStatus }, 201)
+  return c.json({
+    ...data,
+    id: data?.payout_id,
+    amount: centsToMoney(data?.amount_cents)
+  }, 201)
+})
+
+app.post('/financial/closings/:id/adjustments', async (c) => {
+  if (financialUnavailable(c.env)) return c.json({ error: 'Módulo financeiro desativado.' }, 503)
+  const ctx = await financialContext(c)
+  if ('error' in ctx) return c.json({ error: ctx.error }, ctx.status)
+  if (ctx.child) return c.json({ error: 'Corretores filhos não ajustam fechamentos.' }, 403)
+  const body = await c.req.json()
+  const amountCents = Math.round(Number(body.amount_cents || 0))
+  if (!Number.isFinite(amountCents) || amountCents === 0) return c.json({ error: 'Valor de ajuste inválido.' }, 400)
+  const { data, error } = await ctx.sb.rpc('add_teacher_closing_adjustment', {
+    p_site_id: ctx.siteId,
+    p_parent_professor_id: ctx.user.sub,
+    p_closing_id: c.req.param('id'),
+    p_amount_cents: amountCents,
+    p_adjustment_type: String(body.adjustment_type || 'MANUAL').trim().toUpperCase(),
+    p_reason: String(body.reason || '').trim(),
+    p_idempotency_key: getIdempotencyKey(c, body, 'add_teacher_closing_adjustment')
+  })
+  if (error) return c.json(financialRpcError(error), 409)
+  return c.json(data, 201)
+})
+
+app.post('/financial/closings/:id/cancel', async (c) => {
+  if (financialUnavailable(c.env)) return c.json({ error: 'Módulo financeiro desativado.' }, 503)
+  const ctx = await financialContext(c)
+  if ('error' in ctx) return c.json({ error: ctx.error }, ctx.status)
+  if (ctx.child) return c.json({ error: 'Corretores filhos não cancelam fechamentos.' }, 403)
+  const body = await c.req.json().catch(() => ({}))
+  const { data, error } = await ctx.sb.rpc('cancel_teacher_closing', {
+    p_site_id: ctx.siteId,
+    p_parent_professor_id: ctx.user.sub,
+    p_closing_id: c.req.param('id'),
+    p_reason: String(body.reason || '').trim(),
+    p_idempotency_key: getIdempotencyKey(c, body, 'cancel_teacher_closing')
+  })
+  if (error) return c.json(financialRpcError(error), 409)
+  return c.json(data)
+})
+
+app.post('/financial/payouts/:id/reverse', async (c) => {
+  if (financialUnavailable(c.env)) return c.json({ error: 'Módulo financeiro desativado.' }, 503)
+  const ctx = await financialContext(c)
+  if ('error' in ctx) return c.json({ error: ctx.error }, ctx.status)
+  if (ctx.child) return c.json({ error: 'Corretores filhos não estornam pagamentos.' }, 403)
+  const body = await c.req.json().catch(() => ({}))
+  const { data, error } = await ctx.sb.rpc('reverse_teacher_payout', {
+    p_site_id: ctx.siteId,
+    p_parent_professor_id: ctx.user.sub,
+    p_payout_id: c.req.param('id'),
+    p_reason: String(body.reason || '').trim(),
+    p_idempotency_key: getIdempotencyKey(c, body, 'reverse_teacher_payout')
+  })
+  if (error) return c.json(financialRpcError(error), 409)
+  return c.json(data)
 })
 
 app.get('/financial/payouts', async (c) => {

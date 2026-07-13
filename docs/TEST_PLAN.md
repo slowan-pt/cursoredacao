@@ -25,11 +25,21 @@ Atualizado em: 2026-07-13.
 - Painel de saúde superadmin: `/api/superadmin/health` retornou HTTP 200.
 - Migration `006_performance_indexes.sql`: aplicada e 11 índices confirmados.
 
+## Resultado Financeiro Transacional — 2026-07-13
+
+- `npm run check:all`: passou após as alterações.
+- Migration `009_financial_transactions.sql`: aplicada no Supabase.
+- RPCs confirmadas por consulta somente leitura: 6 de 6 encontradas.
+- `npm run financial:backfill:dry-run`: passou; `missing_compensation_entries=0`.
+- Não foi executado backfill real.
+- Não foi usado Asaas produção.
+- Pendente: cenário completo com dados fictícios no painel para fechamento, ajuste, aprovação, pagamento parcial, pagamento total, cancelamento e estorno.
+
 ## Não Verificado Automaticamente Neste Ciclo
 
 - Fluxo financeiro completo com flags ligadas em homologação: correção real de professor filho, fechamento e pagamento manual.
 - Exportação CSV do módulo financeiro.
-- Criação de fechamento por RPC SQL transacional.
+- Criação de fechamento por RPC SQL transacional em fluxo visual real.
 - Corretor filho acessando somente correções atribuídas em cenário com dados reais suficientes.
 - Custom domain `redacaocomestrategia.com.br`.
 - Envio real via Resend.

@@ -6,6 +6,14 @@ Todas as mudanças relevantes deste projeto devem ser registradas aqui.
 
 ### Adicionado
 
+- Endurecimento transacional do módulo financeiro:
+  - criada migration `009_financial_transactions.sql`;
+  - adicionada tabela `financial_idempotency_keys`;
+  - adicionadas RPCs SQL transacionais para criar, aprovar, ajustar, pagar, cancelar e estornar fechamentos;
+  - backend passou a chamar RPCs nas operações críticas do financeiro;
+  - migrador SQL passou a respeitar blocos dollar-quoted de PL/pgSQL;
+  - interface financeira ganhou aviso explícito de homologação/Sandbox;
+  - flags internas `ENABLE_FINANCIAL_MODULE` e `ENABLE_TEACHER_COMPENSATION` preparadas para ativação controlada, mantendo exports/charts desligados.
 - Módulo financeiro interno — Ciclo A:
   - adicionadas flags `ENABLE_FINANCIAL_MODULE`, `ENABLE_TEACHER_COMPENSATION`, `ENABLE_FINANCIAL_EXPORTS` e `ENABLE_FINANCIAL_CHARTS`;
   - criada migration não destrutiva `007_financial_module.sql` com tabelas de configurações financeiras, regras de remuneração, lançamentos de correção, fechamentos, pagamentos manuais, ajustes e auditoria;

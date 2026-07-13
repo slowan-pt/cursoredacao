@@ -16,7 +16,8 @@ Atualizado em: 2026-07-13.
 - [ ] Webhook producao validado com token.
 - [ ] Rate limiting no Cloudflare WAF ou alternativa compartilhada.
 - [x] Painel de saúde superadmin criado.
-- [ ] Módulo financeiro validado em homologação com `ENABLE_FINANCIAL_MODULE=true`.
+- [x] Módulo financeiro ativado em homologação controlada com `ENABLE_FINANCIAL_MODULE=true`.
+- [x] Operações críticas do financeiro migradas para RPC SQL transacional.
 - [ ] Geração de lançamento por correção finalizada de professor filho validada.
 - [ ] Fechamento e pagamento manual parcial/total validados.
 - [ ] Backup Supabase revisado.

@@ -15,6 +15,22 @@ Organizar o financeiro operacional da plataforma sem trocar a arquitetura atual.
 - Professores filhos existem hoje dentro do CMS do site em `sites.allowed_origins`, com permissões e direcionamentos por turma/aluno.
 - Correções finalizadas gravam `status=FINALIZADA`, `prof_id` e `finalizada_em`.
 
+## Endurecimento transacional — 2026-07-13
+
+- Migration aplicada: `009_financial_transactions.sql`.
+- Tabela de idempotência adicionada: `financial_idempotency_keys`.
+- RPCs transacionais disponíveis:
+  - `create_teacher_closing`;
+  - `approve_teacher_closing`;
+  - `add_teacher_closing_adjustment`;
+  - `register_teacher_payout`;
+  - `cancel_teacher_closing`;
+  - `reverse_teacher_payout`.
+- As RPCs validam `site_id`, professor pai, professor filho, status do fechamento, status dos lançamentos, saldo e chave de idempotência.
+- As RPCs usam locks no banco para reduzir risco de pagamento duplicado ou fechamento concorrente.
+- O frontend não calcula saldo final nem status financeiro definitivo; esses dados vêm do backend/banco.
+- Exports e gráficos continuam atrás de flags desligadas.
+
 ## Ciclo A implementado
 
 - Feature flags adicionadas:
@@ -68,13 +84,12 @@ Todos os valores monetários são armazenados em centavos.
 
 ## Próximos ciclos
 
-1. Validar com dados reais uma correção finalizada por professor filho com flags financeiras ligadas em homologação.
-2. Migrar criação/aprovação/pagamento de fechamento para RPC SQL transacional.
-3. Criar tela completa de seleção múltipla de lançamentos.
-4. Criar upload de comprovante de pagamento manual em R2.
-5. Adicionar exportação CSV e alertas superadmin de divergência.
-6. Criar testes de integração com dados controlados.
+1. Validar com dados fictícios controlados uma correção finalizada por professor filho com flags financeiras ligadas em homologação.
+2. Criar tela completa de seleção múltipla de lançamentos e ações de ajuste/cancelamento/estorno.
+3. Criar upload de comprovante de pagamento manual em R2.
+4. Adicionar exportação CSV e alertas superadmin de divergência.
+5. Criar testes de integração com dados controlados.
 
 ## Rollback
 
-Como o Ciclo A só adiciona flags e tabelas novas, o rollback operacional é manter todas as flags financeiras como `false`. Se a migration for aplicada e precisar ser removida em ambiente de desenvolvimento, remover primeiro tabelas dependentes e depois `financial_settings`. Em produção, preferir desativação por flags e não fazer `DROP TABLE` sem backup.
+O rollback operacional preferencial é voltar `ENABLE_FINANCIAL_MODULE=false` e `ENABLE_TEACHER_COMPENSATION=false`, fazer novo deploy e manter as tabelas/RPCs sem uso. Não fazer `DROP TABLE` nem remover RPCs em produção sem backup e janela controlada.

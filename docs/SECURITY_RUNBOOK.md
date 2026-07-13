@@ -65,11 +65,14 @@ Este runbook prepara ações manuais de segurança. Não execute etapas destruti
 
 - Valores financeiros são armazenados em centavos.
 - O navegador não define valor de remuneração do professor filho.
+- Criação, aprovação, ajuste, pagamento, cancelamento e estorno de fechamentos usam RPCs SQL transacionais.
+- As RPCs validam `site_id`, professor pai, professor filho, status, saldo e idempotência antes de alterar dados.
+- Idempotência financeira usa `financial_idempotency_keys` por `site_id`, operação e chave.
 - Lançamentos financeiros não devem ser apagados; use cancelamento, reversão ou ajuste.
 - Professor filho só pode consultar lançamentos vinculados ao próprio usuário.
 - Professor pai só pode consultar dados do próprio `site_id`.
 - Superadmin acessa visão global sem conteúdo de redações.
-- Antes de ativar `ENABLE_FINANCIAL_MODULE` e `ENABLE_TEACHER_COMPENSATION`, validar uma correção real de homologação.
+- Antes de produção definitiva, validar uma correção real de homologação com fechamento, ajuste, pagamento parcial, pagamento total e estorno.
 
 ## Pendências de Segurança
 
