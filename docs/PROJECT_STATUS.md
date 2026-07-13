@@ -6,10 +6,10 @@
 - Branch atual: `main`.
 - Relação com remoto: branch local continua à frente de `origin/main`; push GitHub bloqueado por acesso ao repositório.
 - Último commit local confirmado antes desta homologação: `a087598 feat: add Asaas sandbox homologation flow`.
-- Estado do working tree: modificado durante homologação Asaas sandbox; alterações em `src/payments.ts`, `src/routes/payments.ts`, `wrangler.jsonc` e docs serão consolidadas em commits locais.
+- Estado do working tree: modificado durante homologação Asaas sandbox; alterações em `src/payments.ts`, `src/routes/payments.ts` e docs serão consolidadas em commits locais.
 - Versão atual declarada: `1.0.0` em `package.json`.
 - Ambiente atual observado: Cloudflare Workers, URL pública `https://cursoreducao.slowgithub.workers.dev`.
-- Última versão do Worker validada nesta homologação Asaas: `8e040aeb-c270-4a4d-93b1-2b526878af44`.
+- Última versão do Worker validada nesta homologação Asaas: `d9ef9af2-bd90-439a-a185-0258f33ea15a`.
 
 ## Arquitetura oficial
 
@@ -132,7 +132,7 @@ Resumo anterior do `git diff --stat`:
 | Segurança inicial | concluído e commitado | Commit `7ed95b9`; ainda precisa validação pós-rotação. |
 | Rotação de credenciais e Git | parcial | Runbook e scanner criados; rotação/limpeza real seguem manuais e pendentes. |
 | R2 e uploads | parcial | Camada R2, binding, migration e documentação preparados; fluxo base64 ainda não integrado ao R2. |
-| Asaas | parcial | Gateway, envs, migration, webhook e homologação sandbox de criação de cobrança PIX preparados; pagamento confirmado depende de simulação manual ou permissão de pagamento via API. |
+| Asaas | parcial | Gateway, envs, migration, webhook, criação de cobrança PIX e sincronização sandbox validados; falta confirmar entrega real do webhook de pagamento confirmado pelo painel Asaas. |
 | E-mails | parcial | Provider Resend/mock preparado; nenhum envio real ativado. |
 | Domínio e produção | parcial | Docs de deploy/rollback criadas; domínio oficial ainda não configurado. |
 | Testes e homologação | parcial | Plano de teste criado; `npx tsc --noEmit` e scanner passam. |
@@ -160,7 +160,7 @@ Resumo anterior do `git diff --stat`:
 | Professores filhos/corretores | implementado localmente, aguardando revisão | `src/routes/admin.ts`, `public/professor/index.html` | não | não verificado | Controle de permissão é área sensível. |
 | R2 privado | parcial | `src/storage.ts`, `src/uploads.ts`, `src/routes/aluno.ts`, `src/routes/admin.ts`, `migrations/004_storage_files.sql`, `docs/R2.md` | aguardando commit | parcial | Depende de bucket, migration e endpoint autenticado/streaming. |
 | Checkout simulado | parcial | `src/routes/site.ts`, `src/routes/auth.ts`, `public/login.html` | não | não verificado | Não substitui Asaas real. |
-| Gateway Asaas | parcial | `src/payments.ts`, `src/routes/payments.ts`, `migrations/005_payments.sql`, `docs/ASAAS.md` | sim/parcial | parcial | Criação de cobrança PIX passou; confirmação via webhook real depende de pagamento/simulação manual no sandbox. |
+| Gateway Asaas | parcial | `src/payments.ts`, `src/routes/payments.ts`, `migrations/005_payments.sql`, `docs/ASAAS.md` | sim/parcial | parcial | Criação de cobrança PIX e sincronização `RECEIVED` passaram; webhook real de confirmação não chegou para a cobrança homologada. |
 | E-mails de transação | parcial | `src/email.ts`, `docs/EMAILS.md` | sim | parcial | Resend não configurado/validado; flag desligada. |
 | Relatórios | parcial | `public/professor/index.html` | não | não verificado | Dados e permissões precisam revisão. |
 

@@ -58,6 +58,13 @@ Todas as mudanças relevantes deste projeto devem ser registradas aqui.
   - webhook sem token validado com resposta `401`;
   - pagamento automático do QR Code via API bloqueado por permissão sandbox (`insufficient_permission` para operações de saque/pagamento via API);
   - cobrança mais recente permanece `PENDING` até simulação/pagamento manual ou liberação dessa permissão na chave sandbox.
+- Após confirmação manual no painel Asaas:
+  - rota protegida de sincronização sandbox consulta a cobrança no provedor;
+  - status `RECEIVED_IN_CASH` é normalizado para `RECEIVED`;
+  - pagamento local foi atualizado para `RECEIVED`;
+  - matrícula do aluno foi criada/ativada com origem `ASAAS_SYNC`;
+  - repetição da sincronização manteve apenas uma matrícula ativa;
+  - webhook de confirmação não chegou para a cobrança homologada e precisa ser verificado nos logs do Asaas Sandbox.
 - Documentação operacional:
   - `docs/ARCHITECTURE.md`
   - `docs/ROADMAP.md`

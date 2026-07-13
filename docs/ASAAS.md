@@ -14,8 +14,9 @@ Atualizado em: 2026-07-12.
 - Rota protegida `POST /api/payments/asaas/sandbox-homologation` criada para homologação controlada em sandbox.
 - Homologação em 2026-07-12 criou cliente, chave Pix ativa, cobrança PIX R$ 5,00 e QR Code/copia-e-cola sandbox.
 - Pagamento automático do QR Code via API ficou bloqueado pelo Asaas: `insufficient_permission` para operações de saque/pagamento via API.
-- O pagamento local mais recente permanece `PENDING` até simulação/pagamento manual no Asaas Sandbox.
-- Nenhum webhook de pagamento confirmado chegou para a cobrança mais recente porque o pagamento não foi concluído no sandbox.
+- Após confirmação manual no painel Asaas, a sincronização protegida consultou o provedor e atualizou o pagamento local para `RECEIVED`.
+- A matrícula do aluno foi criada/ativada automaticamente com origem `ASAAS_SYNC`.
+- Nenhum webhook de pagamento confirmado chegou para a cobrança homologada; o endpoint não registrou erro no Worker.
 
 ## Arquivos Preparados
 
@@ -27,6 +28,7 @@ Atualizado em: 2026-07-12.
 - `migrations/005_payments.sql`: tabelas de pagamentos e eventos de webhook.
 - `src/routes/payments.ts`: rota guardada para webhook Asaas.
 - `src/routes/payments.ts`: rota autenticada de homologação sandbox.
+- `src/routes/payments.ts`: rota autenticada de sincronização sandbox para consultar status no Asaas e aplicar matrícula quando o status for pago.
 
 ## Segurança do Webhook
 
@@ -89,10 +91,8 @@ ASAAS_ENV=sandbox
 
 ## Pendências
 
-- Concluir pagamento/simulação manual da cobrança sandbox criada para disparar webhook real.
-- Alternativa: habilitar permissão de pagamento/saque via API na chave sandbox e repetir a rota de homologação.
-- Após pagamento confirmado, validar gravação em `payment_webhook_events`, atualização de `payments` e matrícula automática.
-- Validar idempotência real reenviando o mesmo evento.
+- Verificar no painel do Asaas Sandbox por que a confirmação manual não disparou webhook `PAYMENT_RECEIVED`/`PAYMENT_CONFIRMED` para a cobrança homologada.
+- Validar idempotência real do webhook reenviando o mesmo evento quando houver payload confirmado no log do Asaas.
 - Criar endpoint de checkout real para uso público.
 - Definir política para boleto/cartão além de PIX.
 - Criar testes com mocks.
@@ -106,4 +106,6 @@ ASAAS_ENV=sandbox
 - QR Code e código PIX foram retornados pela API.
 - Webhook sem token respondeu `401`, como esperado.
 - Simulação automática de pagamento via `POST /pix/qrCodes/pay` foi recusada pelo Asaas por falta de permissão de saque/pagamento via API.
-- Status local esperado até ação manual: `PENDING`.
+- Após confirmação manual, `POST /api/payments/asaas/sandbox-homologation/:id/sync` atualizou o pagamento para `RECEIVED`.
+- A matrícula ficou ativa e repetição da sincronização manteve apenas uma matrícula ativa.
+- Webhook real de confirmação não chegou para a cobrança homologada; existe apenas um evento antigo `PAYMENT_CREATED` de outro pagamento sem referência externa.
