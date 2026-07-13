@@ -206,6 +206,11 @@ textarea{resize:vertical;min-height:80px}
 .site-actions{display:flex;gap:6px;justify-content:flex-end;flex-wrap:wrap}
 .site-link{font-family:monospace;color:var(--brand3);font-size:12px}
 .table-wrap{width:100%;overflow-x:auto}
+.table{width:100%;border-collapse:collapse;font-size:13px}
+.table th,.table td{padding:10px;border-bottom:1px solid var(--border);text-align:left;vertical-align:top}
+.table th{font-size:11px;text-transform:uppercase;color:var(--ink3);letter-spacing:.04em}
+.card-soft{border:1px solid var(--border);background:var(--paper2);border-radius:8px;padding:14px}
+.card-soft p{margin:8px 0 0;font-size:22px;font-weight:900}
 .toast{position:fixed;right:20px;bottom:20px;background:var(--ink);color:#fff;border-radius:var(--r);padding:10px 14px;font-size:12px;z-index:300;box-shadow:0 12px 30px rgba(0,0,0,.2);display:none}
 
 /* ── Alert / Toast ───────────────────────────────────────── */

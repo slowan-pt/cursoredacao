@@ -30,6 +30,8 @@
         🕐 Pendentes <span class="sb-badge" id="badge-pend">0</span>
       </a>
       <a class="sb-item" href="#" onclick="showPage('todas',this)">📋 Todas as Correções</a>
+      <a class="sb-item child-only financial-only" href="#" onclick="showPage('ganhos',this)" style="display:none">💰 Meus Ganhos</a>
+      <a class="sb-item owner-only financial-only" href="#" onclick="showPage('financeiro',this)" style="display:none">💰 Financeiro</a>
       <div class="sb-grp owner-only">Turmas & Alunos</div>
       <a class="sb-item owner-only" href="#" onclick="showPage('turmas',this)">🏫 Turmas</a>
       <a class="sb-item owner-only" href="#" onclick="showPage('alunos',this)">👥 Alunos</a>
@@ -152,6 +154,34 @@
           </div>
           <button type="submit" class="btn btn-accent">Salvar site</button>
         </form>
+      </div>
+    </div>
+
+    <!-- MEUS GANHOS / FINANCEIRO FILHO -->
+    <div class="page" id="page-ganhos" style="display:none">
+      <div class="card">
+        <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:12px;margin-bottom:18px;flex-wrap:wrap">
+          <div>
+            <strong style="font-size:15px">Meus Ganhos</strong>
+            <p style="font-size:12px;color:var(--ink3);margin-top:4px">Resumo financeiro das correções direcionadas para você.</p>
+          </div>
+          <span id="ganhos-env" class="tag tag-prog" style="display:none">Sandbox</span>
+        </div>
+        <div id="ganhos-content"></div>
+      </div>
+    </div>
+
+    <!-- FINANCEIRO PROFESSOR PAI -->
+    <div class="page" id="page-financeiro" style="display:none">
+      <div class="card">
+        <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:12px;margin-bottom:18px;flex-wrap:wrap">
+          <div>
+            <strong style="font-size:15px">Financeiro</strong>
+            <p style="font-size:12px;color:var(--ink3);margin-top:4px">Vendas, correções a pagar, fechamentos e pagamentos manuais dos corretores.</p>
+          </div>
+          <button class="btn btn-sec btn-sm" type="button" onclick="loadFinanceiro()">Atualizar</button>
+        </div>
+        <div id="financeiro-content"></div>
       </div>
     </div>
 
@@ -1266,8 +1296,12 @@ function isChildTeacherMode() {
 
 function applyChildTeacherMode() {
   const child = isChildTeacherMode()
+  const financialOn = Boolean(currentSite?.feature_flags?.financial_module)
   document.body.classList.toggle('child-teacher-mode', child)
+  document.querySelectorAll('.financial-only').forEach((el) => { el.style.display = financialOn ? '' : 'none' })
   document.querySelectorAll('.owner-only').forEach((el) => { el.style.display = child ? 'none' : '' })
+  document.querySelectorAll('.child-only').forEach((el) => { el.style.display = child ? '' : 'none' })
+  if (!financialOn) document.querySelectorAll('.financial-only').forEach((el) => { el.style.display = 'none' })
   const role = document.getElementById('sb-role-label')
   if (role) role.textContent = child ? 'CORRETOR' : 'PROFESSOR'
   const sub = document.getElementById('topbar-sub')
@@ -6506,9 +6540,140 @@ function hideCorrecaoAlerts() {
   })
 }
 
+function financialBadge(status) {
+  const labels = {
+    AWAITING_CLOSING: 'Aguardando fechamento',
+    IN_CLOSING: 'Em fechamento',
+    APPROVED: 'Liberado',
+    PARTIALLY_PAID: 'Pago parcial',
+    PAID: 'Pago',
+    CANCELED: 'Cancelado',
+    REVERSED: 'Revertido',
+    DISPUTED: 'Contestação'
+  }
+  return `<span class="tag ${status === 'PAID' ? 'tag-done' : status === 'CANCELED' ? 'tag-pend' : 'tag-prog'}">${labels[status] || status || '—'}</span>`
+}
+
+function brl(value) {
+  return `R$ ${formatMoneyBR(Number(value || 0))}`
+}
+
+async function loadMeusGanhos() {
+  const box = document.getElementById('ganhos-content')
+  if (!box) return
+  box.innerHTML = '<div class="empty">Carregando ganhos...</div>'
+  try {
+    const [summaryRes, compRes, closingsRes, payoutsRes] = await Promise.all([
+      fetch('/api/admin/financial/summary'),
+      fetch('/api/admin/financial/compensations'),
+      fetch('/api/admin/financial/closings'),
+      fetch('/api/admin/financial/payouts')
+    ])
+    if (!summaryRes.ok) {
+      const data = await summaryRes.json().catch(() => ({}))
+      box.innerHTML = `<div class="empty">${data.error || 'Financeiro indisponível.'}</div>`
+      return
+    }
+    const summary = await summaryRes.json()
+    const comps = compRes.ok ? await compRes.json() : { data: [] }
+    const closings = closingsRes.ok ? await closingsRes.json() : { data: [] }
+    const payouts = payoutsRes.ok ? await payoutsRes.json() : { data: [] }
+    document.getElementById('ganhos-env').style.display = summary.sandbox ? '' : 'none'
+    const s = summary.summary || {}
+    box.innerHTML = `
+      <div class="grid-3" style="margin-bottom:16px">
+        <div class="kpi-card"><div class="kpi-label">Hoje</div><div class="kpi-value">${brl(s.amount_today)}</div><div class="kpi-sub">${s.corrections_today || 0} correções</div></div>
+        <div class="kpi-card"><div class="kpi-label">No mês</div><div class="kpi-value">${brl(s.amount_month)}</div><div class="kpi-sub">${s.corrections_month || 0} correções</div></div>
+        <div class="kpi-card"><div class="kpi-label">Pendente</div><div class="kpi-value">${brl(s.pending)}</div><div class="kpi-sub">aguardando pagamento</div></div>
+      </div>
+      <div class="grid-2" style="margin-bottom:16px">
+        <div class="card-soft"><strong>Aguardando fechamento</strong><p>${brl(s.awaiting_closing)}</p></div>
+        <div class="card-soft"><strong>Pago</strong><p>${brl(s.paid)}</p></div>
+      </div>
+      <h3 style="font-size:15px;margin:18px 0 10px">Correções remuneradas</h3>
+      ${renderFinancialRows(comps.data || [], true)}
+      <h3 style="font-size:15px;margin:18px 0 10px">Fechamentos</h3>
+      ${renderClosingRows(closings.data || [])}
+      <h3 style="font-size:15px;margin:18px 0 10px">Pagamentos recebidos</h3>
+      ${renderPayoutRows(payouts.data || [])}
+    `
+  } catch {
+    box.innerHTML = '<div class="empty">Não foi possível carregar o financeiro.</div>'
+  }
+}
+
+function renderFinancialRows(rows, compact = false) {
+  if (!rows.length) return '<div class="empty">Nenhum lançamento financeiro ainda.</div>'
+  return `<div style="overflow:auto"><table class="table"><thead><tr>
+    ${compact ? '' : '<th>Corretor</th>'}<th>Turma</th><th>Aluno</th><th>Redação</th><th>Concluída</th><th>Valor</th><th>Status</th><th>Regra</th>
+  </tr></thead><tbody>${rows.map(row => `<tr>
+    ${compact ? '' : `<td>${row.child_professor_nome || '—'}</td>`}
+    <td>${row.turma_nome || '—'}</td>
+    <td>${row.aluno_nome || 'Aluno'}</td>
+    <td>${row.correcao_titulo || 'Redação'}</td>
+    <td>${fmtDate(row.corrected_at)}</td>
+    <td><strong>${brl(row.amount)}</strong></td>
+    <td>${financialBadge(row.status)}</td>
+    <td>${row.rule_source || '—'}</td>
+  </tr>`).join('')}</tbody></table></div>`
+}
+
+function renderClosingRows(rows) {
+  if (!rows.length) return '<div class="empty">Nenhum fechamento criado.</div>'
+  return `<div style="overflow:auto"><table class="table"><thead><tr><th>Período</th><th>Qtd.</th><th>Total</th><th>Status</th><th>Criado</th></tr></thead><tbody>
+    ${rows.map(row => `<tr><td>${fmtDate(row.period_start)} a ${fmtDate(row.period_end)}</td><td>${row.entries_count || 0}</td><td><strong>${brl(row.final_amount)}</strong></td><td>${financialBadge(row.status)}</td><td>${fmtDate(row.created_at)}</td></tr>`).join('')}
+  </tbody></table></div>`
+}
+
+function renderPayoutRows(rows) {
+  if (!rows.length) return '<div class="empty">Nenhum pagamento registrado.</div>'
+  return `<div style="overflow:auto"><table class="table"><thead><tr><th>Data</th><th>Valor</th><th>Método</th><th>Referência</th><th>Status</th></tr></thead><tbody>
+    ${rows.map(row => `<tr><td>${fmtDate(row.paid_at || row.created_at)}</td><td><strong>${brl(row.amount)}</strong></td><td>${row.payment_method || 'Manual'}</td><td>${row.reference || '—'}</td><td>${financialBadge(row.status)}</td></tr>`).join('')}
+  </tbody></table></div>`
+}
+
+async function loadFinanceiro() {
+  const box = document.getElementById('financeiro-content')
+  if (!box) return
+  box.innerHTML = '<div class="empty">Carregando financeiro...</div>'
+  try {
+    const [summaryRes, payablesRes, closingsRes, payoutsRes] = await Promise.all([
+      fetch('/api/admin/financial/summary'),
+      fetch('/api/admin/financial/payables'),
+      fetch('/api/admin/financial/closings'),
+      fetch('/api/admin/financial/payouts')
+    ])
+    if (!summaryRes.ok) {
+      const data = await summaryRes.json().catch(() => ({}))
+      box.innerHTML = `<div class="empty">${data.error || 'Financeiro indisponível.'}</div>`
+      return
+    }
+    const summary = await summaryRes.json()
+    const payables = payablesRes.ok ? await payablesRes.json() : { data: [] }
+    const closings = closingsRes.ok ? await closingsRes.json() : { data: [] }
+    const payouts = payoutsRes.ok ? await payoutsRes.json() : { data: [] }
+    const s = summary.summary || {}
+    box.innerHTML = `
+      <div class="grid-3" style="margin-bottom:16px">
+        <div class="kpi-card"><div class="kpi-label">A pagar</div><div class="kpi-value">${brl(s.awaiting_closing)}</div><div class="kpi-sub">aguardando fechamento</div></div>
+        <div class="kpi-card"><div class="kpi-label">Em fechamento</div><div class="kpi-value">${brl(s.in_closing)}</div><div class="kpi-sub">liberado/em fechamento</div></div>
+        <div class="kpi-card"><div class="kpi-label">Pago</div><div class="kpi-value">${brl(s.paid)}</div><div class="kpi-sub">pagamentos registrados</div></div>
+      </div>
+      <h3 style="font-size:15px;margin:18px 0 10px">Correções a pagar</h3>
+      ${renderFinancialRows(payables.data || [])}
+      <h3 style="font-size:15px;margin:18px 0 10px">Fechamentos</h3>
+      ${renderClosingRows(closings.data || [])}
+      <h3 style="font-size:15px;margin:18px 0 10px">Pagamentos realizados</h3>
+      ${renderPayoutRows(payouts.data || [])}
+    `
+  } catch {
+    box.innerHTML = '<div class="empty">Não foi possível carregar o financeiro.</div>'
+  }
+}
+
 function showPage(name, link) {
   if (isChildTeacherMode()) {
-    const allowed = new Set(['dashboard', 'pendentes', 'todas', 'correcao'])
+    const allowed = new Set(['dashboard', 'pendentes', 'todas', 'correcao', 'ganhos'])
     if (!allowed.has(name)) name = 'dashboard'
   }
   // Pré-comentários agora fica dentro do Corretor automático.
@@ -6524,7 +6689,7 @@ function showPage(name, link) {
   document.body.classList.toggle('correcao-mode', name === 'correcao')
   document.querySelectorAll('.sb-item').forEach(i => i.classList.remove('on'))
   if (link) link.classList.add('on')
-  const titles = { dashboard:'Dashboard', site:'Meu site', pendentes:'Correções Pendentes', todas:'Todas as Correções', turmas:'Turmas', alunos:'Alunos', professores:'Professores', temas:'Temas', relatorios:'Relatórios', corretor:'Corretor automático', correcao:'Corrigir redação' }
+  const titles = { dashboard:'Dashboard', site:'Meu site', pendentes:'Correções Pendentes', todas:'Todas as Correções', ganhos:'Meus Ganhos', financeiro:'Financeiro', turmas:'Turmas', alunos:'Alunos', professores:'Professores', temas:'Temas', relatorios:'Relatórios', corretor:'Corretor automático', correcao:'Corrigir redação' }
   document.getElementById('topbar-title').textContent = titles[name] || name
   if (isChildTeacherMode() && name !== 'correcao') {
     const sub = document.getElementById('topbar-sub')
@@ -6532,6 +6697,8 @@ function showPage(name, link) {
   }
   if (name === 'site') loadSite()
   if (name === 'dashboard') { loadStats(); loadCorrecoes('recentes'); loadPagamentosRecentes(); loadNotifications() }
+  if (name === 'ganhos') loadMeusGanhos()
+  if (name === 'financeiro') loadFinanceiro()
   if (name === 'pendentes') loadCorrecoes('pendentes', 'PENDENTES')
   if (name === 'todas') loadCorrecoes('todas')
   if (name === 'turmas') loadTurmas()
