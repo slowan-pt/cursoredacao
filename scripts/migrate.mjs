@@ -10,15 +10,93 @@ const { Client } = pg
 const __dirname = path.dirname(fileURLToPath(import.meta.url))
 
 function splitSqlStatements(sql) {
-  const withoutLineComments = sql
-    .split(/\r?\n/)
-    .map((line) => line.trimStart().startsWith('--') ? '' : line)
-    .join('\n')
+  const statements = []
+  let current = ''
+  let singleQuote = false
+  let doubleQuote = false
+  let lineComment = false
+  let blockComment = false
+  let dollarQuote = ''
 
-  return withoutLineComments
-    .split(';')
-    .map((statement) => statement.trim())
-    .filter(Boolean)
+  for (let i = 0; i < sql.length; i += 1) {
+    const char = sql[i]
+    const next = sql[i + 1] || ''
+
+    if (lineComment) {
+      current += char
+      if (char === '\n') lineComment = false
+      continue
+    }
+
+    if (blockComment) {
+      current += char
+      if (char === '*' && next === '/') {
+        current += next
+        i += 1
+        blockComment = false
+      }
+      continue
+    }
+
+    if (dollarQuote) {
+      current += char
+      if (char === '$' && sql.slice(i, i + dollarQuote.length) === dollarQuote) {
+        current += sql.slice(i + 1, i + dollarQuote.length)
+        i += dollarQuote.length - 1
+        dollarQuote = ''
+      }
+      continue
+    }
+
+    if (!singleQuote && !doubleQuote && char === '-' && next === '-') {
+      current += char + next
+      i += 1
+      lineComment = true
+      continue
+    }
+
+    if (!singleQuote && !doubleQuote && char === '/' && next === '*') {
+      current += char + next
+      i += 1
+      blockComment = true
+      continue
+    }
+
+    if (!singleQuote && !doubleQuote && char === '$') {
+      const match = sql.slice(i).match(/^\$[A-Za-z_][A-Za-z0-9_]*\$|^\$\$/)
+      if (match) {
+        dollarQuote = match[0]
+        current += dollarQuote
+        i += dollarQuote.length - 1
+        continue
+      }
+    }
+
+    if (!doubleQuote && char === "'" && sql[i - 1] !== '\\') {
+      singleQuote = !singleQuote
+      current += char
+      continue
+    }
+
+    if (!singleQuote && char === '"') {
+      doubleQuote = !doubleQuote
+      current += char
+      continue
+    }
+
+    if (!singleQuote && !doubleQuote && char === ';') {
+      const statement = current.trim()
+      if (statement) statements.push(statement)
+      current = ''
+      continue
+    }
+
+    current += char
+  }
+
+  const tail = current.trim()
+  if (tail) statements.push(tail)
+  return statements
 }
 
 async function migrate() {
