@@ -210,6 +210,50 @@ function postPublicId(post: any) {
   return encodeURIComponent(base.replace(/[^\w.-]+/g, '-').replace(/^-+|-+$/g, '').slice(0, 90) || String(post?.id || Date.now()))
 }
 
+function marketplaceFallbackTeachers() {
+  return [
+    {
+      slug: 'puppin-teste',
+      nome: 'Professora Puppin',
+      especialidade: 'Redação para concursos',
+      bio: 'Acompanhamento direto, turmas organizadas e correções detalhadas em uma página própria.',
+      foto_url: '',
+      iniciais: 'PP',
+      url: '/redacao/puppin-teste',
+      site_ativo: true,
+      pacote_ativo: true,
+      source: 'fallback'
+    },
+    {
+      slug: 'slow',
+      nome: 'Prof. Sloan Nascimento',
+      especialidade: 'Redação discursiva e argumentação',
+      bio: 'Perfil de demonstração para professores que querem vender correções e organizar alunos.',
+      foto_url: '',
+      iniciais: 'SN',
+      url: '/redacao/slow',
+      site_ativo: true,
+      pacote_ativo: true,
+      source: 'fallback'
+    }
+  ]
+}
+
+function initialsFromName(name: unknown) {
+  const parts = String(name || 'Professor')
+    .trim()
+    .split(/\s+/)
+    .filter(Boolean)
+    .slice(0, 2)
+  return (parts.map((part) => part[0]).join('') || 'PR').toUpperCase()
+}
+
+function sitePackageActive(site: any, cms: any) {
+  const plan = cms?.platform_plan || cms?.subscription || cms?.billing || {}
+  if (plan?.active === false || plan?.status === 'INACTIVE' || plan?.status === 'EXPIRED') return false
+  return site?.ativo !== false
+}
+
 async function loadSite(env: Env, slug: string) {
   const sb = getAdmin(env)
   const { data: site, error } = await sb.from('sites')
@@ -362,6 +406,13 @@ function renderSitePage(data: { site: any; turmas: any[] }) {
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <title>${esc(site.nome_prof)} — Redação</title>
+<meta name="description" content="${esc(site.bio_prof || layout.profile_text || 'Site público de professor na plataforma Redação com Estratégia.')}">
+<meta property="og:type" content="website">
+<meta property="og:title" content="${esc(site.nome_prof)} — Redação">
+<meta property="og:description" content="${esc(site.bio_prof || layout.profile_text || 'Turmas, conteúdos e correções em um site próprio de professor.')}">
+<meta property="og:url" content="https://redacaocomestrategia.com.br${esc(sitePath)}">
+<link rel="icon" href="/favicon-writing.svg" type="image/svg+xml">
+<meta name="theme-color" content="${esc(brand)}">
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800;900&display=swap" rel="stylesheet">
 <style>
 *{box-sizing:border-box;margin:0;padding:0}
@@ -2446,6 +2497,52 @@ app.post('/api/site/:slug/checkout', async (c) => {
       expirationDate: qrCode?.expirationDate || null
     },
     email_sent: emailResult.sent
+  })
+})
+
+app.get('/api/marketplace/professores', async (c) => {
+  const sb = getAdmin(c.env)
+  const fallback = marketplaceFallbackTeachers()
+  const { data, error } = await sb.from('sites')
+    .select('id, slug, nome_prof, bio_prof, foto_url, cor_primaria, cor_accent, ativo, allowed_origins')
+    .eq('ativo', true)
+    .order('created_at', { ascending: true })
+    .limit(24)
+
+  if (error) {
+    return c.json({ data: fallback, fallback: true, reason: 'database-unavailable' })
+  }
+
+  const real: any[] = []
+  for (const site of data || []) {
+    const cms = parseCms(site)
+    const active = sitePackageActive(site, cms)
+    if (!active) continue
+    const specialty = cms?.marketplace?.especialidade || cms?.layout?.eyebrow || 'Redação e correção textual'
+    real.push({
+      slug: site.slug,
+      nome: site.nome_prof || 'Professor de redação',
+      especialidade: specialty,
+      bio: site.bio_prof || cms?.layout?.profile_text || 'Site ativo com turmas, conteúdos e correções organizadas.',
+      foto_url: site.foto_url || cms?.layout?.profile_photo || cms?.layout?.avatar_image || '',
+      iniciais: initialsFromName(site.nome_prof),
+      url: `/redacao/${encodeURIComponent(site.slug)}`,
+      site_ativo: site.ativo !== false,
+      pacote_ativo: true,
+      source: 'database'
+    })
+  }
+
+  const bySlug = new Map<string, any>()
+  for (const item of real) bySlug.set(item.slug, item)
+  for (const item of fallback) {
+    if ((item.slug === 'puppin-teste' || item.slug === 'slow') && !bySlug.has(item.slug)) bySlug.set(item.slug, item)
+  }
+
+  return c.json({
+    data: [...bySlug.values()].slice(0, 12),
+    fallback: real.length === 0,
+    rule: 'sites.ativo=true e plano/CMS sem status inativo ou expirado'
   })
 })
 

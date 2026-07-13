@@ -6,6 +6,14 @@ Todas as mudanças relevantes deste projeto devem ser registradas aqui.
 
 ### Adicionado
 
+- Home pública de marketplace/SaaS para a raiz `/`:
+  - hero da plataforma Redação com Estratégia;
+  - vitrine de professores ativos com dados vindos de `/api/marketplace/professores`;
+  - fallback controlado para `puppin-teste`, `slow` e card demonstrativo quando a consulta não retornar dados;
+  - planos para professores, seção para alunos, explicação de funcionamento, prova social, FAQ e CTA;
+  - favicon de plataforma para a raiz e favicon de redação para sites de professores.
+- Endpoint público `/api/marketplace/professores` para listar sites ativos e com pacote/plano não inativo no marketplace.
+- Deploy publicado no Worker `cursoredacao`: `33f6728e-68aa-4809-9c3f-4eecfcaa77b9`.
 - Módulo financeiro operacional:
   - painel do professor pai ganhou abas de resumo, corretores, contas a pagar, fechamentos, pagamentos e auditoria;
   - painel do corretor filho ganhou abas de resumo, correções, fechamentos, pagamentos e contestações;

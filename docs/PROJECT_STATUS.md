@@ -1,5 +1,17 @@
 # Redação com Estratégia — Status do Projeto
 
+## Home Marketplace / Plataforma — 2026-07-13
+
+- Status: implementado, publicado no Worker `cursoredacao` e validado remotamente.
+- Escopo: a rota raiz `/` passou a ser uma landing/marketplace da plataforma, separada dos sites individuais dos professores.
+- Arquivos principais: `public/index.html`, `src/routes/site.ts`, `public/favicon.svg`, `public/favicon-platform.svg`, `public/favicon-writing.svg`.
+- Endpoint novo: `/api/marketplace/professores`, com filtro de sites ativos e pacote/plano não inativo, mais fallback controlado para demonstração.
+- Sites de professor preservados: `/redacao/puppin-teste` e `/redacao/slow` existem no banco e permanecem como páginas independentes.
+- Identidade visual: raiz usa favicon de plataforma; páginas de professor usam favicon próprio de redação e metadados por site.
+- Deploy publicado: `33f6728e-68aa-4809-9c3f-4eecfcaa77b9`.
+- Validação remota: `/`, `/health`, `/api/marketplace/professores`, `/redacao/puppin-teste`, `/redacao/slow`, login professor, login aluno e logout passaram no Worker `https://cursoredacao.slowgithub.workers.dev`.
+- Risco pendente: a regra de pacote ativo ainda depende de campos flexíveis no CMS/assinatura; no próximo ciclo, consolidar esse status em coluna/tabela financeira própria.
+
 ## Módulo financeiro interno — Endurecimento transacional — 2026-07-13
 
 - Status: implementado, publicado no Worker `cursoredacao`, migration aplicada no Supabase, `npm run check:all` validado.

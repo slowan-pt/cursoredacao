@@ -3,343 +3,338 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<title>CursosRedação — Preparatório de Redação para Concursos</title>
-<meta name="description" content="Plataforma para cursos, envio e correção de redações com sites independentes por professor.">
+<title>Redação com Estratégia — Plataforma para professores e alunos</title>
+<meta name="description" content="Marketplace educacional para professores de redação criarem sites próprios, venderem pacotes de correção e serem encontrados por alunos.">
 <link rel="canonical" href="https://redacaocomestrategia.com.br/">
 <meta property="og:type" content="website">
-<meta property="og:title" content="Redação com Estratégia">
-<meta property="og:description" content="Cursos, turmas, envio e correção de redações em uma plataforma integrada.">
+<meta property="og:title" content="Redação com Estratégia — Marketplace de professores de redação">
+<meta property="og:description" content="Professores contratam a plataforma, publicam seus sites e aparecem na vitrine. Alunos encontram professores e acessam turmas, conteúdos e correções.">
 <meta property="og:url" content="https://redacaocomestrategia.com.br/">
-<meta name="theme-color" content="#1A3A2A">
+<meta name="theme-color" content="#10281f">
 <link rel="manifest" href="/site.webmanifest">
-<link rel="icon" href="/favicon.svg" type="image/svg+xml">
+<link rel="icon" href="/favicon-platform.svg" type="image/svg+xml">
+<link rel="alternate icon" href="/favicon.svg" type="image/svg+xml">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
 <style>
 *{box-sizing:border-box;margin:0;padding:0}
 :root{
-  --brand:#1A3A2A;--brand2:#2D5C42;--brand3:#3D7A58;--brand-light:#EAF2EC;
-  --accent:#C5F135;--accent-dark:#9ABF1A;--accent-text:#1A2A00;
-  --ink:#0F0F0F;--ink2:#3A3A3A;--ink3:#787878;
-  --surface:#F8F7F4;--card:#FFFFFF;--border:#E8E5E0;
-  --gold:#E8A020;--gold-light:#FEF5E4;
-  --r:8px;--r2:12px;--r3:20px;
+  --brand:#10281f;--brand2:#173b2d;--brand3:#235640;--accent:#d9ff00;--accent2:#b9dc00;
+  --ink:#111513;--ink2:#3e4743;--muted:#73807a;--surface:#f5f7f2;--card:#fff;--line:#dde4dc;
+  --soft:#ebf4ec;--warn:#fff4cf;--danger:#c84040;--r:10px;--r2:18px;--shadow:0 22px 70px rgba(16,40,31,.12)
 }
+html{scroll-behavior:smooth}
 body{font-family:'Inter',system-ui,sans-serif;background:var(--surface);color:var(--ink);-webkit-font-smoothing:antialiased}
 a{text-decoration:none;color:inherit}
-
-/* ── NAV ─────────────────────────────────────────────────── */
-nav{background:var(--brand);padding:0 6%;display:flex;align-items:center;justify-content:space-between;height:62px;position:sticky;top:0;z-index:100}
-.logo{display:flex;align-items:center;gap:10px}
-.logo-mark{background:var(--accent);color:var(--accent-text);font-size:9px;font-weight:900;padding:3px 9px;border-radius:5px;letter-spacing:.06em;text-transform:uppercase}
-.logo-name{font-size:15px;font-weight:700;color:#fff;letter-spacing:-.3px}
+button,a{outline-color:var(--accent)}
+.container{width:min(1180px,88vw);margin:0 auto}
+.nav{height:70px;position:sticky;top:0;z-index:50;background:rgba(245,247,242,.92);backdrop-filter:blur(16px);border-bottom:1px solid rgba(16,40,31,.08)}
+.nav-inner{height:100%;display:flex;align-items:center;justify-content:space-between;gap:20px}
+.logo{display:flex;align-items:center;gap:10px;font-weight:900}
+.logo-mark{width:34px;height:34px;border-radius:9px;background:var(--brand);display:grid;grid-template-columns:1fr 1fr;gap:3px;padding:7px}
+.logo-mark span{background:var(--accent);border-radius:2px}
+.logo-text{letter-spacing:-.04em}.logo-text small{display:block;font-size:10px;font-weight:800;color:var(--muted);letter-spacing:.08em;text-transform:uppercase}
 .nav-links{display:flex;align-items:center;gap:6px}
-.nav-link{font-size:13px;color:rgba(255,255,255,.6);padding:7px 14px;border-radius:var(--r);transition:all .2s}
-.nav-link:hover{color:#fff;background:rgba(255,255,255,.1)}
-.btn-nav{background:var(--accent);color:var(--accent-text);font-size:13px;font-weight:700;padding:8px 20px;border-radius:var(--r);border:none;cursor:pointer;transition:all .2s}
-.btn-nav:hover{background:var(--accent-dark)}
-
-/* ── HERO ────────────────────────────────────────────────── */
-.hero{background:var(--brand);padding:80px 6%;display:flex;align-items:center;gap:60px;min-height:480px}
-.hero-left{flex:1;max-width:520px}
-.hero-tag{display:inline-flex;align-items:center;gap:7px;background:rgba(255,255,255,.08);border:1px solid rgba(255,255,255,.15);color:rgba(255,255,255,.75);font-size:11px;font-weight:700;padding:5px 14px;border-radius:100px;margin-bottom:28px;letter-spacing:.04em;text-transform:uppercase}
-.hero-tag::before{content:'';width:7px;height:7px;background:var(--accent);border-radius:50%;display:inline-block}
-.hero h1{font-size:clamp(36px,4.5vw,56px);font-weight:900;color:#fff;line-height:1.08;letter-spacing:-1.5px;margin-bottom:20px}
-.hero h1 em{color:var(--accent);font-style:normal;display:block}
-.hero-sub{font-size:15px;color:rgba(255,255,255,.6);line-height:1.7;max-width:400px;margin-bottom:36px}
-.hero-btns{display:flex;gap:12px;flex-wrap:wrap}
-.btn-accent{background:var(--accent);color:var(--accent-text);font-size:13px;font-weight:700;padding:12px 24px;border-radius:var(--r);border:none;cursor:pointer;transition:all .2s}
-.btn-accent:hover{background:var(--accent-dark)}
-.btn-ghost{background:rgba(255,255,255,.1);color:#fff;font-size:13px;font-weight:600;padding:12px 24px;border-radius:var(--r);border:1px solid rgba(255,255,255,.2);cursor:pointer;transition:all .2s}
-.btn-ghost:hover{background:rgba(255,255,255,.18)}
-
-/* STATS CARD */
-.hero-right{flex:0 0 320px}
-.stats-card{background:rgba(255,255,255,.07);border:1px solid rgba(255,255,255,.12);border-radius:16px;padding:32px 28px;display:flex;flex-direction:column;gap:0}
-.stat-row{padding:18px 0;border-bottom:1px solid rgba(255,255,255,.08)}
-.stat-row:last-child{border-bottom:none}
-.stat-num{font-size:32px;font-weight:900;color:var(--accent);letter-spacing:-1px;line-height:1}
-.stat-label{font-size:13px;font-weight:600;color:#fff;margin-top:3px}
-.stat-sub{font-size:11px;color:rgba(255,255,255,.45);margin-top:2px}
-
-/* ── TURMAS ──────────────────────────────────────────────── */
-.turmas{padding:80px 6%;background:var(--surface)}
-.section-tag{font-size:11px;font-weight:700;color:var(--brand3);text-transform:uppercase;letter-spacing:.08em;margin-bottom:12px}
-.section-title{font-size:clamp(24px,3vw,36px);font-weight:900;letter-spacing:-.5px;margin-bottom:8px}
-.section-sub{font-size:14px;color:var(--ink3);margin-bottom:44px;line-height:1.6}
-.turmas-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:20px}
-.turma-card{background:var(--card);border:1.5px solid var(--border);border-radius:var(--r2);padding:28px;display:flex;flex-direction:column;gap:0;transition:all .2s}
-.turma-card:hover{box-shadow:0 8px 32px rgba(0,0,0,.08);transform:translateY(-2px)}
-.turma-card.featured{border-color:var(--brand3);box-shadow:0 0 0 1px var(--brand-light)}
-.turma-icon{width:48px;height:48px;border-radius:var(--r);background:var(--brand-light);display:flex;align-items:center;justify-content:center;font-size:24px;margin-bottom:16px}
-.turma-nome{font-size:16px;font-weight:800;margin-bottom:4px;letter-spacing:-.2px}
-.turma-desc{font-size:12px;color:var(--ink3);margin-bottom:14px}
-.badge{display:inline-flex;align-items:center;gap:5px;font-size:11px;font-weight:700;padding:3px 10px;border-radius:100px;margin-bottom:20px}
-.badge-open{background:var(--brand-light);color:var(--brand2)}
-.badge-open::before{content:'•';font-size:14px;color:var(--brand3)}
-.badge-soon{background:var(--gold-light);color:var(--gold)}
-.badge-soon::before{content:'⏳';font-size:10px}
-.turma-items{list-style:none;display:flex;flex-direction:column;gap:8px;margin-bottom:28px;flex:1}
-.turma-items li{font-size:13px;color:var(--ink2);display:flex;align-items:flex-start;gap:8px}
-.turma-items li::before{content:'•';color:var(--brand3);font-size:16px;line-height:1;flex-shrink:0}
-.turma-footer{display:flex;align-items:center;justify-content:space-between;margin-top:auto;padding-top:20px;border-top:1px solid var(--border)}
-.turma-preco{font-size:15px;font-weight:800;color:var(--ink)}
-.turma-preco span{font-size:11px;font-weight:500;color:var(--ink3)}
-.btn-matricular{font-size:12px;font-weight:700;padding:9px 18px;border-radius:var(--r);border:none;cursor:pointer;transition:all .2s}
-.btn-matricular.accent{background:var(--accent);color:var(--accent-text)}
-.btn-matricular.accent:hover{background:var(--accent-dark)}
-.btn-matricular.brand{background:var(--brand);color:#fff}
-.btn-matricular.brand:hover{background:var(--brand2)}
-.btn-matricular.disabled{background:var(--border);color:var(--ink3);cursor:not-allowed}
-
-/* ── DEPOIMENTOS ─────────────────────────────────────────── */
-.depoimentos{padding:80px 6%;background:var(--brand)}
-.depoimentos .section-tag{color:var(--accent)}
-.depoimentos .section-title{color:#fff}
-.dep-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:16px;margin-top:44px}
-.dep-card{background:rgba(255,255,255,.07);border:1px solid rgba(255,255,255,.1);border-radius:var(--r2);padding:24px}
-.dep-stars{color:var(--accent);font-size:16px;letter-spacing:2px;margin-bottom:16px}
-.dep-text{font-size:13px;color:rgba(255,255,255,.8);line-height:1.7;margin-bottom:20px;font-style:italic}
-.dep-author{display:flex;align-items:center;gap:12px}
-.dep-av{width:36px;height:36px;border-radius:50%;background:var(--brand3);color:#fff;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:800;flex-shrink:0}
-.dep-name{font-size:13px;font-weight:700;color:#fff}
-.dep-detail{font-size:11px;color:rgba(255,255,255,.45);margin-top:2px}
-
-/* ── ACESSO ──────────────────────────────────────────────── */
-.acesso{padding:72px 6%;background:var(--surface);text-align:center}
-.acesso .section-title{margin-bottom:8px}
-.acesso p{font-size:14px;color:var(--ink3);margin-bottom:24px}
-.acesso-actions{display:flex;gap:12px;justify-content:center;flex-wrap:wrap}
-.acesso-actions a{min-width:170px;justify-content:center}
-.btn-login{display:inline-flex;align-items:center;justify-content:center;background:var(--brand);color:#fff;font-size:13px;font-weight:800;padding:12px 24px;border-radius:var(--r);transition:all .2s}
-.btn-login:hover{background:var(--brand2)}
-.whatsapp-float{position:fixed;right:22px;bottom:22px;width:58px;height:58px;border-radius:50%;background:#25D366;color:#fff;display:flex;align-items:center;justify-content:center;box-shadow:0 12px 28px rgba(0,0,0,.22);z-index:200;transition:transform .2s,box-shadow .2s,background .2s;border:3px solid #fff}
-.whatsapp-float:hover{background:#1fbd5b;transform:translateY(-2px);box-shadow:0 16px 34px rgba(0,0,0,.28)}
-.whatsapp-float svg{width:32px;height:32px;display:block}
-
-/* ── FOOTER ──────────────────────────────────────────────── */
-footer{background:var(--ink);padding:40px 6%;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:16px}
-.foot-logo{display:flex;align-items:center;gap:10px}
-.foot-p{font-size:12px;color:rgba(255,255,255,.3)}
-
-/* ── RESPONSIVE ──────────────────────────────────────────── */
-@media(max-width:900px){
-  .hero{flex-direction:column;padding:56px 6%;gap:40px}
-  .hero-right{flex:none;width:100%}
-  .stats-card{flex-direction:row;gap:0}
-  .stat-row{flex:1;padding:16px;border-bottom:none;border-right:1px solid rgba(255,255,255,.08);text-align:center}
-  .stat-row:last-child{border-right:none}
-  .turmas-grid,.dep-grid{grid-template-columns:1fr}
-  .nav-links .nav-link{display:none}
-}
-@media(max-width:600px){
-  .stats-card{flex-direction:column}
-  .stat-row{border-right:none;border-bottom:1px solid rgba(255,255,255,.08)}
-}
+.nav-link{font-size:13px;font-weight:700;color:var(--ink2);padding:10px 12px;border-radius:var(--r)}
+.nav-link:hover{background:#fff;color:var(--brand)}
+.btn{display:inline-flex;align-items:center;justify-content:center;border:0;border-radius:var(--r);font-size:13px;font-weight:900;line-height:1;padding:13px 18px;cursor:pointer;transition:transform .18s,background .18s,box-shadow .18s}
+.btn:hover{transform:translateY(-2px)}
+.btn-primary{background:var(--accent);color:#132000;box-shadow:0 12px 30px rgba(217,255,0,.22)}
+.btn-primary:hover{background:var(--accent2)}
+.btn-dark{background:var(--brand);color:#fff}.btn-dark:hover{background:var(--brand2)}
+.btn-light{background:#fff;color:var(--brand);border:1px solid var(--line)}
+.mobile-menu{display:none;background:#fff;border:1px solid var(--line);border-radius:var(--r);padding:10px;font-weight:900}
+.hero{background:var(--brand);color:#fff;position:relative;overflow:hidden}
+.hero::before{content:"";position:absolute;inset:0;background-image:linear-gradient(rgba(255,255,255,.045) 1px,transparent 1px),linear-gradient(90deg,rgba(255,255,255,.045) 1px,transparent 1px);background-size:56px 56px;mask-image:linear-gradient(90deg,#000,transparent 88%)}
+.hero-inner{position:relative;padding:88px 0 76px;display:grid;grid-template-columns:minmax(0,1.05fr) minmax(320px,.95fr);gap:54px;align-items:center}
+.eyebrow{display:inline-flex;align-items:center;gap:8px;padding:7px 12px;border:1px solid rgba(255,255,255,.18);border-radius:999px;color:rgba(255,255,255,.78);font-size:11px;font-weight:900;letter-spacing:.08em;text-transform:uppercase;margin-bottom:24px}
+.eyebrow::before{content:"";width:8px;height:8px;border-radius:50%;background:var(--accent)}
+h1{font-size:clamp(38px,5vw,70px);line-height:1;letter-spacing:-.06em;font-weight:900;max-width:820px}
+.hero-lead{font-size:17px;color:rgba(255,255,255,.72);line-height:1.75;max-width:660px;margin:24px 0 32px}
+.hero-actions{display:flex;flex-wrap:wrap;gap:12px;margin-bottom:34px}
+.hero-proof{display:flex;gap:10px;flex-wrap:wrap}
+.proof-pill{border:1px solid rgba(255,255,255,.14);background:rgba(255,255,255,.07);border-radius:999px;padding:8px 12px;font-size:12px;color:rgba(255,255,255,.76);font-weight:700}
+.platform-panel{background:rgba(255,255,255,.08);border:1px solid rgba(255,255,255,.16);border-radius:24px;padding:22px;box-shadow:0 28px 90px rgba(0,0,0,.18)}
+.panel-top{display:flex;align-items:center;justify-content:space-between;border-bottom:1px solid rgba(255,255,255,.12);padding-bottom:16px;margin-bottom:16px}
+.panel-dots{display:flex;gap:6px}.panel-dots span{width:10px;height:10px;border-radius:50%;background:rgba(255,255,255,.25)}.panel-dots span:first-child{background:var(--accent)}
+.dash-grid{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+.dash-card{background:rgba(255,255,255,.08);border:1px solid rgba(255,255,255,.1);border-radius:15px;padding:16px}
+.dash-card strong{display:block;font-size:26px;color:var(--accent);letter-spacing:-.04em}.dash-card span{font-size:12px;color:rgba(255,255,255,.66)}
+.flow-line{margin-top:14px;display:grid;gap:10px}.flow-line div{height:10px;border-radius:999px;background:rgba(255,255,255,.12);overflow:hidden}.flow-line div span{display:block;height:100%;background:var(--accent)}
+.section{padding:78px 0}
+.section-head{display:flex;align-items:end;justify-content:space-between;gap:24px;margin-bottom:30px}
+.section-kicker{font-size:11px;font-weight:900;letter-spacing:.1em;text-transform:uppercase;color:var(--brand3);margin-bottom:8px}
+h2{font-size:clamp(28px,3.4vw,46px);line-height:1.04;letter-spacing:-.045em;font-weight:900}
+.section-sub{font-size:15px;color:var(--muted);line-height:1.7;max-width:650px;margin-top:10px}
+.teacher-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:18px}
+.teacher-card{background:var(--card);border:1px solid var(--line);border-radius:var(--r2);padding:22px;min-height:280px;box-shadow:0 12px 40px rgba(16,40,31,.06);display:flex;flex-direction:column;gap:14px;transition:transform .2s,box-shadow .2s,border-color .2s}
+.teacher-card:hover{transform:translateY(-5px);box-shadow:var(--shadow);border-color:#bfcfc4}
+.teacher-top{display:flex;align-items:center;gap:14px}
+.avatar{width:68px;height:68px;border-radius:18px;background:linear-gradient(135deg,var(--brand),var(--brand3));color:#fff;display:flex;align-items:center;justify-content:center;font-size:22px;font-weight:900;overflow:hidden;flex:0 0 auto}
+.avatar img{width:100%;height:100%;object-fit:cover}
+.teacher-name{font-weight:900;font-size:18px;letter-spacing:-.03em}.teacher-spec{font-size:12px;color:var(--muted);margin-top:4px}
+.status{display:inline-flex;width:max-content;align-items:center;gap:6px;border-radius:999px;background:var(--soft);color:var(--brand3);font-size:11px;font-weight:900;padding:6px 10px;text-transform:uppercase;letter-spacing:.04em}
+.status::before{content:"";width:7px;height:7px;border-radius:50%;background:#25b45b}
+.teacher-bio{font-size:13px;color:var(--ink2);line-height:1.65;flex:1}
+.empty-note{background:#fff;border:1px dashed #b9c7be;border-radius:var(--r2);padding:18px;color:var(--muted);font-size:13px;margin-bottom:18px;display:none}
+.plans{background:#fff;border-top:1px solid var(--line);border-bottom:1px solid var(--line)}
+.plan-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:18px}
+.plan-card{border:1px solid var(--line);border-radius:22px;padding:26px;background:#fff;display:flex;flex-direction:column;gap:16px;position:relative}
+.plan-card.featured{border-color:var(--brand);box-shadow:var(--shadow);transform:translateY(-8px)}
+.plan-badge{position:absolute;top:18px;right:18px;background:var(--accent);color:#132000;border-radius:999px;padding:5px 9px;font-size:10px;font-weight:900;text-transform:uppercase}
+.plan-name{font-size:20px;font-weight:900}.price{font-size:34px;font-weight:900;letter-spacing:-.05em}.price small{font-size:12px;color:var(--muted);font-weight:700}
+.plan-desc{font-size:13px;color:var(--muted);line-height:1.55}.benefits{display:grid;gap:10px;margin:4px 0 8px}.benefits li{list-style:none;font-size:13px;color:var(--ink2);display:flex;gap:9px}.benefits li::before{content:"✓";color:var(--brand3);font-weight:900}
+.steps{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:16px}
+.step{background:#fff;border:1px solid var(--line);border-radius:var(--r2);padding:22px}.step-num{width:36px;height:36px;border-radius:50%;background:var(--brand);color:#fff;display:grid;place-items:center;font-weight:900;margin-bottom:16px}.step strong{display:block;margin-bottom:8px}.step p{font-size:13px;color:var(--muted);line-height:1.62}
+.audiences{display:grid;grid-template-columns:1fr 1fr;gap:20px}
+.audience{border-radius:24px;padding:34px;border:1px solid var(--line);background:#fff}.audience.dark{background:var(--brand);color:#fff;border-color:var(--brand)}.audience p{color:var(--muted);line-height:1.7;margin:12px 0 20px}.audience.dark p{color:rgba(255,255,255,.7)}
+.trust{background:var(--brand);color:#fff}.metric-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:14px}.metric{background:rgba(255,255,255,.08);border:1px solid rgba(255,255,255,.12);border-radius:var(--r2);padding:22px}.metric strong{font-size:30px;color:var(--accent);letter-spacing:-.04em}.metric span{display:block;color:rgba(255,255,255,.68);font-size:12px;margin-top:4px}
+.faq-grid{display:grid;grid-template-columns:1fr 1fr;gap:14px}.faq-item{background:#fff;border:1px solid var(--line);border-radius:var(--r2);padding:20px}.faq-item strong{display:block;margin-bottom:8px}.faq-item p{font-size:13px;color:var(--muted);line-height:1.6}
+.final-cta{background:#fff}.cta-box{background:var(--brand);color:#fff;border-radius:28px;padding:42px;display:flex;align-items:center;justify-content:space-between;gap:24px}.cta-box p{color:rgba(255,255,255,.72);margin-top:10px;line-height:1.6}
+footer{background:#0b1511;color:rgba(255,255,255,.68);padding:34px 0}.footer-inner{display:flex;justify-content:space-between;gap:20px;align-items:center;flex-wrap:wrap}.footer-links{display:flex;gap:16px;flex-wrap:wrap}.footer-links a{font-size:12px}.footer-links a:hover{color:#fff}
+@media(max-width:980px){.hero-inner{grid-template-columns:1fr}.platform-panel{max-width:560px}.teacher-grid,.plan-grid{grid-template-columns:1fr 1fr}.steps{grid-template-columns:1fr 1fr}.metric-grid{grid-template-columns:1fr 1fr}.section-head{align-items:flex-start;flex-direction:column}.nav-links{display:none}.mobile-menu{display:block}.nav.open .nav-links{display:flex;position:absolute;top:70px;left:0;right:0;background:#fff;border-bottom:1px solid var(--line);padding:12px 6%;flex-direction:column;align-items:stretch}.nav.open .nav-link,.nav.open .btn{width:100%;justify-content:center}}
+@media(max-width:680px){.container{width:min(92vw,1180px)}.hero-inner{padding:60px 0}.teacher-grid,.plan-grid,.steps,.audiences,.metric-grid,.faq-grid{grid-template-columns:1fr}.cta-box{display:block}.cta-box .btn{margin-top:22px}.dash-grid{grid-template-columns:1fr}.plan-card.featured{transform:none}}
 </style>
 </head>
 <body>
-
-<!-- NAV -->
-<nav>
-  <div class="logo">
-    <span class="logo-mark">CURSOS</span>
-    <span class="logo-name">Redação</span>
-  </div>
-  <div class="nav-links">
-    <a href="#turmas" class="nav-link">Turmas</a>
-    <a href="#depoimentos" class="nav-link">Resultados</a>
-    <a href="#acesso" class="nav-link">Entrar</a>
-    <a href="/login.html" class="btn-nav">Acessar plataforma</a>
+<nav class="nav" id="nav">
+  <div class="container nav-inner">
+    <a class="logo" href="/" aria-label="Redação com Estratégia">
+      <span class="logo-mark" aria-hidden="true"><span></span><span></span><span></span><span></span></span>
+      <span class="logo-text">Redação com Estratégia<small>Plataforma</small></span>
+    </a>
+    <button class="mobile-menu" type="button" onclick="document.getElementById('nav').classList.toggle('open')" aria-label="Abrir menu">Menu</button>
+    <div class="nav-links">
+      <a class="nav-link" href="#professores">Professores</a>
+      <a class="nav-link" href="#planos">Planos</a>
+      <a class="nav-link" href="#como-funciona">Como funciona</a>
+      <a class="nav-link" href="#alunos">Para alunos</a>
+      <a class="nav-link" href="/login.html">Entrar</a>
+      <a class="btn btn-primary" href="#planos">Quero contratar</a>
+    </div>
   </div>
 </nav>
 
-<!-- HERO -->
-<section class="hero">
-  <div class="hero-left">
-    <div class="hero-tag">Preparatório de Redação para Concursos</div>
-    <h1>Escreva bem.<em>Passe na prova.</em></h1>
-    <p class="hero-sub">Método direto, correção individualizada e mais de 250 temas comentados. Para quem quer aprovação de verdade.</p>
-    <div class="hero-btns">
-      <a href="#turmas"><button class="btn-accent">Ver turmas abertas</button></a>
-      <a href="#como-funciona"><button class="btn-ghost">Como funciona</button></a>
+<header class="hero">
+  <div class="container hero-inner">
+    <div>
+      <div class="eyebrow">Marketplace + SaaS para redação</div>
+      <h1>Professores com site próprio. Alunos encontrando a correção certa.</h1>
+      <p class="hero-lead">A Redação com Estratégia conecta professores, turmas e alunos em uma plataforma única: vitrine pública, páginas independentes por professor, pacotes de correção, gestão de alunos, financeiro e operação de correções.</p>
+      <div class="hero-actions">
+        <a class="btn btn-primary" href="#planos">Quero contratar um pacote</a>
+        <a class="btn btn-light" href="#professores">Encontrar um professor</a>
+        <a class="btn btn-dark" href="#como-funciona">Ver como funciona</a>
+      </div>
+      <div class="hero-proof">
+        <span class="proof-pill">Sites públicos por professor</span>
+        <span class="proof-pill">Vitrine com plano ativo</span>
+        <span class="proof-pill">Correções, turmas e financeiro</span>
+      </div>
     </div>
+    <aside class="platform-panel" aria-label="Prévia da plataforma">
+      <div class="panel-top">
+        <strong>Operação do professor</strong>
+        <div class="panel-dots" aria-hidden="true"><span></span><span></span><span></span></div>
+      </div>
+      <div class="dash-grid">
+        <div class="dash-card"><strong>Site</strong><span>perfil público e turmas</span></div>
+        <div class="dash-card"><strong>Vitrine</strong><span>aparece com pacote ativo</span></div>
+        <div class="dash-card"><strong>Correções</strong><span>fluxo professor/aluno</span></div>
+        <div class="dash-card"><strong>Equipe</strong><span>corretores direcionados</span></div>
+      </div>
+      <div class="flow-line" aria-hidden="true"><div><span style="width:86%"></span></div><div><span style="width:62%"></span></div><div><span style="width:74%"></span></div></div>
+    </aside>
   </div>
-  <div class="hero-right">
-    <div class="stats-card">
-      <div class="stat-row">
-        <div class="stat-num">1.2k</div>
-        <div class="stat-label">Alunos aprovados</div>
-        <div class="stat-sub">desde 2020</div>
-      </div>
-      <div class="stat-row">
-        <div class="stat-num">9.4</div>
-        <div class="stat-label">Nota média</div>
-        <div class="stat-sub">nas provas da EEAR</div>
-      </div>
-      <div class="stat-row">
-        <div class="stat-num">250+</div>
-        <div class="stat-label">Temas</div>
-        <div class="stat-sub">catalogados e comentados</div>
-      </div>
-    </div>
-  </div>
-</section>
+</header>
 
-<!-- TURMAS -->
-<section class="turmas" id="turmas">
-  <div class="section-tag">Turmas</div>
-  <h2 class="section-title">Escolha seu concurso</h2>
-  <p class="section-sub">Cada turma é focada nos critérios específicos da banca</p>
-
-  <div class="turmas-grid">
-    <!-- ESA -->
-    <div class="turma-card featured">
-      <div class="turma-icon">🌿</div>
-      <div class="turma-nome">ESA / EsPCEx</div>
-      <div class="turma-desc">Redação dissertativa para o Exército</div>
-      <span class="badge badge-open">Vagas abertas</span>
-      <ul class="turma-items">
-        <li>40 aulas em vídeo sob demanda</li>
-        <li>Correções ilimitadas com feedback</li>
-        <li>Acesso direto no WhatsApp</li>
-        <li>Material em PDF + banco de temas</li>
-      </ul>
-      <div class="turma-footer">
-        <div class="turma-preco">R$ 297<span>/turma</span></div>
-        <a href="/login.html"><button class="btn-matricular accent">Matricular</button></a>
-      </div>
-    </div>
-
-    <!-- Marinha -->
-    <div class="turma-card">
-      <div class="turma-icon">✈️</div>
-      <div class="turma-nome">Marinha / Aeronáutica</div>
-      <div class="turma-desc">CN-EAOF, EEAR, CAP</div>
-      <span class="badge badge-open">Vagas abertas</span>
-      <ul class="turma-items">
-        <li>Dissertação expositiva e argumentativa</li>
-        <li>Correção pelo modelo oficial</li>
-        <li>Simulados cronometrados</li>
-      </ul>
-      <div class="turma-footer">
-        <div class="turma-preco">R$ 277<span>/turma</span></div>
-        <a href="/login.html"><button class="btn-matricular brand">Matricular</button></a>
-      </div>
-    </div>
-
-    <!-- Civis -->
-    <div class="turma-card">
-      <div class="turma-icon">⚖️</div>
-      <div class="turma-nome">Concursos Civis</div>
-      <div class="turma-desc">FGV, CESPE, FCC e demais bancas</div>
-      <span class="badge badge-soon">Em breve</span>
-      <ul class="turma-items">
-        <li>Foco nos critérios por banca</li>
-        <li>15 redações corrigidas</li>
-        <li>Glossário jurídico e técnico</li>
-      </ul>
-      <div class="turma-footer">
-        <div class="turma-preco">R$ 247<span>/turma</span></div>
-        <button class="btn-matricular disabled" disabled>Em breve</button>
-      </div>
-    </div>
-  </div>
-</section>
-
-<!-- DEPOIMENTOS -->
-<section class="depoimentos" id="depoimentos">
-  <div class="section-tag">Resultados</div>
-  <h2 class="section-title">Quem passou pelo método</h2>
-
-  <div class="dep-grid">
-    <div class="dep-card">
-      <div class="dep-stars">★★★★★</div>
-      <p class="dep-text">"Tirei nota máxima na redação da Câmara. O professor aponta vícios que nunca perceberia sozinho."</p>
-      <div class="dep-author">
-        <div class="dep-av">ML</div>
+<main>
+  <section class="section" id="professores">
+    <div class="container">
+      <div class="section-head">
         <div>
-          <div class="dep-name">Marcos Lins</div>
-          <div class="dep-detail">Câmara SP — Nota máxima</div>
+          <div class="section-kicker">Professores em destaque</div>
+          <h2>Escolha um professor com site ativo</h2>
+          <p class="section-sub">Alunos podem explorar páginas públicas, propostas, turmas e conteúdos. Professores aparecem aqui enquanto o site e o pacote da plataforma estiverem ativos.</p>
+        </div>
+        <a class="btn btn-light" href="#planos">Como aparecer aqui?</a>
+      </div>
+      <div class="empty-note" id="teachers-note">Mostrando exemplos de vitrine enquanto os dados reais do marketplace são preparados.</div>
+      <div class="teacher-grid" id="teachers-grid" aria-live="polite"></div>
+    </div>
+  </section>
+
+  <section class="section plans" id="planos">
+    <div class="container">
+      <div class="section-head">
+        <div>
+          <div class="section-kicker">Pacotes da plataforma</div>
+          <h2>Planos para professores venderem correções</h2>
+          <p class="section-sub">O professor contrata um pacote para manter o site público, aparecer na vitrine e operar alunos, turmas, correções e equipe em um só lugar.</p>
         </div>
       </div>
+      <div class="plan-grid" id="plans-grid"></div>
     </div>
+  </section>
 
-    <div class="dep-card">
-      <div class="dep-stars">★★★★★</div>
-      <p class="dep-text">"Em 2 meses tirei 19,1 de 20 no DNIT. Não sabia nem começar uma redação antes do curso."</p>
-      <div class="dep-author">
-        <div class="dep-av">CA</div>
+  <section class="section" id="como-funciona">
+    <div class="container">
+      <div class="section-kicker">Como funciona</div>
+      <h2>Do plano ativo à correção entregue</h2>
+      <p class="section-sub">Um fluxo simples para o professor publicar sua presença digital e para o aluno encontrar o acompanhamento certo.</p>
+      <div class="steps" style="margin-top:30px">
+        <article class="step"><div class="step-num">1</div><strong>Professor escolhe um plano</strong><p>O pacote ativa a estrutura comercial e define se o professor aparece na vitrine da plataforma.</p></article>
+        <article class="step"><div class="step-num">2</div><strong>Site público entra no ar</strong><p>A página /redacao/:slug mostra identidade, turmas, conteúdos, CTA e área de acesso do aluno.</p></article>
+        <article class="step"><div class="step-num">3</div><strong>Aluno encontra e contrata</strong><p>O aluno navega pela vitrine, acessa o professor e compra/entra nas turmas disponíveis.</p></article>
+        <article class="step"><div class="step-num">4</div><strong>Correções são gerenciadas</strong><p>Professor controla alunos, turmas, redações, equipe de corretores e financeiro pelo dashboard.</p></article>
+      </div>
+    </div>
+  </section>
+
+  <section class="section" id="alunos">
+    <div class="container audiences">
+      <article class="audience">
+        <div class="section-kicker">Para alunos</div>
+        <h2>Encontre o professor adequado</h2>
+        <p>Veja professores cadastrados, compare especialidades, conheça turmas, conteúdos e propostas antes de entrar na plataforma de envio e acompanhamento de redações.</p>
+        <a class="btn btn-dark" href="#professores">Ver professores</a>
+      </article>
+      <article class="audience dark" id="professores-info">
+        <div class="section-kicker" style="color:var(--accent)">Para professores</div>
+        <h2>Tenha presença, operação e escala</h2>
+        <p>Crie um site próprio, publique turmas e postagens, receba alunos, corrija redações, direcione tarefas para corretores filhos e acompanhe pagamentos.</p>
+        <a class="btn btn-primary" href="#planos">Escolher pacote</a>
+      </article>
+    </div>
+  </section>
+
+  <section class="section trust">
+    <div class="container">
+      <div class="section-head">
         <div>
-          <div class="dep-name">Carla Azevedo</div>
-          <div class="dep-detail">DNIT — 19,1 de 20</div>
+          <div class="section-kicker" style="color:var(--accent)">Confiança operacional</div>
+          <h2>Uma plataforma para organizar o trabalho real de correção</h2>
+          <p class="section-sub" style="color:rgba(255,255,255,.68)">Métricas institucionais de demonstração enquanto a operação pública cresce com dados reais.</p>
         </div>
       </div>
-    </div>
-
-    <div class="dep-card">
-      <div class="dep-stars">★★★★★</div>
-      <p class="dep-text">"A nota da redação me colocou dentro das vagas. Tenho eterna gratidão ao curso."</p>
-      <div class="dep-author">
-        <div class="dep-av">JS</div>
-        <div>
-          <div class="dep-name">Juliana Santos</div>
-          <div class="dep-detail">ESA — Aprovada</div>
-        </div>
+      <div class="metric-grid">
+        <div class="metric"><strong>Multi-site</strong><span>cada professor com página independente</span></div>
+        <div class="metric"><strong>R2</strong><span>uploads privados preparados</span></div>
+        <div class="metric"><strong>Asaas</strong><span>pagamentos em sandbox/homologação</span></div>
+        <div class="metric"><strong>Equipe</strong><span>corretores filhos por professor</span></div>
       </div>
     </div>
-  </div>
-</section>
+  </section>
 
-<!-- COMO FUNCIONA -->
-<section style="padding:72px 6%;background:var(--card)" id="como-funciona">
-  <div style="max-width:860px;margin:0 auto">
-    <div class="section-tag">Como funciona</div>
-    <h2 class="section-title">Simples e direto ao ponto</h2>
-    <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:32px;margin-top:44px">
-      <div style="text-align:center">
-        <div style="width:48px;height:48px;border-radius:50%;background:var(--accent);color:var(--accent-text);display:flex;align-items:center;justify-content:center;font-size:18px;font-weight:900;margin:0 auto 16px">1</div>
-        <h3 style="font-size:15px;font-weight:700;margin-bottom:8px">Você envia a redação</h3>
-        <p style="font-size:13px;color:var(--ink3);line-height:1.6">Upload do PDF ou foto pelo painel do aluno. Rápido e seguro.</p>
-      </div>
-      <div style="text-align:center">
-        <div style="width:48px;height:48px;border-radius:50%;background:var(--accent);color:var(--accent-text);display:flex;align-items:center;justify-content:center;font-size:18px;font-weight:900;margin:0 auto 16px">2</div>
-        <h3 style="font-size:15px;font-weight:700;margin-bottom:8px">O professor corrige</h3>
-        <p style="font-size:13px;color:var(--ink3);line-height:1.6">Marcações diretas no texto, comentários por categoria e nota detalhada.</p>
-      </div>
-      <div style="text-align:center">
-        <div style="width:48px;height:48px;border-radius:50%;background:var(--accent);color:var(--accent-text);display:flex;align-items:center;justify-content:center;font-size:18px;font-weight:900;margin:0 auto 16px">3</div>
-        <h3 style="font-size:15px;font-weight:700;margin-bottom:8px">Você recebe o feedback</h3>
-        <p style="font-size:13px;color:var(--ink3);line-height:1.6">Correção completa disponível no painel com todas as anotações e nota.</p>
+  <section class="section" id="faq">
+    <div class="container">
+      <div class="section-kicker">FAQ</div>
+      <h2>Perguntas rápidas</h2>
+      <div class="faq-grid" style="margin-top:28px">
+        <article class="faq-item"><strong>Como aparecer na vitrine?</strong><p>O professor precisa ter site ativo e pacote da plataforma ativo. Quando o plano expira, ele deixa de aparecer.</p></article>
+        <article class="faq-item"><strong>O que acontece se o plano vencer?</strong><p>A vitrine pode ocultar o professor até a regularização. O bloqueio operacional completo pode ser aplicado pelo admin geral.</p></article>
+        <article class="faq-item"><strong>Posso ter meu próprio site?</strong><p>Sim. Cada professor tem uma rota pública como /redacao/puppin-teste, com cores, turmas, conteúdos e login do próprio site.</p></article>
+        <article class="faq-item"><strong>O aluno compra na plataforma ou com o professor?</strong><p>O aluno encontra o professor pela plataforma e segue para o site público dele, onde entra na turma e acessa a área de aluno.</p></article>
+        <article class="faq-item"><strong>Posso gerenciar equipe?</strong><p>Sim. O professor pode cadastrar corretores filhos e direcionar correções por turma ou aluno, com financeiro interno.</p></article>
+        <article class="faq-item"><strong>Os planos já são cobrança real?</strong><p>Nesta fase os pacotes estão estruturados para contratação/contato e podem virar dados reais de assinatura depois.</p></article>
       </div>
     </div>
-  </div>
-</section>
+  </section>
 
-<!-- ACESSO -->
-<section class="acesso" id="acesso">
-  <div class="section-tag" style="text-align:center">Plataforma</div>
-  <h2 class="section-title">Acesse sua conta</h2>
-  <p>Entre com suas credenciais para acessar o painel.</p>
-  <div class="acesso-actions">
-    <a href="/login.html" class="btn-login">Entrar na plataforma</a>
-  </div>
-</section>
+  <section class="section final-cta">
+    <div class="container cta-box">
+      <div>
+        <h2>Pronto para publicar seu site de professor?</h2>
+        <p>Contrate um pacote, ative sua página pública e comece a organizar alunos, turmas, redações e corretores em uma operação profissional.</p>
+      </div>
+      <a class="btn btn-primary" href="#planos">Ver pacotes</a>
+    </div>
+  </section>
+</main>
 
-<!-- FOOTER -->
 <footer>
-  <div class="foot-logo logo">
-    <span class="logo-mark" style="background:rgba(255,255,255,.15);color:#fff">CURSOS</span>
-    <span class="logo-name" style="color:rgba(255,255,255,.4)">Redação</span>
+  <div class="container footer-inner">
+    <div class="logo">
+      <span class="logo-mark" aria-hidden="true"><span></span><span></span><span></span><span></span></span>
+      <span class="logo-text" style="color:#fff">Redação com Estratégia<small>© 2026</small></span>
+    </div>
+    <div class="footer-links">
+      <a href="#professores">Professores</a>
+      <a href="#planos">Planos</a>
+      <a href="/login.html">Entrar</a>
+      <a href="/robots.txt">Robots</a>
+      <a href="/sitemap.xml">Sitemap</a>
+    </div>
   </div>
-  <p class="foot-p">© 2026 CursosRedação</p>
 </footer>
 
-<a class="whatsapp-float" href="http://api.whatsapp.com/send?phone=5521971214042" target="_blank" rel="noopener" aria-label="Falar no WhatsApp">
-  <svg viewBox="0 0 32 32" aria-hidden="true">
-    <path fill="currentColor" d="M16.02 3.2A12.73 12.73 0 0 0 5.11 22.5L3.2 29l6.68-1.78A12.72 12.72 0 1 0 16.02 3.2Zm0 23.18c-2.05 0-3.96-.6-5.57-1.65l-.4-.25-3.96 1.05 1.06-3.84-.26-.4a10.34 10.34 0 1 1 9.13 5.09Zm5.67-7.75c-.31-.16-1.84-.91-2.13-1.01-.29-.11-.5-.16-.71.15-.21.31-.82 1.01-1 1.22-.18.21-.37.24-.68.08-.31-.16-1.31-.48-2.5-1.54-.92-.82-1.55-1.84-1.73-2.15-.18-.31-.02-.48.14-.64.14-.14.31-.37.47-.55.16-.18.21-.31.31-.52.11-.21.05-.39-.03-.55-.08-.16-.71-1.71-.97-2.34-.25-.61-.51-.52-.71-.53h-.6c-.21 0-.55.08-.84.39-.29.31-1.1 1.08-1.1 2.63s1.13 3.05 1.29 3.26c.16.21 2.23 3.4 5.39 4.76.75.32 1.34.52 1.8.66.76.24 1.45.21 1.99.13.61-.09 1.84-.75 2.1-1.47.26-.72.26-1.34.18-1.47-.08-.13-.29-.21-.6-.37Z"/>
-  </svg>
-</a>
+<script>
+const fallbackTeachers = [
+  { slug:'puppin-teste', nome:'Professora Puppin', especialidade:'Redação para concursos', bio:'Acompanhamento direto, turmas organizadas e correções detalhadas em uma página própria.', iniciais:'PP', url:'/redacao/puppin-teste', site_ativo:true, pacote_ativo:true, source:'fallback' },
+  { slug:'slow', nome:'Prof. Sloan Nascimento', especialidade:'Discursiva e argumentação', bio:'Site de demonstração para professores que querem vender correções e organizar alunos.', iniciais:'SN', url:'/redacao/slow', site_ativo:true, pacote_ativo:true, source:'fallback' },
+  { slug:'modelo', nome:'Professora Modelo', especialidade:'FGV, Cebraspe e carreiras públicas', bio:'Exemplo de card para demonstrar como a vitrine fica quando novos professores entram.', iniciais:'PM', url:'#planos', site_ativo:true, pacote_ativo:true, source:'fallback' }
+]
 
+const platformPlans = [
+  { id:'essencial', nome:'Essencial', preco:'R$ 97', periodo:'/mês', descricao:'Para professor solo validar o próprio site e vender correções com organização.', destaque:false, cta:'Quero o Essencial', beneficios:['Site público do professor','Aparece na vitrine com plano ativo','Turmas e conteúdos básicos','Área de aluno e envio de redação','Suporte inicial de configuração'] },
+  { id:'profissional', nome:'Profissional', preco:'R$ 197', periodo:'/mês', descricao:'Para professores com operação recorrente, turmas pagas e rotina de correções.', destaque:true, cta:'Quero o Profissional', beneficios:['Tudo do Essencial','Vitrine com prioridade visual','Financeiro e pagamentos em sandbox/produção','Corretores filhos e direcionamento','Relatórios operacionais'] },
+  { id:'equipe', nome:'Escola/Equipe', preco:'Sob consulta', periodo:'', descricao:'Para equipes, escolas e professores com vários corretores e alto volume.', destaque:false, cta:'Falar sobre equipe', beneficios:['Sites e operações com maior volume','Gestão avançada de corretores','Apoio na implantação','Regras financeiras internas','Roadmap de integrações dedicadas'] }
+]
+
+function esc(value) {
+  return String(value == null ? '' : value).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]))
+}
+
+function renderTeachers(list, usedFallback) {
+  const grid = document.getElementById('teachers-grid')
+  const note = document.getElementById('teachers-note')
+  const rows = Array.isArray(list) && list.length ? list : fallbackTeachers
+  note.style.display = usedFallback ? 'block' : 'none'
+  grid.innerHTML = rows.map(t => `
+    <article class="teacher-card">
+      <div class="teacher-top">
+        <div class="avatar">${t.foto_url ? `<img src="${esc(t.foto_url)}" alt="${esc(t.nome)}">` : esc(t.iniciais || 'PR')}</div>
+        <div>
+          <div class="teacher-name">${esc(t.nome)}</div>
+          <div class="teacher-spec">${esc(t.especialidade || 'Redação')}</div>
+        </div>
+      </div>
+      <span class="status">site ativo</span>
+      <p class="teacher-bio">${esc(t.bio || 'Professor com página pública ativa na plataforma.')}</p>
+      <a class="btn btn-dark" href="${esc(t.url || ('/redacao/' + t.slug))}">Acessar página</a>
+    </article>
+  `).join('')
+}
+
+function renderPlans() {
+  document.getElementById('plans-grid').innerHTML = platformPlans.map(plan => `
+    <article class="plan-card ${plan.destaque ? 'featured' : ''}">
+      ${plan.destaque ? '<span class="plan-badge">recomendado</span>' : ''}
+      <div class="plan-name">${esc(plan.nome)}</div>
+      <div class="price">${esc(plan.preco)} <small>${esc(plan.periodo)}</small></div>
+      <p class="plan-desc">${esc(plan.descricao)}</p>
+      <ul class="benefits">${plan.beneficios.map(item => `<li>${esc(item)}</li>`).join('')}</ul>
+      <a class="btn ${plan.destaque ? 'btn-primary' : 'btn-dark'}" href="http://api.whatsapp.com/send?phone=5521971214042&text=${encodeURIComponent('Olá, quero contratar o plano ' + plan.nome + ' da Redação com Estratégia.')}">${esc(plan.cta)}</a>
+    </article>
+  `).join('')
+}
+
+async function loadTeachers() {
+  try {
+    const response = await fetch('/api/marketplace/professores', { headers: { accept: 'application/json' } })
+    if (!response.ok) throw new Error('marketplace unavailable')
+    const payload = await response.json()
+    renderTeachers(payload.data, Boolean(payload.fallback))
+  } catch {
+    renderTeachers(fallbackTeachers, true)
+  }
+}
+
+document.querySelectorAll('.nav a').forEach(link => {
+  link.addEventListener('click', () => document.getElementById('nav').classList.remove('open'))
+})
+renderPlans()
+loadTeachers()
+</script>
 </body>
 </html>

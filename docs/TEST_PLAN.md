@@ -2,6 +2,20 @@
 
 Atualizado em: 2026-07-13.
 
+## Home Marketplace — 2026-07-13
+
+- `npm run check:all`: passou localmente antes e depois do deploy.
+- Verificação de banco somente leitura: slugs `puppin-teste` e `slow` existem e estão ativos.
+- Deploy validado: Worker `cursoredacao`, versão `33f6728e-68aa-4809-9c3f-4eecfcaa77b9`.
+- `/`: HTTP 200 e contém hero, vitrine de professores, planos, funcionamento e seção para alunos.
+- `/api/marketplace/professores`: HTTP 200 com JSON de professores/sites ativos.
+- `/redacao/puppin-teste`: HTTP 200.
+- `/redacao/slow`: HTTP 200.
+- `/login.html`: HTTP 200.
+- `npm run smoke:prod -- --base=https://cursoredacao.slowgithub.workers.dev`: passou.
+- Login professor, `/api/admin/stats`, `/api/admin/site` e logout: passaram.
+- Login aluno, `/api/aluno/stats`, `/api/aluno/turmas` e logout: passaram.
+
 ## Resultado Remoto MVP — 2026-07-13
 
 - `npm run check:all`: passou.
