@@ -52,7 +52,7 @@ function isPaidStatus(status: unknown) {
 }
 
 async function validateCheckoutCodeForRegistration(env: Env, siteId: string, email: string, turmaId?: string, checkoutCode?: string) {
-  if (!turmaId) return { ok: true }
+  if (!turmaId) return { ok: false, error: 'Escolha uma turma e finalize o pagamento antes de criar o cadastro.' }
   const code = String(checkoutCode || '').trim().toUpperCase()
   if (!code) return { ok: false, error: 'Informe o código do pagamento enviado para este e-mail.' }
 
@@ -268,6 +268,7 @@ auth.post('/register', async (c) => {
   const password = body.password
   const nome = body.nome?.trim()
   if (!email || !password || !nome) return c.json({ error: 'Nome, email e senha são obrigatórios' }, 400)
+  if (String(password).length < 6) return c.json({ error: 'A senha deve ter pelo menos 6 caracteres.' }, 400)
 
   const sb = getAdmin(c.env)
   let siteId = body.site_id || null

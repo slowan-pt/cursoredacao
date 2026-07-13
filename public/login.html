@@ -168,18 +168,25 @@ const siteSlug = params.get('site') || (pathMatch ? decodeURIComponent(pathMatch
 const siteBase = siteSlug ? `/redacao/${encodeURIComponent(siteSlug)}` : ''
 const paidTurmaId = params.get('paid') === '1' ? (params.get('turma') || '') : ''
 const checkoutCodeParam = params.get('checkout_code') || params.get('code') || ''
+const requestedSignup = params.get('signup') === '1'
+const canShowPaidSignup = Boolean(siteSlug && requestedSignup && paidTurmaId && checkoutCodeParam && params.get('email'))
 const paidLoginHref = paidTurmaId ? `${location.pathname}?paid=1&turma=${encodeURIComponent(paidTurmaId)}&email=${encodeURIComponent(params.get('email') || '')}` : '#'
 const paidSignupHref = paidTurmaId ? `${location.pathname}?signup=1&paid=1&turma=${encodeURIComponent(paidTurmaId)}&email=${encodeURIComponent(params.get('email') || '')}&nome=${encodeURIComponent(params.get('nome') || '')}&checkout_code=${encodeURIComponent(checkoutCodeParam)}` : '#'
-if (siteSlug && params.get('signup') === '1' && params.get('turma') && params.get('paid') !== '1') {
+if (siteSlug && requestedSignup && params.get('turma') && params.get('paid') !== '1') {
   location.replace(`${siteBase}/checkout/${encodeURIComponent(params.get('turma'))}`)
 }
 if (siteSlug) {
   document.body.classList.add('tenant-login')
+  document.body.classList.add(canShowPaidSignup ? 'auth-signup-only' : 'auth-login-only')
   document.getElementById('form-sub').textContent = 'Entre com seu email e senha. Seu perfil sera identificado automaticamente.'
   document.querySelector('.back-link a').href = siteBase
   applyTenantTheme()
 }
-if (params.get('signup') === '1') document.getElementById('signup-box').classList.add('open')
+if (canShowPaidSignup) {
+  document.getElementById('signup-box').classList.add('open')
+} else if (siteSlug && requestedSignup) {
+  showErr('Cadastro disponível somente após pagamento confirmado de uma turma.')
+}
 if (params.get('email')) {
   document.getElementById('email').value = params.get('email')
   document.getElementById('signup-email').value = params.get('email')
@@ -190,7 +197,6 @@ if (paidTurmaId) {
   codeField.classList.add('open')
   document.getElementById('signup-checkout-code').required = true
   document.getElementById('signup-checkout-code').value = checkoutCodeParam
-  document.body.classList.add(params.get('signup') === '1' ? 'auth-signup-only' : 'auth-login-only')
   document.getElementById('login-signup-link').href = paidSignupHref
   document.getElementById('signup-login-link').href = paidLoginHref
 }
@@ -263,7 +269,8 @@ function toggleSignup(e) {
     location.href = paidSignupHref
     return
   }
-  document.getElementById('signup-box').classList.toggle('open')
+  showErr('Para criar cadastro, primeiro escolha uma turma e finalize o pagamento.')
+  if (siteBase) setTimeout(() => { location.href = `${siteBase}#turmas` }, 1200)
 }
 
 async function doLogin(e) {
@@ -311,6 +318,10 @@ async function registerStudent(e) {
   hideAlerts()
   if (!siteSlug) {
     showErr('Abra o cadastro pelo site do professor.')
+    return
+  }
+  if (!canShowPaidSignup) {
+    showErr('Cadastro disponível somente após pagamento confirmado de uma turma.')
     return
   }
 
