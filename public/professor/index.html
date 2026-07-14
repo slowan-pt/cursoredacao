@@ -7231,6 +7231,8 @@ function renderFinanceiro() {
   const box = document.getElementById('financeiro-content')
   if (!box) return
   const s = financialState.summary?.summary || {}
+  const revenue = financialState.summary?.revenue || null
+  const ownerBalance = financialState.summary?.owner_balance || null
   const tabs = financialTabs(financialState.tab, [
     { id: 'overview', label: 'Resumo' },
     { id: 'teachers', label: 'Corretores' },
@@ -7244,14 +7246,19 @@ function renderFinanceiro() {
     <div class="kpi-card"><div class="kpi-label">Em fechamento</div><div class="kpi-value">${brl(s.in_closing)}</div><div class="kpi-sub">liberado/em fechamento</div></div>
     <div class="kpi-card"><div class="kpi-label">Pago</div><div class="kpi-value">${brl(s.paid)}</div><div class="kpi-sub">pagamentos registrados</div></div>
   </div>`
+  const revenueCards = revenue ? `<div class="grid-3" style="margin-bottom:16px">
+    <div class="kpi-card"><div class="kpi-label">Receita recebida</div><div class="kpi-value">${brl(revenue.amount_total)}</div><div class="kpi-sub">${Number(revenue.count_total || 0)} matrícula(s) pagas</div></div>
+    <div class="kpi-card"><div class="kpi-label">Custo com corretores</div><div class="kpi-value">${brl(ownerBalance?.correction_costs || 0)}</div><div class="kpi-sub">correções remuneradas geradas</div></div>
+    <div class="kpi-card"><div class="kpi-label">Saldo antes de taxas</div><div class="kpi-value">${brl(ownerBalance?.before_fees || 0)}</div><div class="kpi-sub">receita menos corretores</div></div>
+  </div>` : ''
   let content = ''
   if (financialState.tab === 'teachers') content = renderTeacherFinancialRows()
   else if (financialState.tab === 'payables') content = renderPayablesPanel()
   else if (financialState.tab === 'closings') content = renderClosingRows(financialState.closings)
   else if (financialState.tab === 'payouts') content = renderPayoutRows(financialState.payouts)
   else if (financialState.tab === 'audit') content = renderAuditRows()
-  else content = `${cards}${renderFinancialMiniChart(financialState.payables.concat(financialState.closings))}<div class="grid-2" style="margin-bottom:16px"><div class="card-soft"><strong>Corretores ativos</strong><p>${financialState.teachers.filter(t => t.ativo !== false).length}</p></div><div class="card-soft"><strong>Fechamentos abertos</strong><p>${financialState.closings.filter(c => ['IN_CLOSING','APPROVED','PARTIALLY_PAID'].includes(c.status)).length}</p></div></div><h3 style="font-size:15px;margin:18px 0 10px">Correções a pagar</h3>${renderFinancialRows(financialState.payables.slice(0, 8))}`
-  box.innerHTML = `${tabs}${renderExportButtons([{ id:'payables', label:'CSV a pagar' }, { id:'closings', label:'CSV fechamentos' }, { id:'payouts', label:'CSV pagamentos' }, { id:'audit', label:'CSV auditoria' }])}${financialState.tab === 'overview' ? content : cards + content}`
+  else content = `${revenueCards}${cards}${renderFinancialMiniChart(financialState.payables.concat(financialState.closings))}<div class="grid-2" style="margin-bottom:16px"><div class="card-soft"><strong>Corretores ativos</strong><p>${financialState.teachers.filter(t => t.ativo !== false).length}</p></div><div class="card-soft"><strong>Fechamentos abertos</strong><p>${financialState.closings.filter(c => ['IN_CLOSING','APPROVED','PARTIALLY_PAID'].includes(c.status)).length}</p></div></div><h3 style="font-size:15px;margin:18px 0 10px">Correções a pagar</h3>${renderFinancialRows(financialState.payables.slice(0, 8))}`
+  box.innerHTML = `${tabs}${renderExportButtons([{ id:'payables', label:'CSV a pagar' }, { id:'closings', label:'CSV fechamentos' }, { id:'payouts', label:'CSV pagamentos' }, { id:'audit', label:'CSV auditoria' }])}${financialState.tab === 'overview' ? content : revenueCards + cards + content}`
 }
 
 function renderTeacherFinancialRows() {

@@ -1633,6 +1633,31 @@ function summarizeFinancialEntries(entries: any[], payouts: any[] = []) {
   }
 }
 
+async function summarizePaymentRevenue(sb: ReturnType<typeof getAdmin>, siteId: string) {
+  const { data, error } = await sb.from('payments')
+    .select('status, amount_cents, paid_at, updated_at, created_at')
+    .eq('site_id', siteId)
+    .in('status', ['RECEIVED', 'CONFIRMED'])
+    .order('paid_at', { ascending: false })
+    .limit(5000)
+  if (error) return { error }
+
+  const rows = data || []
+  const now = new Date()
+  const today = now.toISOString().slice(0, 10)
+  const month = today.slice(0, 7)
+  const year = today.slice(0, 4)
+  const when = (row: any) => String(row.paid_at || row.updated_at || row.created_at || '')
+  const sum = (items: any[]) => centsToMoney(items.reduce((total, row) => total + Number(row.amount_cents || 0), 0))
+  return {
+    count_total: rows.length,
+    amount_total: sum(rows),
+    amount_today: sum(rows.filter((row: any) => when(row).startsWith(today))),
+    amount_month: sum(rows.filter((row: any) => when(row).startsWith(month))),
+    amount_year: sum(rows.filter((row: any) => when(row).startsWith(year)))
+  }
+}
+
 function getIdempotencyKey(c: any, body: any, operation: string) {
   const explicit = String(c.req.header('Idempotency-Key') || body?.idempotency_key || '').trim()
   return explicit || `${operation}:${crypto.randomUUID()}`
@@ -1723,10 +1748,18 @@ app.get('/financial/summary', async (c) => {
     .limit(20)
   if (childUserId) payoutQuery = payoutQuery.eq('child_professor_id', childUserId)
   const { data: payouts } = await payoutQuery
+  const summary = summarizeFinancialEntries(entries.data, payouts || [])
+  const revenue = childUserId ? null : await summarizePaymentRevenue(ctx.sb, ctx.siteId)
+  if (revenue && 'error' in revenue) return c.json(dbError(), 500)
   return c.json({
     sandbox: c.env.ASAAS_ENV === 'sandbox',
     role: childUserId ? 'CHILD_TEACHER' : 'PARENT_TEACHER',
-    summary: summarizeFinancialEntries(entries.data, payouts || [])
+    summary,
+    revenue: revenue || null,
+    owner_balance: childUserId ? null : {
+      before_fees: centsToMoney(Math.max(0, Math.round(Number((revenue as any)?.amount_total || 0) * 100) - Math.round(Number(summary.amount_total || 0) * 100))),
+      correction_costs: summary.amount_total
+    }
   })
 })
 
