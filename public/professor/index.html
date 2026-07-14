@@ -184,6 +184,20 @@
                   <input id="cms-aluno-cta" placeholder="Entrar na área do aluno" onfocus="pulseSitePreview('aluno')" oninput="updateSitePreview();pulseSitePreview('aluno')">
                 </div>
               </div>
+              <div class="cms-menu-section" data-layout-section="conteudos">
+                <div class="cms-menu-section-title">Configuração da seção no site</div>
+                <div class="site-field-grid">
+                  <div class="form-group">
+                    <label>Título dos conteúdos</label>
+                    <input id="cms-posts-title" placeholder="Dicas e materiais" onfocus="pulseSitePreview('posts')" oninput="updateSitePreview();pulseSitePreview('posts')">
+                  </div>
+                  <div class="form-group">
+                    <label>Introdução dos conteúdos</label>
+                    <input id="cms-posts-intro" placeholder="Publicações, notícias e matérias do professor." onfocus="pulseSitePreview('posts')" oninput="updateSitePreview();pulseSitePreview('posts')">
+                  </div>
+                </div>
+                <label class="inline-switch"><input type="checkbox" id="hide-posts-section" onchange="updateSitePreview();pulseSitePreview('posts')"> Ocultar esta seção no site público</label>
+              </div>
               <div class="site-tools-row site-action-row">
                 <button type="button" class="btn site-default-btn" onclick="setDashboardModelDefault()">Definir como modelo padrão</button>
                 <button type="submit" class="btn btn-accent">Salvar site</button>
@@ -262,23 +276,6 @@
         </div>
         <div id="alert-conteudos" class="alert alert-err"></div>
         <div id="alert-conteudos-ok" class="alert alert-ok"></div>
-        <div class="cms-menu-section">
-          <div class="cms-menu-section-title">Configuração da seção no site</div>
-          <div class="site-field-grid">
-            <div class="form-group">
-              <label>Título dos conteúdos</label>
-              <input id="cms-posts-title" placeholder="Dicas e materiais" onfocus="pulseSitePreview('posts')" oninput="updateSitePreview();pulseSitePreview('posts')">
-            </div>
-            <div class="form-group">
-              <label>Introdução dos conteúdos</label>
-              <input id="cms-posts-intro" placeholder="Publicações, notícias e matérias do professor." onfocus="pulseSitePreview('posts')" oninput="updateSitePreview();pulseSitePreview('posts')">
-            </div>
-          </div>
-          <div class="content-section-actions">
-            <label class="inline-switch"><input type="checkbox" id="hide-posts-section" onchange="updateSitePreview();pulseSitePreview('posts')"> Ocultar esta seção no site público</label>
-            <button type="button" class="btn btn-brand btn-sm" onclick="saveContentSettings()">Salvar configuração</button>
-          </div>
-        </div>
         <div class="cms-post-list content-post-list" id="cms-post-list"></div>
       </div>
     </div>
