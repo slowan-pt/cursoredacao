@@ -79,57 +79,52 @@
           </div>
           <form onsubmit="saveSite(event)">
             <div class="site-tab-panel on" data-site-tab-panel="layout">
-              <div class="form-group">
-                <label>Nome exibido no site</label>
-                <input id="site-nome" required onfocus="pulseSitePreview('nome')" oninput="updateSitePreview();pulseSitePreview('nome')">
-              </div>
-              <div class="form-group">
-                <label>Descrição / bio</label>
-                <textarea id="site-bio" placeholder="Apresente sua proposta, método, público e diferenciais" onfocus="pulseSitePreview('bio')" oninput="updateSitePreview();pulseSitePreview('bio')"></textarea>
-              </div>
-              <div class="form-group">
-                <label>WhatsApp do site</label>
-                <input id="site-whatsapp" placeholder="Ex: 5521971214042" inputmode="numeric">
-                <div class="hint">Informe país + DDD + número. Ex: 55 21 97121-4042.</div>
-              </div>
-              <div id="site-colors" class="site-field-grid">
-                <div class="form-group">
-                  <label>Cor primária</label>
-                  <div class="color-field">
-                    <input type="color" id="site-cor" value="#1A3A2A" onfocus="pulseSitePreview('hero')" oninput="syncColor('site-cor','site-cor-code');updateSitePreview();pulseSitePreview('hero')">
-                    <input id="site-cor-code" value="#1A3A2A" placeholder="#1A3A2A ou rgb(26,58,42)" onfocus="pulseSitePreview('hero')" oninput="syncCode('site-cor-code','site-cor');updateSitePreview();pulseSitePreview('hero')">
+              <div class="cms-menu-section" data-layout-section="cores">
+                <div class="cms-menu-section-title">Cores do site</div>
+                <div id="site-colors" class="site-field-grid">
+                  <div class="form-group">
+                    <label>Cor primária</label>
+                    <div class="color-field">
+                      <input type="color" id="site-cor" value="#1A3A2A" onfocus="pulseSitePreview('hero')" oninput="syncColor('site-cor','site-cor-code');updateSitePreview();pulseSitePreview('hero')">
+                      <input id="site-cor-code" value="#1A3A2A" placeholder="#1A3A2A ou rgb(26,58,42)" onfocus="pulseSitePreview('hero')" oninput="syncCode('site-cor-code','site-cor');updateSitePreview();pulseSitePreview('hero')">
+                    </div>
+                  </div>
+                  <div class="form-group">
+                    <label>Cor de destaque</label>
+                    <div class="color-field">
+                      <input type="color" id="site-accent" value="#C5F135" onfocus="pulseSitePreview('cta')" oninput="syncColor('site-accent','site-accent-code');updateSitePreview();pulseSitePreview('cta')">
+                      <input id="site-accent-code" value="#C5F135" placeholder="#C5F135 ou rgb(197,241,53)" onfocus="pulseSitePreview('cta')" oninput="syncCode('site-accent-code','site-accent');updateSitePreview();pulseSitePreview('cta')">
+                    </div>
                   </div>
                 </div>
-                <div class="form-group">
-                  <label>Cor de destaque</label>
-                  <div class="color-field">
-                    <input type="color" id="site-accent" value="#C5F135" onfocus="pulseSitePreview('cta')" oninput="syncColor('site-accent','site-accent-code');updateSitePreview();pulseSitePreview('cta')">
-                    <input id="site-accent-code" value="#C5F135" placeholder="#C5F135 ou rgb(197,241,53)" onfocus="pulseSitePreview('cta')" oninput="syncCode('site-accent-code','site-accent');updateSitePreview();pulseSitePreview('cta')">
-                  </div>
-                </div>
+                <div class="contrast-hint" id="site-contrast-hint"></div>
               </div>
-              <div class="site-tools-row">
-                <button type="button" class="btn btn-sec" onclick="setDashboardModelDefault()">Definir modelo como padrão</button>
-                <button type="submit" class="btn btn-accent">Salvar site</button>
-              </div>
-              <div class="contrast-hint" id="site-contrast-hint"></div>
               <div class="cms-menu-section" data-layout-section="cabecalho">
                 <div class="cms-menu-section-title">Cabeçalho</div>
                 <div class="form-group">
-                  <label>Etiqueta acima do título</label>
-                  <input id="cms-eyebrow" placeholder="Site independente do professor" onfocus="pulseSitePreview('eyebrow')" oninput="updateSitePreview();pulseSitePreview('eyebrow')">
+                  <label>Nome exibido no site</label>
+                  <input id="site-nome" required onfocus="pulseSitePreview('nome')" oninput="updateSitePreview();pulseSitePreview('nome')">
                 </div>
                 <div class="form-group">
-                  <label>Texto do botão principal</label>
-                  <input id="cms-cta" placeholder="Criar acesso de aluno" onfocus="pulseSitePreview('cta')" oninput="updateSitePreview();pulseSitePreview('cta')">
+                  <label>Etiqueta acima do título</label>
+                  <input id="cms-eyebrow" placeholder="Site independente do professor" onfocus="pulseSitePreview('eyebrow')" oninput="updateSitePreview();pulseSitePreview('eyebrow')">
                 </div>
                 <div class="form-group">
                   <label>Título principal</label>
                   <input id="cms-hero-title" placeholder="Redação com acompanhamento direto." onfocus="pulseSitePreview('hero-title')" oninput="updateSitePreview();pulseSitePreview('hero-title')">
                 </div>
                 <div class="form-group">
-                  <label>Texto do cartão do professor</label>
-                  <textarea id="cms-profile-text" placeholder="Explique como funciona sua área, turmas e acompanhamento" onfocus="pulseSitePreview('profile')" oninput="updateSitePreview();pulseSitePreview('profile')"></textarea>
+                  <label>Descrição / bio</label>
+                  <textarea id="site-bio" placeholder="Apresente sua proposta, método, público e diferenciais" onfocus="pulseSitePreview('bio')" oninput="updateSitePreview();pulseSitePreview('bio')"></textarea>
+                </div>
+                <div class="form-group">
+                  <label>Texto do botão principal</label>
+                  <input id="cms-cta" placeholder="Criar acesso de aluno" onfocus="pulseSitePreview('cta')" oninput="updateSitePreview();pulseSitePreview('cta')">
+                </div>
+                <div class="form-group">
+                  <label>WhatsApp do site</label>
+                  <input id="site-whatsapp" placeholder="Ex: 5521971214042" inputmode="numeric">
+                  <div class="hint">Informe país + DDD + número. Ex: 55 21 97121-4042.</div>
                 </div>
                 <div class="form-group">
                   <label>Exibição do cartão do professor</label>
@@ -137,7 +132,14 @@
                     <label><input type="radio" name="profile-display-mode" value="text" checked onchange="setProfileDisplayMode('text');pulseSitePreview('profile')"> Texto</label>
                     <label><input type="radio" name="profile-display-mode" value="photo" onchange="setProfileDisplayMode('photo');pulseSitePreview('profile')"> Foto</label>
                   </div>
-                  <div class="profile-photo-editor" id="profile-photo-editor">
+                </div>
+                <div class="form-group">
+                  <label>Texto do cartão do professor</label>
+                  <textarea id="cms-profile-text" placeholder="Explique como funciona sua área, turmas e acompanhamento" onfocus="pulseSitePreview('profile')" oninput="updateSitePreview();pulseSitePreview('profile')"></textarea>
+                </div>
+                <div class="form-group">
+                  <label>Foto do professor</label>
+                  <div class="profile-photo-editor on" id="profile-photo-editor">
                     <div class="profile-photo-actions">
                       <label class="file-button">
                         Escolher foto
@@ -195,6 +197,10 @@
                   <label>Texto do botão da Área Aluno</label>
                   <input id="cms-aluno-cta" placeholder="Entrar na área do aluno" onfocus="pulseSitePreview('aluno')" oninput="updateSitePreview();pulseSitePreview('aluno')">
                 </div>
+              </div>
+              <div class="site-tools-row site-action-row">
+                <button type="button" class="btn site-default-btn" onclick="setDashboardModelDefault()">Definir como modelo padrão</button>
+                <button type="submit" class="btn btn-accent">Salvar site</button>
               </div>
             </div>
             <div class="site-tab-panel" data-site-tab-panel="turmas">
@@ -301,6 +307,7 @@
         </div>
         <aside class="site-preview-pane">
           <a class="btn btn-brand btn-sm" id="site-public-link" href="#" target="_blank" rel="noopener">Visualizar site</a>
+          <button type="button" class="btn btn-accent floating-save-site" id="floating-save-site" onclick="saveSite()">Salvar alterações não salvas</button>
           <div class="preview-unsaved" id="preview-unsaved" style="display:none">⚠ Pré-visualização — alterações não salvas</div>
           <div class="site-preview-card" id="site-preview-card">
             <div class="site-preview-nav">
@@ -1338,6 +1345,10 @@ async function loadSite() {
   renderAvaliacaoModos()
   refreshAvaliacaoSelect()
   updateSitePreview()
+  const unsaved = document.getElementById('preview-unsaved')
+  if (unsaved) unsaved.style.display = 'none'
+  const floatingSave = document.getElementById('floating-save-site')
+  if (floatingSave) floatingSave.style.display = 'none'
 }
 
 function isChildTeacherMode() {
@@ -1409,6 +1420,8 @@ async function saveSite(e) {
   document.getElementById('alert-site-ok').style.display = 'block'
   const unsaved = document.getElementById('preview-unsaved')
   if (unsaved) unsaved.style.display = 'none'
+  const floatingSave = document.getElementById('floating-save-site')
+  if (floatingSave) floatingSave.style.display = 'none'
   loadSite()
 }
 
@@ -2939,6 +2952,8 @@ function updateSitePreview() {
   // Indicador de alterações não salvas.
   const unsaved = document.getElementById('preview-unsaved')
   if (unsaved) unsaved.style.display = 'block'
+  const floatingSave = document.getElementById('floating-save-site')
+  if (floatingSave) floatingSave.style.display = 'inline-flex'
   renderLayoutPreview()
 }
 
