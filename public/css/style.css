@@ -46,6 +46,16 @@ img{max-width:100%}
 .kpi-label{font-size:11px;font-weight:600;color:var(--ink3);text-transform:uppercase;letter-spacing:.06em}
 .kpi-value{font-size:28px;font-weight:800;color:var(--ink);letter-spacing:-1px}
 .kpi-sub{font-size:11px;color:var(--ink3)}
+.finance-kpi-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(210px,1fr));gap:14px;margin-bottom:16px}
+.finance-tabs{display:flex;gap:6px;flex-wrap:wrap;border:1px solid var(--border);background:var(--surface);border-radius:14px;padding:6px;margin:0 0 14px}
+.finance-tabs .alunos-tab{border-radius:10px}
+.finance-help{display:inline-flex;align-items:center;justify-content:center;width:17px;height:17px;border-radius:50%;border:1px solid var(--border);background:#fff;color:var(--brand);font-size:11px;font-weight:900;margin-left:5px;vertical-align:middle;cursor:help}
+.finance-legend{border:1px solid var(--border);background:linear-gradient(180deg,#fff,var(--surface));border-radius:12px;padding:12px 14px;margin:0 0 14px;color:var(--ink2)}
+.finance-legend strong{display:block;color:var(--ink);font-size:13px;margin-bottom:6px}
+.finance-legend ul{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:5px 16px;margin:0;padding:0;list-style:none;font-size:12px;line-height:1.45}
+.finance-muted{font-size:12px;color:var(--ink3);line-height:1.45}
+.finance-ref{display:block;max-width:220px;white-space:normal}
+.finance-details{font-size:12px;color:var(--ink2);line-height:1.45;max-width:360px}
 
 /* ── Turmas / alunos ─────────────────────────────────────── */
 .turma-row{margin-bottom:10px;display:flex;align-items:center;gap:12px;flex-wrap:wrap}
@@ -819,7 +829,8 @@ details[open].corretor-accordion .corretor-accordion-summary::before{transform:r
   .site-tab-card .btn{width:100%;justify-content:center}
   .action-stack{width:100%;justify-content:stretch}
   .action-stack .btn{flex:1 1 140px;justify-content:center}
-  .table-wrap,.card[style*="overflow"],#financeiro-content{overflow-x:auto}
+  .table-wrap,.card[style*="overflow"]{overflow-x:auto}
+  #financeiro-content{overflow-x:visible}
   .table{min-width:720px}
   #page-financeiro .card,#page-ganhos .card,#page-alunos .card{overflow:hidden}
   #page-financeiro table,#page-ganhos table,#page-alunos table{min-width:720px}

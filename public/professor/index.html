@@ -7107,6 +7107,158 @@ function financialBadge(status) {
   return `<span class="tag ${status === 'PAID' ? 'tag-done' : status === 'CANCELED' ? 'tag-pend' : 'tag-prog'}">${labels[status] || status || '—'}</span>`
 }
 
+function financialStatusHelp(status) {
+  const helps = {
+    AWAITING_CLOSING: 'Correção já gerou valor para o corretor, mas ainda não entrou em um fechamento de pagamento.',
+    IN_CLOSING: 'Lançamento agrupado em um fechamento que ainda está em conferência.',
+    APPROVED: 'Fechamento conferido e liberado para registrar o pagamento.',
+    PARTIALLY_PAID: 'Parte do valor já foi paga; ainda há saldo pendente.',
+    PAID: 'Valor quitado e registrado no sistema.',
+    CANCELED: 'Fechamento cancelado; os lançamentos não devem ser pagos por ele.',
+    REVERSED: 'Pagamento estornado ou desfeito.',
+    DISPUTED: 'Corretor contestou o lançamento e ele precisa de revisão.'
+  }
+  return helps[status] || 'Status financeiro interno.'
+}
+
+function financeInfo(text) {
+  return `<span class="finance-help" title="${esc(text)}" aria-label="${esc(text)}">i</span>`
+}
+
+function thInfo(label, text) {
+  return `${esc(label)}${financeInfo(text)}`
+}
+
+function financialRuleLabel(rule) {
+  const labels = {
+    LEGACY_CHILD_CMS: 'Valor padrão herdado do cadastro antigo do corretor',
+    CHILD_TURMA: 'Valor específico deste corretor nesta turma',
+    CHILD: 'Valor padrão definido para este corretor',
+    TURMA: 'Valor padrão definido para a turma'
+  }
+  return labels[rule] || (rule ? humanizeCode(rule) : 'Sem regra definida')
+}
+
+function financialPaymentMethodLabel(method) {
+  const labels = {
+    MANUAL: 'Registrado manualmente',
+    PIX: 'Pix',
+    ASAAS: 'Asaas',
+    CASH: 'Dinheiro',
+    BANK_TRANSFER: 'Transferência bancária',
+    SMOKE: 'Teste de homologação'
+  }
+  return labels[method] || (method ? humanizeCode(method) : 'Manual')
+}
+
+function financialReferenceLabel(reference) {
+  const ref = String(reference || '').trim()
+  if (!ref) return 'Sem referência'
+  if (/SMOKE/i.test(ref)) return 'Teste de homologação'
+  if (/REVERSE/i.test(ref)) return 'Estorno do pagamento'
+  if (/PARTIAL/i.test(ref)) return 'Pagamento parcial'
+  if (/FINAL/i.test(ref)) return 'Pagamento final'
+  if (ref.length > 36) return `Referência ${ref.slice(0, 8)}...${ref.slice(-6)}`
+  return ref
+}
+
+function financialActionLabel(action) {
+  const labels = {
+    COMPENSATION_CREATED: 'Lançamento criado',
+    COMPENSATION_DISPUTED: 'Lançamento contestado',
+    CLOSING_CREATED: 'Fechamento criado',
+    CLOSING_APPROVED: 'Fechamento aprovado',
+    CLOSING_ADJUSTED: 'Ajuste no fechamento',
+    CLOSING_CANCELED: 'Fechamento cancelado',
+    PAYOUT_CREATED: 'Pagamento registrado',
+    PAYOUT_REVERSED: 'Pagamento estornado'
+  }
+  return labels[action] || humanizeCode(action)
+}
+
+function financialOriginLabel(origin) {
+  const labels = {
+    teacher_compensation_entries: 'Lançamentos de correção',
+    teacher_payment_closings: 'Fechamentos',
+    teacher_payment_payouts: 'Pagamentos',
+    financial_audit_events: 'Auditoria financeira'
+  }
+  return labels[origin] || humanizeCode(origin)
+}
+
+function humanizeCode(value) {
+  return String(value || '—').toLowerCase().replace(/_/g, ' ').replace(/\b\w/g, ch => ch.toUpperCase())
+}
+
+function financialDetailsSummary(metadata) {
+  const data = metadata && typeof metadata === 'object' ? metadata : {}
+  const parts = []
+  if (data.reason) parts.push(`Motivo: ${data.reason}`)
+  if (data.notes) parts.push(`Observação: ${data.notes}`)
+  if (data.amount_cents != null) parts.push(`Valor: ${brl(Number(data.amount_cents) / 100)}`)
+  if (data.status) parts.push(`Status: ${financialStatusLabel(data.status)}`)
+  if (data.payment_method) parts.push(`Método: ${financialPaymentMethodLabel(data.payment_method)}`)
+  if (data.reference) parts.push(`Referência: ${financialReferenceLabel(data.reference)}`)
+  if (data.entries_count != null) parts.push(`Lançamentos: ${data.entries_count}`)
+  return parts.length ? parts.join(' · ') : 'Evento registrado para rastreabilidade.'
+}
+
+function financialStatusLabel(status) {
+  const html = financialBadge(status)
+  const match = html.match(/>([^<]+)</)
+  return match ? match[1] : (status || '—')
+}
+
+function financeLegend(type) {
+  const map = {
+    overview: {
+      title: 'Como ler este resumo',
+      items: [
+        'Receita recebida: soma das matrículas pagas pelos alunos.',
+        'Custo com corretores: valores gerados pelas correções feitas por corretores vinculados.',
+        'Saldo antes de taxas: receita recebida menos custo com corretores, sem descontar taxas externas.',
+        'Regra: mostra qual configuração definiu o valor a pagar por uma correção.',
+        'Aguardando fechamento: correção já gerou valor, mas ainda não foi agrupada para pagamento.'
+      ]
+    },
+    payables: {
+      title: 'Como ler “A pagar”',
+      items: [
+        'Regra: explica de onde veio o valor pago ao corretor por aquela correção.',
+        'Aguardando fechamento: valor devido, mas ainda não agrupado para pagamento.',
+        'Você pode selecionar lançamentos do mesmo corretor para criar um fechamento.'
+      ]
+    },
+    closings: {
+      title: 'Como ler “Fechamentos”',
+      items: [
+        'Bruto: soma original das correções incluídas no fechamento.',
+        'Ajustes: acréscimos ou descontos manuais antes do pagamento.',
+        'Total: valor final que deverá ser pago ao corretor.'
+      ]
+    },
+    payouts: {
+      title: 'Como ler “Pagamentos”',
+      items: [
+        'Método: forma como o pagamento foi registrado, por exemplo manual, Pix ou teste.',
+        'Referência: comprovante, observação ou código interno do pagamento.',
+        'Status revertido significa que o pagamento foi estornado/desfeito.'
+      ]
+    },
+    audit: {
+      title: 'Como ler “Auditoria”',
+      items: [
+        'Ação: o que aconteceu no financeiro.',
+        'Origem: área do sistema onde a ação foi registrada.',
+        'Detalhes: resumo dos dados importantes daquele evento.'
+      ]
+    }
+  }
+  const data = map[type]
+  if (!data) return ''
+  return `<div class="finance-legend"><strong>${esc(data.title)}</strong><ul>${data.items.map(item => `<li>${esc(item)}</li>`).join('')}</ul></div>`
+}
+
 function brl(value) {
   return `R$ ${formatMoneyBR(Number(value || 0))}`
 }
@@ -7125,7 +7277,7 @@ const financialState = {
 }
 
 function financialTabs(active, items, target) {
-  return `<div class="alunos-tabs" style="margin-bottom:14px">${items.map(item => `
+  return `<div class="finance-tabs">${items.map(item => `
     <button class="alunos-tab ${active === item.id ? 'active' : ''}" type="button" onclick="${target}('${item.id}')">${esc(item.label)}</button>
   `).join('')}</div>`
 }
@@ -7250,7 +7402,7 @@ function renderGanhos() {
 function renderFinancialRows(rows, compact = false, options = {}) {
   if (!rows.length) return '<div class="empty">Nenhum lançamento financeiro ainda.</div>'
   return `<div style="overflow:auto"><table class="table"><thead><tr>
-    ${options.selectable ? '<th></th>' : ''}${compact ? '' : '<th>Corretor</th>'}<th>Turma</th><th>Aluno</th><th>Redação</th><th>Concluída</th><th>Valor</th><th>Status</th><th>Regra</th>${options.childActions ? '<th>Ações</th>' : ''}
+    ${options.selectable ? '<th></th>' : ''}${compact ? '' : `<th>${thInfo('Corretor', 'Pessoa que fez ou receberá por esta correção.')}</th>`}<th>${thInfo('Turma', 'Turma à qual a redação pertence.')}</th><th>${thInfo('Aluno', 'Aluno que enviou a redação.')}</th><th>${thInfo('Redação', 'Atividade ou redação corrigida.')}</th><th>${thInfo('Concluída', 'Data em que a correção foi finalizada.')}</th><th>${thInfo('Valor', 'Valor devido ao corretor por esta correção.')}</th><th>${thInfo('Status', 'Situação do lançamento financeiro.')}</th><th>${thInfo('Regra', 'Origem do valor calculado para pagar o corretor.')}</th>${options.childActions ? `<th>${thInfo('Ações', 'Operações disponíveis para este lançamento.')}</th>` : ''}
   </tr></thead><tbody>${rows.map(row => `<tr>
     ${options.selectable ? `<td><input type="checkbox" ${financialState.selectedPayables.has(row.id) ? 'checked' : ''} onchange="togglePayableSelection('${esc(row.id)}', this.checked)"></td>` : ''}
     ${compact ? '' : `<td>${esc(row.child_professor_nome || '—')}</td>`}
@@ -7259,16 +7411,16 @@ function renderFinancialRows(rows, compact = false, options = {}) {
     <td>${esc(row.correcao_titulo || 'Redação')}</td>
     <td>${fmtDate(row.corrected_at)}</td>
     <td><strong>${brl(row.amount)}</strong></td>
-    <td>${financialBadge(row.status)}</td>
-    <td>${esc(row.rule_source || '—')}</td>
+    <td>${financialBadge(row.status)}${financeInfo(financialStatusHelp(row.status))}</td>
+    <td>${esc(financialRuleLabel(row.rule_source))}${financeInfo('Mostra qual configuração definiu o valor desta correção.')}</td>
     ${options.childActions ? `<td>${row.status === 'AWAITING_CLOSING' ? `<button class="btn btn-sec btn-sm" type="button" onclick="disputeCompensation('${esc(row.id)}')">Contestar</button>` : '—'}</td>` : ''}
   </tr>`).join('')}</tbody></table></div>`
 }
 
 function renderClosingRows(rows, compact = false) {
   if (!rows.length) return '<div class="empty">Nenhum fechamento criado.</div>'
-  return `<div style="overflow:auto"><table class="table"><thead><tr>${compact ? '' : '<th>Corretor</th>'}<th>Período</th><th>Qtd.</th><th>Bruto</th><th>Ajustes</th><th>Total</th><th>Status</th><th>Criado</th>${compact ? '' : '<th>Ações</th>'}</tr></thead><tbody>
-    ${rows.map(row => `<tr>${compact ? '' : `<td>${esc(row.child_professor_nome || '—')}</td>`}<td>${fmtDate(row.period_start)} a ${fmtDate(row.period_end)}</td><td>${row.entries_count || 0}</td><td>${brl(row.gross_amount)}</td><td>${brl(row.adjustments_amount)}</td><td><strong>${brl(row.final_amount)}</strong></td><td>${financialBadge(row.status)}</td><td>${fmtDate(row.created_at)}</td>${compact ? '' : `<td>${renderClosingActions(row)}</td>`}</tr>`).join('')}
+  return `<div style="overflow:auto"><table class="table"><thead><tr>${compact ? '' : `<th>${thInfo('Corretor', 'Corretor que receberá este fechamento.')}</th>`}<th>${thInfo('Período', 'Intervalo de datas coberto pelo fechamento.')}</th><th>${thInfo('Qtd.', 'Quantidade de correções incluídas.')}</th><th>${thInfo('Bruto', 'Soma original das correções, antes de ajustes.')}</th><th>${thInfo('Ajustes', 'Acréscimos ou descontos manuais aplicados.')}</th><th>${thInfo('Total', 'Valor final a pagar depois dos ajustes.')}</th><th>${thInfo('Status', 'Situação atual do fechamento.')}</th><th>${thInfo('Criado', 'Data em que o fechamento foi criado.')}</th>${compact ? '' : `<th>${thInfo('Ações', 'Aprovar, ajustar, pagar ou cancelar este fechamento.')}</th>`}</tr></thead><tbody>
+    ${rows.map(row => `<tr>${compact ? '' : `<td>${esc(row.child_professor_nome || '—')}</td>`}<td>${fmtDate(row.period_start)} a ${fmtDate(row.period_end)}</td><td>${row.entries_count || 0}</td><td>${brl(row.gross_amount)}</td><td>${brl(row.adjustments_amount)}</td><td><strong>${brl(row.final_amount)}</strong></td><td>${financialBadge(row.status)}${financeInfo(financialStatusHelp(row.status))}</td><td>${fmtDate(row.created_at)}</td>${compact ? '' : `<td>${renderClosingActions(row)}</td>`}</tr>`).join('')}
   </tbody></table></div>`
 }
 
@@ -7283,8 +7435,8 @@ function renderClosingActions(row) {
 
 function renderPayoutRows(rows, compact = false) {
   if (!rows.length) return '<div class="empty">Nenhum pagamento registrado.</div>'
-  return `<div style="overflow:auto"><table class="table"><thead><tr>${compact ? '' : '<th>Corretor</th>'}<th>Data</th><th>Valor</th><th>Método</th><th>Referência</th><th>Status</th>${compact ? '' : '<th>Ações</th>'}</tr></thead><tbody>
-    ${rows.map(row => `<tr>${compact ? '' : `<td>${esc(row.child_professor_nome || '—')}</td>`}<td>${fmtDate(row.paid_at || row.created_at)}</td><td><strong>${brl(row.amount)}</strong></td><td>${esc(row.payment_method || 'Manual')}</td><td>${esc(row.reference || '—')}</td><td>${financialBadge(row.status)}</td>${compact ? '' : `<td>${row.status !== 'REVERSED' ? `<button class="btn btn-danger btn-sm" type="button" onclick="reversePayout('${esc(row.id)}')">Estornar</button>` : '—'}</td>`}</tr>`).join('')}
+  return `<div style="overflow:auto"><table class="table"><thead><tr>${compact ? '' : `<th>${thInfo('Corretor', 'Corretor que recebeu ou receberá o pagamento.')}</th>`}<th>${thInfo('Data', 'Data registrada para o pagamento.')}</th><th>${thInfo('Valor', 'Valor pago neste registro.')}</th><th>${thInfo('Método', 'Forma como o pagamento foi feito ou registrado.')}</th><th>${thInfo('Referência', 'Comprovante, observação ou código interno do pagamento.')}</th><th>${thInfo('Status', 'Situação deste pagamento.')}</th>${compact ? '' : `<th>${thInfo('Ações', 'Permite estornar quando necessário.')}</th>`}</tr></thead><tbody>
+    ${rows.map(row => `<tr>${compact ? '' : `<td>${esc(row.child_professor_nome || '—')}</td>`}<td>${fmtDate(row.paid_at || row.created_at)}</td><td><strong>${brl(row.amount)}</strong></td><td>${esc(financialPaymentMethodLabel(row.payment_method))}</td><td><span class="finance-ref" title="${esc(row.reference || '')}">${esc(financialReferenceLabel(row.reference))}</span></td><td>${financialBadge(row.status)}${financeInfo(financialStatusHelp(row.status))}</td>${compact ? '' : `<td>${row.status !== 'REVERSED' ? `<button class="btn btn-danger btn-sm" type="button" onclick="reversePayout('${esc(row.id)}')">Estornar</button>` : '—'}</td>`}</tr>`).join('')}
   </tbody></table></div>`
 }
 
@@ -7333,29 +7485,30 @@ function renderFinanceiro() {
     { id: 'payouts', label: 'Pagamentos' },
     { id: 'audit', label: 'Auditoria' }
   ], 'setFinanceiroTab')
-  const cards = `<div class="grid-3" style="margin-bottom:16px">
+  const cards = `
     <div class="kpi-card"><div class="kpi-label">A pagar</div><div class="kpi-value">${brl(s.awaiting_closing)}</div><div class="kpi-sub">aguardando fechamento</div></div>
     <div class="kpi-card"><div class="kpi-label">Em fechamento</div><div class="kpi-value">${brl(s.in_closing)}</div><div class="kpi-sub">liberado/em fechamento</div></div>
     <div class="kpi-card"><div class="kpi-label">Pago</div><div class="kpi-value">${brl(s.paid)}</div><div class="kpi-sub">pagamentos registrados</div></div>
-  </div>`
-  const revenueCards = revenue ? `<div class="grid-3" style="margin-bottom:16px">
+  `
+  const revenueCards = revenue ? `
     <div class="kpi-card"><div class="kpi-label">Receita recebida</div><div class="kpi-value">${brl(revenue.amount_total)}</div><div class="kpi-sub">${Number(revenue.count_total || 0)} matrícula(s) pagas</div></div>
     <div class="kpi-card"><div class="kpi-label">Custo com corretores</div><div class="kpi-value">${brl(ownerBalance?.correction_costs || 0)}</div><div class="kpi-sub">correções remuneradas geradas</div></div>
     <div class="kpi-card"><div class="kpi-label">Saldo antes de taxas</div><div class="kpi-value">${brl(ownerBalance?.before_fees || 0)}</div><div class="kpi-sub">receita menos corretores</div></div>
-  </div>` : ''
+  ` : ''
+  const topMetrics = `<div class="finance-kpi-grid">${revenueCards}${cards}</div>`
   let content = ''
   if (financialState.tab === 'teachers') content = renderTeacherFinancialRows()
   else if (financialState.tab === 'payables') content = renderPayablesPanel()
   else if (financialState.tab === 'closings') content = renderClosingRows(financialState.closings)
   else if (financialState.tab === 'payouts') content = renderPayoutRows(financialState.payouts)
   else if (financialState.tab === 'audit') content = renderAuditRows()
-  else content = `${revenueCards}${cards}${renderFinancialMiniChart(financialState.payables.concat(financialState.closings))}<div class="grid-2" style="margin-bottom:16px"><div class="card-soft"><strong>Corretores ativos</strong><p>${financialState.teachers.filter(t => t.ativo !== false).length}</p></div><div class="card-soft"><strong>Fechamentos abertos</strong><p>${financialState.closings.filter(c => ['IN_CLOSING','APPROVED','PARTIALLY_PAID'].includes(c.status)).length}</p></div></div><h3 style="font-size:15px;margin:18px 0 10px">Correções a pagar</h3>${renderFinancialRows(financialState.payables.slice(0, 8))}`
-  box.innerHTML = `${tabs}${renderExportButtons([{ id:'payables', label:'CSV a pagar' }, { id:'closings', label:'CSV fechamentos' }, { id:'payouts', label:'CSV pagamentos' }, { id:'audit', label:'CSV auditoria' }])}${financialState.tab === 'overview' ? content : revenueCards + cards + content}`
+  else content = `${financeLegend('overview')}${renderFinancialMiniChart(financialState.payables.concat(financialState.closings))}<div class="grid-2" style="margin-bottom:16px"><div class="card-soft"><strong>Corretores ativos</strong><p>${financialState.teachers.filter(t => t.ativo !== false).length}</p></div><div class="card-soft"><strong>Fechamentos abertos</strong><p>${financialState.closings.filter(c => ['IN_CLOSING','APPROVED','PARTIALLY_PAID'].includes(c.status)).length}</p></div></div><h3 style="font-size:15px;margin:18px 0 10px">Correções a pagar</h3>${renderFinancialRows(financialState.payables.slice(0, 8))}`
+  box.innerHTML = `${topMetrics}${tabs}${renderExportButtons([{ id:'payables', label:'CSV a pagar' }, { id:'closings', label:'CSV fechamentos' }, { id:'payouts', label:'CSV pagamentos' }, { id:'audit', label:'CSV auditoria' }])}${financialState.tab === 'overview' ? content : financeLegend(financialState.tab) + content}`
 }
 
 function renderTeacherFinancialRows() {
   if (!financialState.teachers.length) return '<div class="empty">Nenhum corretor com regra financeira.</div>'
-  return `<div style="overflow:auto"><table class="table"><thead><tr><th>Corretor</th><th>Status</th><th>Correções</th><th>A pagar</th><th>Em fechamento</th><th>Pago</th><th>Último pagamento</th></tr></thead><tbody>
+  return `<div style="overflow:auto"><table class="table"><thead><tr><th>${thInfo('Corretor', 'Professor/corretor vinculado a você.')}</th><th>${thInfo('Status', 'Indica se o corretor está ativo para trabalhar.')}</th><th>${thInfo('Correções', 'Quantidade de correções remuneradas registradas.')}</th><th>${thInfo('A pagar', 'Valor gerado, ainda sem fechamento.')}</th><th>${thInfo('Em fechamento', 'Valor agrupado em fechamento ainda não quitado.')}</th><th>${thInfo('Pago', 'Total já registrado como pago.')}</th><th>${thInfo('Último pagamento', 'Data do último pagamento registrado.')}</th></tr></thead><tbody>
     ${financialState.teachers.map(row => `<tr><td><strong>${esc(row.nome)}</strong><br><small>${esc(row.email || '')}</small></td><td>${row.ativo ? '<span class="tag tag-done">Ativo</span>' : '<span class="tag tag-pend">Inativo</span>'}</td><td>${row.corrections_count || 0}</td><td><strong>${brl(row.awaiting_closing)}</strong></td><td>${brl(row.in_closing)}</td><td>${brl(row.paid)}</td><td>${fmtDate(row.last_payment_at)}</td></tr>`).join('')}
   </tbody></table></div>`
 }
@@ -7415,8 +7568,8 @@ function renderPayablesPanel() {
 
 function renderAuditRows() {
   if (!financialState.audit.length) return '<div class="empty">Nenhum evento de auditoria ainda.</div>'
-  return `<div style="overflow:auto"><table class="table"><thead><tr><th>Data</th><th>Ação</th><th>Origem</th><th>Detalhes</th></tr></thead><tbody>
-    ${financialState.audit.map(row => `<tr><td>${fmtDateTime(row.created_at)}</td><td><strong>${esc(row.action)}</strong></td><td>${esc(row.target_table || '—')}</td><td><small>${esc(JSON.stringify(row.metadata || {})).slice(0, 180)}</small></td></tr>`).join('')}
+  return `<div style="overflow:auto"><table class="table"><thead><tr><th>${thInfo('Data', 'Quando o evento financeiro foi registrado.')}</th><th>${thInfo('Ação', 'O que aconteceu no financeiro.')}</th><th>${thInfo('Origem', 'Parte do sistema que gerou o registro.')}</th><th>${thInfo('Detalhes', 'Resumo dos dados importantes do evento.')}</th></tr></thead><tbody>
+    ${financialState.audit.map(row => `<tr><td>${fmtDateTime(row.created_at)}</td><td><strong>${esc(financialActionLabel(row.action))}</strong></td><td>${esc(financialOriginLabel(row.target_table || '—'))}</td><td><div class="finance-details">${esc(financialDetailsSummary(row.metadata || {}))}</div></td></tr>`).join('')}
   </tbody></table></div>`
 }
 
