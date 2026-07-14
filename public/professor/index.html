@@ -829,6 +829,11 @@
           <label><input type="checkbox" id="t-matriculas" checked> Matrículas abertas</label>
           <label><input type="checkbox" id="t-envios" checked> Alunos podem enviar redações</label>
         </div>
+        <div class="form-group" style="margin-top:12px">
+          <label>Redações por aluno</label>
+          <input type="number" id="t-limite-redacoes" min="1" step="1" value="3" inputmode="numeric">
+          <div class="hint">Quantidade máxima de redações que cada aluno poderá enviar nesta turma. Padrão: 3.</div>
+        </div>
       </section>
       <section class="turma-form-section">
         <div class="form-group">
@@ -4440,6 +4445,7 @@ function openTurmaModal(id) {
   document.getElementById('t-status').value = 'ABERTA'
   document.getElementById('t-matriculas').checked = true
   document.getElementById('t-envios').checked = true
+  document.getElementById('t-limite-redacoes').value = '3'
   document.getElementById('turma-modal-title').textContent = 'Nova Turma'
   document.getElementById('turma-submit').textContent = 'Criar Turma'
 
@@ -4462,6 +4468,7 @@ function openTurmaModal(id) {
     document.getElementById('t-status').value = turma.status || 'ABERTA'
     document.getElementById('t-matriculas').checked = turma.settings?.matriculas_abertas !== false
     document.getElementById('t-envios').checked = turma.settings?.envios_abertos !== false
+    document.getElementById('t-limite-redacoes').value = Math.max(1, Math.floor(Number(turma.settings?.limite_redacoes_por_aluno) || 3))
     document.getElementById('turma-modal-title').textContent = 'Editar Turma'
     document.getElementById('turma-submit').textContent = 'Salvar Turma'
   }
@@ -4558,6 +4565,7 @@ async function saveTurmaSettings(id) {
     body: JSON.stringify({
       matriculas_abertas: document.getElementById('t-matriculas').checked,
       envios_abertos: document.getElementById('t-envios').checked,
+      limite_redacoes_por_aluno: Math.max(1, Math.floor(Number(document.getElementById('t-limite-redacoes').value) || 3)),
       imagem_url: document.getElementById('t-imagem').value.trim(),
       destaque: document.getElementById('t-destaque').value.trim(),
       beneficios: document.getElementById('t-beneficios').value.trim(),

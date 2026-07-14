@@ -271,6 +271,17 @@ app.post('/correcoes', async (c) => {
   if (settings?.envios_abertos === false) {
     return c.json({ error: 'O envio de redações está fechado para esta turma.' }, 403)
   }
+  const limiteRedacoes = Math.max(1, Math.floor(Number(settings?.limite_redacoes_por_aluno) || 3))
+  const { count: redacoesEnviadas, error: countErr } = await sb.from('correcoes')
+    .select('id', { count: 'exact', head: true })
+    .eq('site_id', profile.site_id)
+    .eq('turma_id', turma_id)
+    .eq('aluno_id', user.sub)
+    .neq('status', 'EXCLUIDA_PELO_PROFESSOR')
+  if (countErr) return c.json(dbError(), 500)
+  if ((redacoesEnviadas ?? 0) >= limiteRedacoes) {
+    return c.json({ error: `Você já atingiu o limite de ${limiteRedacoes} redação(ões) nesta turma.` }, 403)
+  }
   const credit = cms.student_credits?.[user.sub] || {}
   const creditosAtuais = Math.max(0, Number(credit.creditos) || 0)
   if (creditExpired(credit.vence_em)) {

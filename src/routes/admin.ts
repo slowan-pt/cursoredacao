@@ -1215,6 +1215,7 @@ app.get('/turmas', async (c) => {
         settings: {
           matriculas_abertas: cms.turma_settings?.[t.id]?.matriculas_abertas !== false,
           envios_abertos: cms.turma_settings?.[t.id]?.envios_abertos !== false,
+          limite_redacoes_por_aluno: Math.max(1, Number(cms.turma_settings?.[t.id]?.limite_redacoes_por_aluno) || 3),
           imagem_url: cms.turma_settings?.[t.id]?.imagem_url || '',
           beneficios: cms.turma_settings?.[t.id]?.beneficios || '',
           roteiro: cms.turma_settings?.[t.id]?.roteiro || '',
@@ -1246,6 +1247,7 @@ app.get('/turmas', async (c) => {
       settings: {
         matriculas_abertas: cms.turma_settings?.[t.id]?.matriculas_abertas !== false,
         envios_abertos: cms.turma_settings?.[t.id]?.envios_abertos !== false,
+        limite_redacoes_por_aluno: Math.max(1, Number(cms.turma_settings?.[t.id]?.limite_redacoes_por_aluno) || 3),
         imagem_url: cms.turma_settings?.[t.id]?.imagem_url || '',
         beneficios: cms.turma_settings?.[t.id]?.beneficios || '',
         roteiro: cms.turma_settings?.[t.id]?.roteiro || '',
@@ -1280,6 +1282,7 @@ app.patch('/turmas/:id/settings', async (c) => {
       ...current,
       matriculas_abertas: typeof body.matriculas_abertas === 'boolean' ? body.matriculas_abertas : current.matriculas_abertas !== false,
       envios_abertos: typeof body.envios_abertos === 'boolean' ? body.envios_abertos : current.envios_abertos !== false,
+      limite_redacoes_por_aluno: Math.max(1, Math.floor(Number(body.limite_redacoes_por_aluno) || Number(current.limite_redacoes_por_aluno) || 3)),
       imagem_url: typeof body.imagem_url === 'string' ? body.imagem_url.trim() : current.imagem_url || '',
       beneficios: typeof body.beneficios === 'string' ? body.beneficios.trim() : current.beneficios || '',
       roteiro: typeof body.roteiro === 'string' ? body.roteiro.trim() : current.roteiro || '',
