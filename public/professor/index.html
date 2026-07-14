@@ -81,15 +81,17 @@
                   <div class="form-group">
                     <label>Cor primária</label>
                     <div class="color-field">
-                      <input type="color" id="site-cor" value="#1A3A2A" onfocus="pulseSitePreview('hero')" oninput="syncColor('site-cor','site-cor-code');updateSitePreview();pulseSitePreview('hero')">
-                      <input id="site-cor-code" value="#1A3A2A" placeholder="#1A3A2A ou rgb(26,58,42)" onfocus="pulseSitePreview('hero')" oninput="syncCode('site-cor-code','site-cor');updateSitePreview();pulseSitePreview('hero')">
+                      <input type="color" id="site-cor" value="#1A3A2A" onfocus="beginMainColorEdit('primary');pulseSitePreview('hero')" oninput="syncMainColorInput('primary')">
+                      <input id="site-cor-code" value="#1A3A2A" placeholder="#1A3A2A ou rgb(26,58,42)" onfocus="beginMainColorEdit('primary');pulseSitePreview('hero')" oninput="syncMainColorCode('primary')">
+                      <button type="button" class="btn btn-brand btn-sm color-confirm-btn" id="site-cor-confirm" onclick="confirmMainColor('primary')" style="display:none">Confirmar</button>
                     </div>
                   </div>
                   <div class="form-group">
                     <label>Cor de destaque</label>
                     <div class="color-field">
-                      <input type="color" id="site-accent" value="#C5F135" onfocus="pulseSitePreview('cta')" oninput="syncColor('site-accent','site-accent-code');updateSitePreview();pulseSitePreview('cta')">
-                      <input id="site-accent-code" value="#C5F135" placeholder="#C5F135 ou rgb(197,241,53)" onfocus="pulseSitePreview('cta')" oninput="syncCode('site-accent-code','site-accent');updateSitePreview();pulseSitePreview('cta')">
+                      <input type="color" id="site-accent" value="#C5F135" onfocus="beginMainColorEdit('accent');pulseSitePreview('cta')" oninput="syncMainColorInput('accent')">
+                      <input id="site-accent-code" value="#C5F135" placeholder="#C5F135 ou rgb(197,241,53)" onfocus="beginMainColorEdit('accent');pulseSitePreview('cta')" oninput="syncMainColorCode('accent')">
+                      <button type="button" class="btn btn-brand btn-sm color-confirm-btn" id="site-accent-confirm" onclick="confirmMainColor('accent')" style="display:none">Confirmar</button>
                     </div>
                   </div>
                 </div>
@@ -1161,6 +1163,7 @@ let professoresFilhosMatriculas = []
 let themeUndoStack = []
 let themeRedoStack = []
 let themeFocusKey = ''
+let mainColorDrafts = {}
 let relatorioCache = null
 let turmaAlunosCache = []
 let turmaAlunosOptionsCache = []
@@ -1438,6 +1441,7 @@ function buildSitePayload() {
 
 async function saveSite(e) {
   if (e) e.preventDefault()
+  revertPendingMainColors()
   hideSiteAlerts()
   if (!ensureThemeColorsSaved()) return false
   const body = buildSitePayload()
@@ -1456,6 +1460,7 @@ async function saveSite(e) {
 }
 
 async function persistContentChanges(message = 'Conteúdos atualizados. As alterações já aparecem na página pública.') {
+  revertPendingMainColors()
   hideContentAlerts()
   if (!ensureThemeColorsSaved()) return false
   const res = await fetch('/api/admin/site', { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(buildSitePayload()) })
@@ -2797,6 +2802,8 @@ function setColor(colorId, codeId, value) {
   if (!hex) return
   document.getElementById(colorId).value = hex
   document.getElementById(codeId).value = hex
+  const key = colorId === 'site-cor' ? 'primary' : colorId === 'site-accent' ? 'accent' : ''
+  if (key) clearMainColorDraft(key)
 }
 
 function syncColor(colorId, codeId) {
@@ -2807,6 +2814,96 @@ function syncCode(codeId, colorId) {
   const hex = normalizeColor(document.getElementById(codeId).value)
   if (hex) document.getElementById(colorId).value = hex
 }
+
+function mainColorIds(key) {
+  return key === 'accent'
+    ? { color: 'site-accent', code: 'site-accent-code', confirm: 'site-accent-confirm', pulse: 'cta' }
+    : { color: 'site-cor', code: 'site-cor-code', confirm: 'site-cor-confirm', pulse: 'hero' }
+}
+
+function beginMainColorEdit(key) {
+  const ids = mainColorIds(key)
+  const color = document.getElementById(ids.color)
+  const code = document.getElementById(ids.code)
+  if (!color || !code) return
+  if (!mainColorDrafts[key]) {
+    mainColorDrafts[key] = {
+      color: color.value,
+      code: code.value
+    }
+  }
+  showMainColorConfirm(key, true)
+}
+
+function showMainColorConfirm(key, show) {
+  const ids = mainColorIds(key)
+  const btn = document.getElementById(ids.confirm)
+  const field = document.getElementById(ids.color)?.closest('.color-field')
+  if (btn) btn.style.display = show ? 'inline-flex' : 'none'
+  field?.classList.toggle('is-pending', Boolean(show))
+}
+
+function clearMainColorDraft(key) {
+  delete mainColorDrafts[key]
+  showMainColorConfirm(key, false)
+}
+
+function syncMainColorInput(key) {
+  const ids = mainColorIds(key)
+  beginMainColorEdit(key)
+  syncColor(ids.color, ids.code)
+  updateSitePreview()
+  pulseSitePreview(ids.pulse)
+}
+
+function syncMainColorCode(key) {
+  const ids = mainColorIds(key)
+  beginMainColorEdit(key)
+  syncCode(ids.code, ids.color)
+  updateSitePreview()
+  pulseSitePreview(ids.pulse)
+}
+
+function confirmMainColor(key) {
+  const ids = mainColorIds(key)
+  const color = document.getElementById(ids.color)
+  const code = document.getElementById(ids.code)
+  const hex = normalizeColor(code?.value || color?.value)
+  if (!hex) {
+    showSiteErr('Informe uma cor válida antes de confirmar.')
+    code?.focus()
+    return
+  }
+  if (color) color.value = hex
+  if (code) code.value = hex
+  clearMainColorDraft(key)
+  updateSitePreview()
+  pulseSitePreview(ids.pulse)
+}
+
+function revertMainColor(key) {
+  const draft = mainColorDrafts[key]
+  if (!draft) return
+  const ids = mainColorIds(key)
+  const color = document.getElementById(ids.color)
+  const code = document.getElementById(ids.code)
+  if (color) color.value = draft.color
+  if (code) code.value = draft.code
+  clearMainColorDraft(key)
+  updateSitePreview()
+}
+
+function revertPendingMainColors() {
+  Object.keys({ ...mainColorDrafts }).forEach(revertMainColor)
+}
+
+document.addEventListener('pointerdown', (event) => {
+  Object.keys({ ...mainColorDrafts }).forEach((key) => {
+    const ids = mainColorIds(key)
+    const field = document.getElementById(ids.color)?.closest('.color-field')
+    if (field && !field.contains(event.target)) revertMainColor(key)
+  })
+})
 
 function normalizeColor(value) {
   const raw = String(value || '').trim()

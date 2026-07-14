@@ -156,8 +156,10 @@ input,select,textarea{width:100%;padding:10px 12px;border:1px solid var(--border
 input:focus,select:focus,textarea:focus{border-color:var(--brand3)}
 textarea{resize:vertical;min-height:80px}
 .form-error{font-size:12px;color:var(--danger);margin-top:4px;display:none}
-.color-field{display:grid;grid-template-columns:44px 1fr;gap:8px;align-items:center}
+.color-field{display:grid;grid-template-columns:44px minmax(0,1fr) auto;gap:8px;align-items:center}
 .color-field input[type="color"]{height:42px;padding:4px}
+.color-field .color-confirm-btn{height:42px;white-space:nowrap}
+.color-field.is-pending input{outline:2px solid var(--gold);outline-offset:2px}
 .color-presets{display:flex;gap:6px;flex-wrap:wrap;margin-top:8px}
 .color-swatch{width:24px;height:24px;border-radius:50%;border:2px solid #fff;box-shadow:0 0 0 1px var(--border2);cursor:pointer}
 .theme-advanced{border:1px solid var(--border);border-radius:var(--r2);padding:12px 14px;background:var(--surface);margin:4px 0 14px}
