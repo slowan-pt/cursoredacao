@@ -582,13 +582,13 @@ details[open].corretor-accordion .corretor-accordion-summary::before{transform:r
 .site-action-row{justify-content:flex-end;align-items:center;gap:10px;margin:18px 0 4px;padding-top:4px}
 .site-default-btn{background:linear-gradient(135deg,var(--brand),#0f241a);color:var(--brand-text);box-shadow:0 12px 26px rgba(0,0,0,.16)}
 .site-default-btn:hover{transform:translateY(-1px);filter:brightness(1.05)}
-.site-editor-shell{display:grid;grid-template-columns:minmax(360px,700px) minmax(420px,1fr);gap:22px;align-items:start}
-.site-editor-card{max-width:none!important}
-.site-preview-pane{position:sticky;top:88px;display:flex;flex-direction:column;gap:12px;min-width:0}
+.site-editor-shell{display:grid;grid-template-columns:minmax(360px,700px) minmax(420px,1fr);gap:38px;align-items:start}
+.site-editor-card{max-width:none!important;border:1px solid var(--border2);box-shadow:0 12px 34px rgba(15,15,15,.06)}
+.site-preview-pane{position:sticky;top:88px;display:flex;flex-direction:column;gap:14px;min-width:0;background:linear-gradient(180deg,#fff,var(--paper));border:1px solid var(--border2);border-radius:18px;padding:18px;box-shadow:0 16px 42px rgba(15,15,15,.08)}
 .site-preview-pane>#site-public-link{align-self:flex-end}
 .floating-save-site{display:none;position:sticky;top:80px;align-self:center;z-index:25;font-size:17px;font-weight:950;padding:14px 22px;box-shadow:0 18px 38px rgba(0,0,0,.24);animation:savePulse .55s ease-in-out infinite alternate}
 @keyframes savePulse{0%{transform:translateY(0) scale(1);filter:brightness(1);box-shadow:0 12px 24px rgba(0,0,0,.18),0 0 0 0 rgba(197,241,53,.75)}100%{transform:translateY(-2px) scale(1.06);filter:brightness(1.18);box-shadow:0 22px 46px rgba(0,0,0,.32),0 0 0 8px rgba(197,241,53,0)}}
-.site-preview-pane .site-preview-card{width:100%;max-width:820px;align-self:stretch}
+.site-preview-pane .site-preview-card{width:100%;max-width:820px;align-self:stretch;border-color:var(--border2);box-shadow:0 12px 30px rgba(0,0,0,.08)}
 .site-preview-pane .site-preview-hero{grid-template-columns:1fr}
 .site-preview-pane .site-preview-prof{max-width:320px}
 .site-preview-pane .site-preview-prof.photo-mode{max-width:420px}
