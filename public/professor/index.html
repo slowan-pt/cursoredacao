@@ -33,6 +33,7 @@
       <a class="sb-item child-only financial-only" href="#" onclick="showPage('ganhos',this)" style="display:none">💰 Meus Ganhos</a>
       <a class="sb-item owner-only financial-only" href="#" onclick="showPage('financeiro',this)" style="display:none">💰 Financeiro</a>
       <div class="sb-grp owner-only">Turmas & Alunos</div>
+      <a class="sb-item owner-only" href="#" onclick="showPage('conteudos',this)">📰 Conteúdos/Postagens</a>
       <a class="sb-item owner-only" href="#" onclick="showPage('turmas',this)">🏫 Turmas</a>
       <a class="sb-item owner-only" href="#" onclick="showPage('alunos',this)">👥 Alunos</a>
       <a class="sb-item owner-only" href="#" onclick="showPage('professores',this)">👨‍🏫 Professores</a>
@@ -75,7 +76,6 @@
           <div class="site-tabbar site-tabbar-main" aria-label="Edição do site">
             <button type="button" class="on" data-site-tab="layout" onclick="setSiteEditorTab('layout')">Layout do site</button>
             <button type="button" data-site-tab="turmas" onclick="setSiteEditorTab('turmas')">Turmas</button>
-            <button type="button" data-site-tab="conteudos" onclick="setSiteEditorTab('conteudos')">Conteúdo/Postagens</button>
           </div>
           <form onsubmit="saveSite(event)">
             <div class="site-tab-panel on" data-site-tab-panel="layout">
@@ -171,18 +171,6 @@
                   <input id="cms-turmas-subtitle" placeholder="Ao criar acesso por aqui..." onfocus="pulseSitePreview('turmas')" oninput="updateSitePreview();pulseSitePreview('turmas')">
                 </div>
               </div>
-              <div class="cms-menu-section" data-layout-section="conteudos">
-                <div class="cms-menu-section-title">Conteúdos/Postagens no site</div>
-                <div class="form-group">
-                  <label>Título dos conteúdos</label>
-                  <input id="cms-posts-title" placeholder="Dicas e materiais" onfocus="pulseSitePreview('posts')" oninput="updateSitePreview();pulseSitePreview('posts')">
-                </div>
-                <div class="form-group">
-                  <label>Introdução dos conteúdos</label>
-                  <input id="cms-posts-intro" placeholder="Publicações, notícias e matérias do professor." onfocus="pulseSitePreview('posts')" oninput="updateSitePreview();pulseSitePreview('posts')">
-                </div>
-                <label class="inline-switch"><input type="checkbox" id="hide-posts-section" onchange="updateSitePreview();pulseSitePreview('posts')"> Ocultar esta seção no site público</label>
-              </div>
               <div class="cms-menu-section" data-layout-section="aluno">
                 <div class="cms-menu-section-title">Área Aluno</div>
                 <div class="form-group">
@@ -214,93 +202,6 @@
               <div class="cms-menu-section">
                 <div class="cms-menu-section-title">Textos da seção</div>
                 <p class="hint">Os campos de título e subtítulo das turmas ficam na aba Layout do site para manter a edição visual em um só lugar.</p>
-              </div>
-            </div>
-            <div class="site-tab-panel" data-site-tab-panel="conteudos">
-              <div class="cms-menu-section">
-                <div class="cms-menu-section-title">Conteúdo/Postagens</div>
-                <label class="inline-switch" style="margin-bottom:12px"><input type="checkbox" id="hide-posts-section-inline" onchange="document.getElementById('hide-posts-section').checked=this.checked;updateSitePreview();pulseSitePreview('posts')"> Ocultar esta seção no site público</label>
-                <div id="cms-post-list" class="cms-post-list"></div>
-                <div class="cms-post-form">
-                  <div style="display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:10px;flex-wrap:wrap">
-                    <strong style="font-size:13px">Nova publicação</strong>
-                    <button type="button" class="btn btn-sec btn-sm" onclick="clearPostForm();updatePostPreview()">Nova</button>
-                  </div>
-                  <input type="hidden" id="post-id">
-                  <div class="page-grid grid-2">
-                    <div class="form-group">
-                      <label>Tipo</label>
-                      <select id="post-tipo" onchange="updatePostPreview()">
-                        <option value="publicacao">Publicação</option>
-                        <option value="noticia">Notícia</option>
-                        <option value="materia">Matéria</option>
-                        <option value="dica">Dica</option>
-                      </select>
-                    </div>
-                    <div class="form-group">
-                      <label>Status</label>
-                      <select id="post-status" onchange="updatePostPreview()">
-                        <option value="PUBLICADO">Publicado</option>
-                        <option value="RASCUNHO">Rascunho</option>
-                      </select>
-                    </div>
-                    <div class="form-group">
-                      <label>Destaque</label>
-                      <select id="post-pinned" onchange="updatePostPreview()">
-                        <option value="false">Normal</option>
-                        <option value="true">Destacar no topo</option>
-                      </select>
-                    </div>
-                  </div>
-                  <div class="form-group">
-                    <label>Título</label>
-                    <input id="post-titulo" placeholder="Título da notícia, matéria ou publicação" oninput="updatePostPreview()">
-                  </div>
-                  <div class="form-group">
-                    <label>Resumo</label>
-                    <textarea id="post-resumo" maxlength="170" placeholder="Resumo curto que aparecerá no card" oninput="updatePostSummaryLimit();updatePostPreview()"></textarea>
-                    <div class="hint" id="post-resumo-count">0/170 caracteres. O ideal é até 150 para caber bem no card.</div>
-                  </div>
-                  <div class="form-group">
-                    <label>Conteúdo</label>
-                    <div class="rich-toolbar" aria-label="Ferramentas de edição do texto">
-                      <button type="button" title="Negrito" onclick="formatPostContent('bold')"><strong>B</strong></button>
-                      <button type="button" title="Itálico" onclick="formatPostContent('italic')"><em>I</em></button>
-                      <button type="button" title="Sublinhado" onclick="formatPostContent('underline')"><u>U</u></button>
-                      <button type="button" title="Lista com marcadores" onclick="formatPostContent('insertUnorderedList')">•</button>
-                      <button type="button" title="Lista numerada" onclick="formatPostContent('insertOrderedList')">1.</button>
-                      <button type="button" title="Alinhar à esquerda" onclick="formatPostContent('justifyLeft')">☰</button>
-                      <button type="button" title="Centralizar" onclick="formatPostContent('justifyCenter')">≡</button>
-                      <button type="button" title="Justificar" onclick="formatPostContent('justifyFull')">▤</button>
-                      <select title="Fonte" onchange="formatPostContent('fontName', this.value); this.selectedIndex=0">
-                        <option value="">Fonte</option>
-                        <option value="Inter">Inter</option>
-                        <option value="Arial">Arial</option>
-                        <option value="Georgia">Georgia</option>
-                        <option value="Times New Roman">Times</option>
-                      </select>
-                      <select title="Tamanho" onchange="formatPostContent('fontSize', this.value); this.selectedIndex=0">
-                        <option value="">Tamanho</option>
-                        <option value="2">Pequeno</option>
-                        <option value="3">Normal</option>
-                        <option value="4">Médio</option>
-                        <option value="5">Grande</option>
-                        <option value="6">Título</option>
-                      </select>
-                      <label title="Cor do texto"><span>A</span><input type="color" onchange="formatPostContent('foreColor', this.value)"></label>
-                      <label title="Cor de fundo"><span>▣</span><input type="color" onchange="formatPostContent('hiliteColor', this.value)"></label>
-                      <button type="button" title="Inserir link" onclick="insertPostLink()">🔗</button>
-                      <label title="Inserir imagem" class="rich-file">🖼<input type="file" accept="image/*" onchange="insertPostImage(event)"></label>
-                    </div>
-                    <div id="post-conteudo-editor" class="rich-editor" contenteditable="true" data-placeholder="Texto completo, dicas, avisos ou material" oninput="syncPostEditor();updatePostPreview()"></div>
-                    <textarea id="post-conteudo" hidden></textarea>
-                  </div>
-                  <button type="button" class="btn btn-brand" onclick="savePostDraft();pulseSitePreview('posts')">Salvar publicação na lista</button>
-                </div>
-                <div style="margin-top:16px">
-                  <div class="cms-preview-title">Prévia da publicação</div>
-                  <div id="post-live-preview"></div>
-                </div>
               </div>
             </div>
           </form>
@@ -361,6 +262,39 @@
             </div>
           </div>
         </aside>
+      </div>
+    </div>
+
+    <!-- CONTEÚDOS / POSTAGENS -->
+    <div class="page" id="page-conteudos" style="display:none">
+      <div class="card">
+        <div class="content-page-head">
+          <div>
+            <strong style="font-size:15px">Conteúdos/Postagens</strong>
+            <p style="font-size:12px;color:var(--ink3);margin-top:4px">Gerencie matérias, notícias e publicações recorrentes do site.</p>
+          </div>
+          <button type="button" class="btn btn-accent" onclick="openPostEditor()">+ Nova publicação</button>
+        </div>
+        <div id="alert-conteudos" class="alert alert-err"></div>
+        <div id="alert-conteudos-ok" class="alert alert-ok"></div>
+        <div class="cms-menu-section">
+          <div class="cms-menu-section-title">Configuração da seção no site</div>
+          <div class="site-field-grid">
+            <div class="form-group">
+              <label>Título dos conteúdos</label>
+              <input id="cms-posts-title" placeholder="Dicas e materiais" onfocus="pulseSitePreview('posts')" oninput="updateSitePreview();pulseSitePreview('posts')">
+            </div>
+            <div class="form-group">
+              <label>Introdução dos conteúdos</label>
+              <input id="cms-posts-intro" placeholder="Publicações, notícias e matérias do professor." onfocus="pulseSitePreview('posts')" oninput="updateSitePreview();pulseSitePreview('posts')">
+            </div>
+          </div>
+          <div class="content-section-actions">
+            <label class="inline-switch"><input type="checkbox" id="hide-posts-section" onchange="updateSitePreview();pulseSitePreview('posts')"> Ocultar esta seção no site público</label>
+            <button type="button" class="btn btn-brand btn-sm" onclick="saveContentSettings()">Salvar configuração</button>
+          </div>
+        </div>
+        <div class="cms-post-list content-post-list" id="cms-post-list"></div>
       </div>
     </div>
 
@@ -751,6 +685,96 @@
       </div>
     </div>
   </main>
+</div>
+
+<!-- MODAL: Publicação -->
+<div class="modal-bg" id="modal-post-editor">
+  <div class="modal modal-post-editor">
+    <button class="modal-close" onclick="closePostEditor()">×</button>
+    <div class="modal-title" id="post-modal-title">Nova publicação</div>
+    <div id="alert-post-editor" class="alert alert-err"></div>
+    <input type="hidden" id="post-id">
+    <div class="post-editor-grid">
+      <section class="post-editor-form">
+        <div class="page-grid grid-3">
+          <div class="form-group">
+            <label>Tipo</label>
+            <select id="post-tipo" onchange="updatePostPreview()">
+              <option value="POST">Publicação</option>
+              <option value="NOTICIA">Notícia</option>
+              <option value="MATERIA">Matéria</option>
+              <option value="DICA">Dica</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label>Status</label>
+            <select id="post-status" onchange="updatePostPreview()">
+              <option value="PUBLICADO">Publicado</option>
+              <option value="RASCUNHO">Oculto</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label>Destaque</label>
+            <select id="post-pinned" onchange="updatePostPreview()">
+              <option value="false">Normal</option>
+              <option value="true">Destacar no topo</option>
+            </select>
+          </div>
+        </div>
+        <div class="form-group">
+          <label>Título</label>
+          <input id="post-titulo" placeholder="Título da notícia, matéria ou publicação" oninput="updatePostPreview()">
+        </div>
+        <div class="form-group">
+          <label>Resumo</label>
+          <textarea id="post-resumo" maxlength="170" placeholder="Resumo curto que aparecerá no card" oninput="updatePostSummaryLimit();updatePostPreview()"></textarea>
+          <div class="hint" id="post-resumo-count">0/170 caracteres. O ideal é até 150 para caber bem no card.</div>
+        </div>
+        <div class="form-group">
+          <label>Conteúdo</label>
+          <div class="rich-toolbar" aria-label="Ferramentas de edição do texto">
+            <button type="button" title="Negrito" onclick="formatPostContent('bold')"><strong>B</strong></button>
+            <button type="button" title="Itálico" onclick="formatPostContent('italic')"><em>I</em></button>
+            <button type="button" title="Sublinhado" onclick="formatPostContent('underline')"><u>U</u></button>
+            <button type="button" title="Lista com marcadores" onclick="formatPostContent('insertUnorderedList')">•</button>
+            <button type="button" title="Lista numerada" onclick="formatPostContent('insertOrderedList')">1.</button>
+            <button type="button" title="Alinhar à esquerda" onclick="formatPostContent('justifyLeft')">☰</button>
+            <button type="button" title="Centralizar" onclick="formatPostContent('justifyCenter')">≡</button>
+            <button type="button" title="Justificar" onclick="formatPostContent('justifyFull')">▤</button>
+            <select title="Fonte" onchange="formatPostContent('fontName', this.value); this.selectedIndex=0">
+              <option value="">Fonte</option>
+              <option value="Inter">Inter</option>
+              <option value="Arial">Arial</option>
+              <option value="Georgia">Georgia</option>
+              <option value="Times New Roman">Times</option>
+            </select>
+            <select title="Tamanho" onchange="formatPostContent('fontSize', this.value); this.selectedIndex=0">
+              <option value="">Tamanho</option>
+              <option value="2">Pequeno</option>
+              <option value="3">Normal</option>
+              <option value="4">Médio</option>
+              <option value="5">Grande</option>
+              <option value="6">Título</option>
+            </select>
+            <label title="Cor do texto"><span>A</span><input type="color" onchange="formatPostContent('foreColor', this.value)"></label>
+            <label title="Cor de fundo"><span>▣</span><input type="color" onchange="formatPostContent('hiliteColor', this.value)"></label>
+            <button type="button" title="Inserir link" onclick="insertPostLink()">🔗</button>
+            <label title="Inserir imagem" class="rich-file">🖼<input type="file" accept="image/*" onchange="insertPostImage(event)"></label>
+          </div>
+          <div id="post-conteudo-editor" class="rich-editor" contenteditable="true" data-placeholder="Texto completo, dicas, avisos ou material" oninput="syncPostEditor();updatePostPreview()"></div>
+          <textarea id="post-conteudo" hidden></textarea>
+        </div>
+      </section>
+      <aside class="post-editor-preview">
+        <div class="cms-preview-title">Prévia da publicação</div>
+        <div id="post-live-preview"></div>
+      </aside>
+    </div>
+    <div class="post-editor-actions">
+      <button type="button" class="btn btn-sec" onclick="closePostEditor()">Cancelar</button>
+      <button type="button" class="btn btn-accent" onclick="savePostDraft();pulseSitePreview('posts')">Salvar publicação</button>
+    </div>
+  </div>
 </div>
 
 <!-- MODAL: Alunos da Turma -->
@@ -1401,20 +1425,24 @@ function applySiteTheme(site) {
   document.documentElement.style.setProperty('--info', theme.info)
 }
 
-async function saveSite(e) {
-  if (e) e.preventDefault()
-  hideSiteAlerts()
-  if (!ensureThemeColorsSaved()) return
-  const body = {
+function buildSitePayload() {
+  return {
     nome_prof: document.getElementById('site-nome').value.trim(),
     bio_prof: document.getElementById('site-bio').value.trim(),
     cor_primaria: document.getElementById('site-cor').value,
     cor_accent: document.getElementById('site-accent').value,
     cms: collectCmsForm()
   }
+}
+
+async function saveSite(e) {
+  if (e) e.preventDefault()
+  hideSiteAlerts()
+  if (!ensureThemeColorsSaved()) return false
+  const body = buildSitePayload()
   const res = await fetch('/api/admin/site', { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) })
   const d = await res.json()
-  if (!res.ok) { showSiteErr(d.error || 'Nao foi possivel salvar o site.'); return }
+  if (!res.ok) { showSiteErr(d.error || 'Nao foi possivel salvar o site.'); return false }
   currentSite = d
   document.getElementById('alert-site-ok').textContent = 'Site atualizado. As alterações já aparecem na página pública.'
   document.getElementById('alert-site-ok').style.display = 'block'
@@ -1423,10 +1451,29 @@ async function saveSite(e) {
   const floatingSave = document.getElementById('floating-save-site')
   if (floatingSave) floatingSave.style.display = 'none'
   loadSite()
+  return true
+}
+
+async function persistContentChanges(message = 'Conteúdos atualizados. As alterações já aparecem na página pública.') {
+  hideContentAlerts()
+  if (!ensureThemeColorsSaved()) return false
+  const res = await fetch('/api/admin/site', { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(buildSitePayload()) })
+  const d = await res.json().catch(() => ({}))
+  if (!res.ok) { showContentErr(d.error || 'Não foi possível salvar os conteúdos.'); return false }
+  currentSite = d
+  document.getElementById('alert-conteudos-ok').textContent = message
+  document.getElementById('alert-conteudos-ok').style.display = 'block'
+  const unsaved = document.getElementById('preview-unsaved')
+  if (unsaved) unsaved.style.display = 'none'
+  const floatingSave = document.getElementById('floating-save-site')
+  if (floatingSave) floatingSave.style.display = 'none'
+  return true
 }
 
 function showSiteErr(msg) { const el = document.getElementById('alert-site'); el.textContent = msg; el.style.display = 'block' }
 function hideSiteAlerts() { ['alert-site','alert-site-ok'].forEach(id => { const el = document.getElementById(id); if (el) el.style.display = 'none' }) }
+function showContentErr(msg) { const el = document.getElementById('alert-conteudos'); if (el) { el.textContent = msg; el.style.display = 'block' } }
+function hideContentAlerts() { ['alert-conteudos','alert-conteudos-ok','alert-post-editor'].forEach(id => { const el = document.getElementById(id); if (el) el.style.display = 'none' }) }
 
 function setSiteEditorTab(tab) {
   document.querySelectorAll('[data-site-tab]').forEach(btn => btn.classList.toggle('on', btn.dataset.siteTab === tab))
@@ -1476,9 +1523,8 @@ function openLayoutModal(section = '') {
 }
 
 function openPostsModal() {
-  setSiteEditorTab('conteudos')
+  showPage('conteudos', document.querySelector('.sb-item[onclick*="conteudos"]'))
   renderCmsPosts()
-  updatePostPreview()
   document.getElementById('cms-post-list')?.scrollIntoView({ behavior: 'smooth', block: 'start' })
 }
 
@@ -1511,8 +1557,6 @@ function loadCmsForm(cms) {
   document.getElementById('cms-posts-intro').value = data.layout.posts_intro || ''
   const hidePosts = Array.isArray(data.layout.hidden_elements) && data.layout.hidden_elements.includes('block:conteudos')
   document.getElementById('hide-posts-section').checked = hidePosts
-  const hidePostsInline = document.getElementById('hide-posts-section-inline')
-  if (hidePostsInline) hidePostsInline.checked = hidePosts
   document.getElementById('cms-aluno-title').value = data.layout.aluno_title || ''
   document.getElementById('cms-aluno-text').value = data.layout.aluno_text || ''
   document.getElementById('cms-aluno-cta').value = data.layout.aluno_cta || ''
@@ -2114,25 +2158,29 @@ async function setDashboardModelDefault() {
 
 function renderCmsPosts() {
   const el = document.getElementById('cms-post-list')
+  if (!el) return
   if (!cmsPosts.length) {
     el.innerHTML = '<div class="empty" style="padding:18px"><p>Nenhuma publicação criada ainda.</p></div>'
     return
   }
   el.innerHTML = cmsPosts.map(post => `
-    <div class="cms-post-item">
-      <div style="flex:1;min-width:0">
-        <div class="mark-type">${postTypeLabel(post.tipo)} · ${post.status === 'RASCUNHO' ? 'Rascunho' : 'Publicado'}${post.pinned ? ' · Destaque' : ''}</div>
-        <div style="font-weight:800;margin-top:4px">${esc(post.titulo || 'Sem título')}</div>
-        <div style="font-size:12px;color:var(--ink3);margin-top:3px">${esc(post.resumo || '')}</div>
+    <div class="cms-post-item content-post-item">
+      <div class="content-post-preview">
+        <div class="mark-type">${postTypeLabel(post.tipo)} · ${post.pinned ? 'Destaque' : 'Normal'}</div>
+        <div class="content-post-title">${esc(post.titulo || 'Sem título')}</div>
+        <div class="content-post-summary">${esc(post.resumo || stripHtml(post.conteudo || ''))}</div>
       </div>
-      <button type="button" class="btn btn-sec btn-sm" onclick="editCmsPost('${post.id}')">Editar</button>
-      <button type="button" class="btn btn-danger btn-sm" onclick="deleteCmsPost('${post.id}')">Excluir</button>
+      <div class="content-post-actions">
+        <button type="button" class="btn btn-sm ${post.status === 'RASCUNHO' ? 'btn-sec' : 'btn-brand'}" onclick="toggleCmsPostStatus('${post.id}')">${post.status === 'RASCUNHO' ? 'Oculta' : 'Publicada'}</button>
+        <button type="button" class="btn btn-sec btn-sm" onclick="editCmsPost('${post.id}')">Editar</button>
+        <button type="button" class="btn btn-danger btn-sm" onclick="deleteCmsPost('${post.id}')">Excluir</button>
+      </div>
     </div>
   `).join('')
 }
 
 function postTypeLabel(tipo) {
-  return ({ POST: 'Publicação', NOTICIA: 'Notícia', MATERIA: 'Matéria' })[tipo] || 'Publicação'
+  return ({ POST: 'Publicação', publicacao: 'Publicação', NOTICIA: 'Notícia', noticia: 'Notícia', MATERIA: 'Matéria', materia: 'Matéria', dica: 'Dica', DICA: 'Dica' })[tipo] || 'Publicação'
 }
 
 function stripHtml(value) {
@@ -2246,9 +2294,34 @@ function updatePostSummaryLimit() {
   counter.textContent = `${input.value.length}/170 caracteres. O ideal é até 150 para caber bem no card.`
 }
 
-function savePostDraft() {
+function openPostEditor(id = '') {
+  hideContentAlerts()
+  if (id) editCmsPost(id, false)
+  else {
+    clearPostForm()
+    document.getElementById('post-modal-title').textContent = 'Nova publicação'
+  }
+  updatePostPreview()
+  openModal('modal-post-editor')
+  setTimeout(() => document.getElementById('post-titulo')?.focus(), 80)
+}
+
+function closePostEditor() {
+  closeModal('modal-post-editor')
+}
+
+async function saveContentSettings() {
+  await persistContentChanges('Configuração da seção de conteúdos salva.')
+  updateSitePreview()
+}
+
+async function savePostDraft() {
   const titulo = document.getElementById('post-titulo').value.trim()
-  if (!titulo) { showSiteErr('Informe o título da publicação.'); return }
+  if (!titulo) {
+    const el = document.getElementById('alert-post-editor')
+    if (el) { el.textContent = 'Informe o título da publicação.'; el.style.display = 'block' }
+    return
+  }
   syncPostEditor()
   const id = document.getElementById('post-id').value || `post-${Date.now()}`
   const resumoRaw = document.getElementById('post-resumo').value.trim()
@@ -2266,14 +2339,20 @@ function savePostDraft() {
   }
   cmsPosts = [post, ...cmsPosts.filter(p => p.id !== id)]
   renderCmsPosts()
-  clearPostForm()
   updatePostPreview()
   hideSiteAlerts()
+  const ok = await persistContentChanges('Publicação salva.')
+  if (ok) {
+    closePostEditor()
+    clearPostForm()
+  }
 }
 
-function editCmsPost(id) {
+function editCmsPost(id, shouldOpen = true) {
   const post = cmsPosts.find(p => p.id === id)
   if (!post) return
+  hideContentAlerts()
+  document.getElementById('post-modal-title').textContent = 'Editar publicação'
   document.getElementById('post-id').value = post.id
   document.getElementById('post-tipo').value = post.tipo || 'POST'
   document.getElementById('post-status').value = post.status || 'PUBLICADO'
@@ -2283,14 +2362,26 @@ function editCmsPost(id) {
   setPostContentHtml(post.conteudo || '')
   updatePostSummaryLimit()
   updatePostPreview()
+  if (shouldOpen) openModal('modal-post-editor')
 }
 
-function deleteCmsPost(id) {
+async function toggleCmsPostStatus(id) {
+  const post = cmsPosts.find(p => p.id === id)
+  if (!post) return
+  post.status = post.status === 'RASCUNHO' ? 'PUBLICADO' : 'RASCUNHO'
+  post.updated_at = new Date().toISOString()
+  renderCmsPosts()
+  const ok = await persistContentChanges(post.status === 'RASCUNHO' ? 'Publicação ocultada.' : 'Publicação publicada.')
+  if (!ok) renderCmsPosts()
+}
+
+async function deleteCmsPost(id) {
   if (!confirm('Excluir esta publicação do site?')) return
   cmsPosts = cmsPosts.filter(p => p.id !== id)
   renderCmsPosts()
   clearPostForm()
   updatePostPreview()
+  await persistContentChanges('Publicação excluída.')
 }
 
 function clearPostForm() {
@@ -2943,8 +3034,6 @@ function updateSitePreview() {
   document.getElementById('pv-aluno-text').textContent = alunoText
   document.getElementById('pv-aluno-cta').textContent = alunoCta
   const hidePosts = Boolean(document.getElementById('hide-posts-section')?.checked)
-  const inlineHide = document.getElementById('hide-posts-section-inline')
-  if (inlineHide) inlineHide.checked = hidePosts
   document.getElementById('pv-posts-section')?.classList.toggle('is-hidden-preview', hidePosts)
   document.getElementById('site-contrast-hint').textContent = `Sugestão automática: cor primária usa texto ${brandText === '#111111' ? 'escuro' : 'claro'}; botões de destaque usam texto ${accentText === '#111111' ? 'escuro' : 'claro'}.`
   // Atualiza painel de componentes com as cores de estado.
@@ -7343,13 +7432,14 @@ function showPage(name, link) {
   document.body.classList.toggle('correcao-mode', name === 'correcao')
   document.querySelectorAll('.sb-item').forEach(i => i.classList.remove('on'))
   if (link) link.classList.add('on')
-  const titles = { dashboard:'Dashboard', site:'Meu site', pendentes:'Correções Pendentes', todas:'Todas as Correções', ganhos:'Meus Ganhos', financeiro:'Financeiro', turmas:'Turmas', alunos:'Alunos', professores:'Professores', temas:'Temas', relatorios:'Relatórios', corretor:'Corretor automático', correcao:'Corrigir redação' }
+  const titles = { dashboard:'Dashboard', site:'Meu site', conteudos:'Conteúdos/Postagens', pendentes:'Correções Pendentes', todas:'Todas as Correções', ganhos:'Meus Ganhos', financeiro:'Financeiro', turmas:'Turmas', alunos:'Alunos', professores:'Professores', temas:'Temas', relatorios:'Relatórios', corretor:'Corretor automático', correcao:'Corrigir redação' }
   document.getElementById('topbar-title').textContent = titles[name] || name
   if (isChildTeacherMode() && name !== 'correcao') {
     const sub = document.getElementById('topbar-sub')
     if (sub) sub.textContent = 'Somente redações direcionadas para você'
   }
   if (name === 'site') loadSite()
+  if (name === 'conteudos') loadSite()
   if (name === 'dashboard') { loadStats(); loadCorrecoes('recentes'); loadPagamentosRecentes(); loadNotifications() }
   if (name === 'ganhos') loadMeusGanhos()
   if (name === 'financeiro') loadFinanceiro()

@@ -634,6 +634,20 @@ details[open].corretor-accordion .corretor-accordion-summary::before{transform:r
 .cms-live-post h3{font-size:20px;line-height:1.2;margin:8px 0}
 .cms-live-post p{font-size:13px;color:var(--ink2);line-height:1.55;margin-bottom:10px}
 .cms-live-post div:last-child{font-size:13px;color:var(--ink2);line-height:1.65;white-space:pre-line;border-top:1px solid var(--border);padding-top:10px}
+.content-page-head{display:flex;align-items:flex-start;justify-content:space-between;gap:12px;margin-bottom:18px;flex-wrap:wrap}
+.content-section-actions{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap}
+.content-post-list{gap:12px}
+.content-post-item{display:grid;grid-template-columns:minmax(0,1fr) auto;align-items:center;gap:14px;padding:14px}
+.content-post-preview{min-width:0}
+.content-post-title{font-weight:900;font-size:15px;color:var(--ink);margin-top:5px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.content-post-summary{font-size:12px;color:var(--ink3);line-height:1.45;margin-top:5px;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
+.content-post-actions{display:flex;gap:8px;align-items:center;justify-content:flex-end;flex-wrap:wrap}
+.modal-post-editor{width:calc(100vw - 32px);max-width:none;height:calc(100vh - 32px);max-height:none;overflow:hidden;display:flex;flex-direction:column;padding:22px}
+.post-editor-grid{display:grid;grid-template-columns:minmax(0,1.4fr) minmax(320px,.7fr);gap:16px;min-height:0;flex:1}
+.post-editor-form{min-width:0;overflow:auto;padding-right:4px}
+.post-editor-preview{position:sticky;top:0;align-self:start;border:1px solid var(--border);border-radius:var(--r2);background:var(--surface);padding:14px;max-height:100%;overflow:auto}
+.post-editor-actions{display:flex;justify-content:flex-end;gap:10px;padding-top:14px;border-top:1px solid var(--border);margin-top:14px}
+.modal-post-editor .rich-editor{min-height:380px}
 .action-stack{display:flex;gap:8px;flex-wrap:wrap;justify-content:flex-end}
 .rich-toolbar{display:flex;align-items:center;gap:5px;flex-wrap:wrap;border:1px solid var(--border);border-radius:12px 12px 0 0;background:var(--surface);padding:8px}
 .rich-toolbar button,.rich-toolbar label{height:32px;min-width:32px;border:1px solid var(--border);border-radius:8px;background:#fff;color:var(--ink);display:inline-flex;align-items:center;justify-content:center;font:inherit;font-size:12px;font-weight:900;cursor:pointer;padding:0 9px}
@@ -819,6 +833,13 @@ details[open].corretor-accordion .corretor-accordion-summary::before{transform:r
   .rich-toolbar{align-items:flex-start}
   .rich-toolbar select{flex:1 1 118px;max-width:none}
   .rich-editor{min-height:280px}
+  .content-post-item{grid-template-columns:1fr}
+  .content-post-actions{justify-content:flex-start}
+  .modal-post-editor{width:100%;height:100%;border-radius:0;padding:16px}
+  .post-editor-grid{grid-template-columns:1fr}
+  .post-editor-preview{position:relative}
+  .post-editor-actions{align-items:stretch;flex-direction:column}
+  .post-editor-actions .btn{width:100%;justify-content:center}
 }
 @media(max-width:480px){
   .grid-4,.grid-3,.grid-2{grid-template-columns:1fr}
