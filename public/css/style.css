@@ -1,5 +1,6 @@
 /* ── Design System ─────────────────────────────────────────── */
 *{box-sizing:border-box;margin:0;padding:0}
+html,body{max-width:100%;overflow-x:hidden}
 :root{
   --brand:#1A3A2A; --brand2:#2D5C42; --brand3:#3D7A58;
   --brand-light:#EAF2EC; --brand-text:#FFFFFF; --brand-text-soft:rgba(255,255,255,.72); --brand-text-muted:rgba(255,255,255,.25); --brand-text-border:rgba(255,255,255,.08);
@@ -40,7 +41,7 @@ img{max-width:100%}
 .tag-role-aluno{background:#e3f2fd;color:#1565c0}
 
 /* ── Cards ───────────────────────────────────────────────── */
-.card{background:var(--card);border:1px solid var(--border);border-radius:var(--r2);padding:20px}
+.card{background:var(--card);border:1px solid var(--border);border-radius:var(--r2);padding:20px;min-width:0}
 .card-sm{padding:14px}
 .kpi-card{background:var(--card);border:1px solid var(--border);border-radius:var(--r2);padding:20px 24px;display:flex;flex-direction:column;gap:4px}
 .kpi-label{font-size:11px;font-weight:600;color:var(--ink3);text-transform:uppercase;letter-spacing:.06em}
@@ -108,11 +109,11 @@ img{max-width:100%}
 .sb-logout:hover{background:var(--brand-text-border);color:var(--brand-text)}
 
 /* ── Main (with sidebar) ─────────────────────────────────── */
-.main{flex:1;margin-left:var(--sidebar-w);display:flex;flex-direction:column;min-height:100vh}
-.topbar{display:flex;align-items:center;justify-content:space-between;padding:16px 24px;border-bottom:1px solid var(--border);background:var(--card);position:sticky;top:0;z-index:50}
+.main{flex:1;margin-left:var(--sidebar-w);display:flex;flex-direction:column;min-height:100vh;min-width:0;overflow-x:hidden}
+.topbar{display:flex;align-items:center;justify-content:space-between;padding:16px 24px;border-bottom:1px solid var(--border);background:rgba(255,255,255,.96);backdrop-filter:blur(10px);position:sticky;top:0;z-index:90;flex-shrink:0}
 .topbar-title{font-size:15px;font-weight:700}
 .topbar-sub{font-size:11px;color:var(--ink3);margin-top:1px}
-.page{padding:24px;flex:1}
+.page{padding:24px;flex:1;min-width:0}
 .page-grid{display:grid;gap:20px}
 .grid-4{grid-template-columns:repeat(4,1fr)}
 .grid-3{grid-template-columns:repeat(3,1fr)}
@@ -218,6 +219,8 @@ textarea{resize:vertical;min-height:80px}
 .site-actions{display:flex;gap:6px;justify-content:flex-end;flex-wrap:wrap}
 .site-link{font-family:monospace;color:var(--brand3);font-size:12px}
 .table-wrap{width:100%;overflow-x:auto}
+.page-table-scroll{width:100%;max-width:100%;overflow-x:auto;-webkit-overflow-scrolling:touch}
+.page-table-scroll table{min-width:720px}
 .table{width:100%;border-collapse:collapse;font-size:13px}
 .table th,.table td{padding:10px;border-bottom:1px solid var(--border);text-align:left;vertical-align:top}
 .table th{font-size:11px;text-transform:uppercase;color:var(--ink3);letter-spacing:.04em}
@@ -800,6 +803,18 @@ details[open].corretor-accordion .corretor-accordion-summary::before{transform:r
   .topbar>div:last-child{display:flex;gap:8px;flex-wrap:wrap;width:100%;justify-content:flex-start!important}
   .topbar>div:last-child .btn{flex:1 1 140px;justify-content:center}
   .page{padding:16px}
+  #page-financeiro>.card,#page-alunos>.card{padding:14px;overflow:visible}
+  #page-financeiro>.card>div:first-child,#page-alunos>.card>div:first-child{align-items:stretch!important;flex-direction:column}
+  #page-alunos>.card>div:first-child>div:last-child{display:grid!important;grid-template-columns:1fr;gap:8px;width:100%}
+  #page-alunos>.card>div:first-child .btn,#page-financeiro>.card>div:first-child .btn{width:100%;justify-content:center}
+  #financeiro-content,.page-table-scroll,#alunos-list{max-width:100%;min-width:0}
+  #financeiro-content>div[style*="overflow"],#financeiro-content .table-wrap{max-width:100%;overflow-x:auto;-webkit-overflow-scrolling:touch}
+  #page-financeiro .finance-kpi-grid{grid-template-columns:1fr}
+  #page-financeiro .finance-tabs{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));border-radius:12px}
+  #page-financeiro .finance-tabs .alunos-tab{width:100%;justify-content:center}
+  #page-alunos .pre-filter-row{grid-template-columns:1fr}
+  #page-alunos .alunos-tabs{display:grid;grid-template-columns:1fr 1fr;width:100%;border-radius:12px}
+  #page-alunos .alunos-tab{width:100%;border-radius:8px}
   .grid-4,.grid-3{grid-template-columns:repeat(2,1fr)}
   .grid-2{grid-template-columns:1fr}
   .theme-scope-body{grid-template-columns:1fr}
@@ -832,8 +847,8 @@ details[open].corretor-accordion .corretor-accordion-summary::before{transform:r
   .table-wrap,.card[style*="overflow"]{overflow-x:auto}
   #financeiro-content{overflow-x:visible}
   .table{min-width:720px}
-  #page-financeiro .card,#page-ganhos .card,#page-alunos .card{overflow:hidden}
-  #page-financeiro table,#page-ganhos table,#page-alunos table{min-width:720px}
+  #page-ganhos .card{overflow:hidden}
+  #page-financeiro table,#page-ganhos table,#page-alunos table{min-width:680px}
   .rich-toolbar{align-items:flex-start}
   .rich-toolbar select{flex:1 1 118px;max-width:none}
   .rich-editor{min-height:280px}

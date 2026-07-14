@@ -3863,7 +3863,7 @@ function renderAlunos() {
   })
   if (!alunosCache.length) { el.innerHTML = '<div class="empty"><div class="empty-icon">👥</div><p>Nenhum aluno cadastrado.</p></div>'; return }
   if (!list.length) { el.innerHTML = '<div class="empty"><div class="empty-icon">🔎</div><p>Nenhum aluno encontrado com estes filtros.</p></div>'; return }
-  el.innerHTML = `<table style="width:100%;border-collapse:collapse">
+  el.innerHTML = `<div class="page-table-scroll"><table class="alunos-table" style="width:100%;border-collapse:collapse">
     <thead><tr style="border-bottom:1px solid var(--border)">
       <th style="width:32px;text-align:left;padding:8px 12px"><input type="checkbox" onchange="toggleAllAlunos(this.checked)"></th>
       <th style="text-align:left;padding:8px 12px;font-size:11px;color:var(--ink3)">NOME</th>
@@ -3893,7 +3893,7 @@ function renderAlunos() {
         </div>
       </td>
     </tr>`
-    }).join('')}</tbody></table>`
+    }).join('')}</tbody></table></div>`
 }
 
 function alunoMatchesFilters(a, query, status) {
