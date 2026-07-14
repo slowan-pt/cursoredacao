@@ -73,12 +73,8 @@
         <div class="card site-editor-card">
           <div id="alert-site" class="alert alert-err"></div>
           <div id="alert-site-ok" class="alert alert-ok"></div>
-          <div class="site-tabbar site-tabbar-main" aria-label="Edição do site">
-            <button type="button" class="on" data-site-tab="layout" onclick="setSiteEditorTab('layout')">Layout do site</button>
-            <button type="button" data-site-tab="turmas" onclick="setSiteEditorTab('turmas')">Turmas</button>
-          </div>
           <form onsubmit="saveSite(event)">
-            <div class="site-tab-panel on" data-site-tab-panel="layout">
+            <div class="site-section-panel">
               <div class="cms-menu-section" data-layout-section="cores">
                 <div class="cms-menu-section-title">Cores do site</div>
                 <div id="site-colors" class="site-field-grid">
@@ -191,7 +187,7 @@
                 <button type="submit" class="btn btn-accent">Salvar site</button>
               </div>
             </div>
-            <div class="site-tab-panel" data-site-tab-panel="turmas">
+            <div class="site-section-panel">
               <div class="site-tab-card">
                 <div>
                   <strong>Turmas publicadas no site</strong>
