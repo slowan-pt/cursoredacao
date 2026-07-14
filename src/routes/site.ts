@@ -166,6 +166,7 @@ const CMS_PREFIX = 'CMS:'
 function defaultCms() {
   return {
     layout: {
+      header_label: 'Redação',
       eyebrow: 'Site independente do professor',
       hero_title: 'Redação com acompanhamento direto.',
       cta_text: 'Criar acesso de aluno',
@@ -571,7 +572,7 @@ ${blockOrderCss}
 </head>
 <body>
 <nav class="nav">
-  <a class="brand" href="${sitePath}"><span class="mark">Redação</span><span>${esc(site.nome_prof)}</span></a>
+  <a class="brand" href="${sitePath}"><span class="mark">${esc(layout.header_label || defaultCms().layout.header_label)}</span><span>${esc(site.nome_prof)}</span></a>
   <div class="nav-actions">
     <a class="nav-link" href="#turmas">Turmas</a>
     ${isHidden('block:conteudos') ? '' : '<a class="nav-link" href="#conteudos">Conteúdos</a>'}
@@ -1940,6 +1941,7 @@ bootProfessorEditMode()
 function renderTurmaPage(data: { site: any; turmas: any[] }, turma: any) {
   const { site } = data
   const cms = parseCms(site)
+  const layout = cms.layout
   const theme = normalizeTheme(cms.theme, site.cor_primaria, site.cor_accent)
   const settings = cms.turma_settings?.[turma.id] || {}
   const sitePath = `/redacao/${encodeURIComponent(site.slug)}`
@@ -1977,14 +1979,14 @@ function renderTurmaPage(data: { site: any; turmas: any[] }, turma: any) {
 *{box-sizing:border-box;margin:0;padding:0}
 :root{--brand:${esc(theme.primary)};--brand-text:${esc(theme.primaryText)};--accent:${esc(theme.accent)};--accent-text:${esc(theme.accentText)};--surface:${esc(theme.background)};--ink:${esc(theme.text)};--ink2:${esc(theme.textSoft)};--ink3:${esc(theme.textMuted)};--card:${esc(theme.card)};--border:${esc(theme.border)};--r:10px}
 html{scroll-behavior:smooth}body{font-family:Inter,system-ui,sans-serif;background:var(--surface);color:var(--ink);-webkit-font-smoothing:antialiased}a{text-decoration:none;color:inherit}
-.nav{height:68px;background:var(--brand);color:var(--brand-text);display:flex;align-items:center;justify-content:space-between;padding:0 6%;position:sticky;top:0;z-index:20}.brand{font-weight:900}.nav a{font-size:13px;font-weight:800}.nav-actions{display:flex;gap:14px;align-items:center}.btn{display:inline-flex;align-items:center;justify-content:center;border:0;border-radius:999px;padding:13px 20px;font-weight:900;font-size:13px;cursor:pointer;transition:.22s}.btn:hover{transform:translateY(-2px)}.btn-accent{background:var(--accent);color:var(--accent-text)}.btn-light{background:#fff;color:var(--brand)}
+.nav{height:68px;background:var(--brand);color:var(--brand-text);display:flex;align-items:center;justify-content:space-between;padding:0 6%;position:sticky;top:0;z-index:20}.brand{display:flex;align-items:center;gap:10px;font-weight:900}.mark{background:var(--accent);color:var(--accent-text);font-size:10px;font-weight:900;padding:3px 9px;border-radius:5px;text-transform:uppercase}.nav a{font-size:13px;font-weight:800}.nav-actions{display:flex;gap:14px;align-items:center}.btn{display:inline-flex;align-items:center;justify-content:center;border:0;border-radius:999px;padding:13px 20px;font-weight:900;font-size:13px;cursor:pointer;transition:.22s}.btn:hover{transform:translateY(-2px)}.btn-accent{background:var(--accent);color:var(--accent-text)}.btn-light{background:#fff;color:var(--brand)}
 .hero{min-height:calc(100vh - 68px);background:linear-gradient(90deg,rgba(0,0,0,.54),rgba(0,0,0,.18)),var(--brand);color:var(--brand-text);display:grid;grid-template-columns:minmax(0,1fr) minmax(320px,460px);gap:54px;align-items:center;padding:72px 6%}.hero h1{font-size:clamp(38px,6vw,76px);line-height:.98;font-weight:900;max-width:820px}.eyebrow{text-transform:uppercase;font-weight:800;letter-spacing:.08em;margin-bottom:18px;color:rgba(255,255,255,.78)}.hero p{margin:24px 0;color:rgba(255,255,255,.82);font-size:18px;line-height:1.65;max-width:720px}.buy-card{background:#fff;color:#111;border-radius:28px;padding:34px;box-shadow:0 30px 80px rgba(0,0,0,.25)}.buy-card-cover{width:min(100%,300px);aspect-ratio:2/3;height:auto;border-radius:20px;overflow:hidden;background:#050505;margin:0 auto 22px;display:flex;align-items:center;justify-content:center;color:var(--brand-text);font-size:44px;font-weight:900}.buy-card-cover img{width:100%;height:100%;object-fit:contain;background:#050505}.price{display:inline-block;background:var(--accent);color:var(--accent-text);font-size:28px;font-weight:900;padding:4px 10px;margin:12px 0 18px}.buy-card ul{display:grid;gap:10px;margin:16px 0 22px}.buy-card li{list-style:none;color:#555}.buy-card li:before{content:'✓';display:inline-flex;width:22px;height:22px;border-radius:50%;background:var(--accent);color:var(--accent-text);align-items:center;justify-content:center;margin-right:9px;font-size:12px;font-weight:900}
 .section{padding:82px 6%}.dark{background:var(--brand);color:var(--brand-text)}.section-title{font-size:clamp(30px,4vw,52px);font-weight:900;margin-bottom:30px}.grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:18px}.info-card{background:var(--card);border:1px solid var(--border);border-radius:18px;padding:24px;min-height:150px;transition:.28s}.dark .info-card{background:rgba(255,255,255,.06);border-color:rgba(255,255,255,.16)}.info-card:hover{transform:translateY(-5px);box-shadow:0 18px 48px rgba(0,0,0,.12)}.info-card strong{display:block;font-size:16px;margin-bottom:8px}.info-card p{color:var(--ink2);line-height:1.6}.dark .info-card p{color:rgba(255,255,255,.72)}.compare{display:grid;grid-template-columns:1fr 1fr;gap:22px}.panel{border-radius:24px;padding:30px;background:#fff;color:#111}.panel.highlight{background:var(--accent);color:var(--accent-text)}.panel ul{display:grid;gap:11px;margin-top:16px}.panel li{list-style:none}.roadmap{columns:2;gap:44px}.roadmap li{break-inside:avoid;margin:0 0 14px;padding:14px 16px;border:1px solid var(--border);border-radius:14px;background:#fff;list-style:none}.cta{text-align:center;background:linear-gradient(135deg,var(--brand),#111);color:var(--brand-text);padding:86px 6%}.cta h2{font-size:clamp(34px,5vw,62px);font-weight:900;margin-bottom:16px}.reveal{opacity:0;transform:translateY(30px);transition:opacity .72s ease,transform .72s ease}.reveal.is-visible{opacity:1;transform:none}
 @media(max-width:860px){.hero{grid-template-columns:1fr;min-height:auto}.grid,.compare{grid-template-columns:1fr}.roadmap{columns:1}.nav-actions{display:none}}@media(prefers-reduced-motion:reduce){.reveal,.btn,.info-card{transition:none!important;transform:none!important}.reveal{opacity:1}}
 </style>
 </head>
 <body>
-<nav class="nav"><a class="brand" href="${sitePath}">${esc(site.nome_prof)}</a><div class="nav-actions"><a href="${sitePath}#turmas">Turmas</a><a href="${sitePath}#conteudos">Conteúdos</a><a class="btn btn-light" href="${sitePath}/login">Entrar</a></div></nav>
+<nav class="nav"><a class="brand" href="${sitePath}"><span class="mark">${esc(layout.header_label || defaultCms().layout.header_label)}</span><span>${esc(site.nome_prof)}</span></a><div class="nav-actions"><a href="${sitePath}#turmas">Turmas</a><a href="${sitePath}#conteudos">Conteúdos</a><a class="btn btn-light" href="${sitePath}/login">Entrar</a></div></nav>
 <main>
 <section class="hero reveal">
   <div><div class="eyebrow">${esc(turma.concurso || 'Turma')}</div><h1>${esc(turma.nome)}</h1><p>${esc(destaque)}</p><a class="btn btn-accent" href="${checkoutUrl}">Quero participar</a></div>
@@ -2006,6 +2008,7 @@ initReveal()
 function renderCheckoutPage(data: { site: any; turmas: any[] }, turma: any) {
   const { site } = data
   const cms = parseCms(site)
+  const layout = cms.layout
   const theme = normalizeTheme(cms.theme, site.cor_primaria, site.cor_accent)
   const settings = cms.turma_settings?.[turma.id] || {}
   const sitePath = `/redacao/${encodeURIComponent(site.slug)}`
@@ -2034,7 +2037,7 @@ function renderCheckoutPage(data: { site: any; turmas: any[] }, turma: any) {
 *{box-sizing:border-box;margin:0;padding:0}
 :root{--brand:${esc(theme.primary)};--brand-text:${esc(theme.primaryText)};--brand-soft:rgba(255,255,255,.72);--accent:${esc(theme.accent)};--accent-text:${esc(theme.accentText)};--surface:${esc(theme.background)};--ink:${esc(theme.text)};--ink2:${esc(theme.textSoft)};--ink3:${esc(theme.textMuted)};--card:${esc(theme.card)};--border:${esc(theme.border)};--danger:${esc(theme.danger)};--success:${esc(theme.success)}}
 body{font-family:Inter,system-ui,sans-serif;background:linear-gradient(135deg,var(--brand),#111);min-height:100vh;color:var(--ink);padding:28px;-webkit-font-smoothing:antialiased}
-a{text-decoration:none;color:inherit}.wrap{max-width:1080px;margin:0 auto}.top{display:flex;align-items:center;justify-content:space-between;gap:16px;color:var(--brand-text);margin-bottom:26px}.brand{font-weight:900}.back{font-size:13px;color:var(--brand-soft);font-weight:800}
+a{text-decoration:none;color:inherit}.wrap{max-width:1080px;margin:0 auto}.top{display:flex;align-items:center;justify-content:space-between;gap:16px;color:var(--brand-text);margin-bottom:26px}.brand{display:flex;align-items:center;gap:10px;font-weight:900}.mark{background:var(--accent);color:var(--accent-text);font-size:10px;font-weight:900;padding:3px 9px;border-radius:5px;text-transform:uppercase}.back{font-size:13px;color:var(--brand-soft);font-weight:800}
 .checkout{display:grid;grid-template-columns:minmax(0,1fr) 420px;gap:22px;align-items:start}.panel{background:var(--card);border:1px solid var(--border);border-radius:24px;padding:28px;box-shadow:0 24px 70px rgba(0,0,0,.22)}
 .cover{width:min(100%,320px);aspect-ratio:2/3;height:auto;border-radius:18px;overflow:hidden;background:#050505;display:flex;align-items:center;justify-content:center;color:var(--brand-text);font-weight:900;font-size:48px;margin:0 auto 22px}.cover img{width:100%;height:100%;object-fit:contain;background:#050505}
 .eyebrow{font-size:11px;text-transform:uppercase;letter-spacing:.08em;color:var(--ink3);font-weight:900;margin-bottom:8px}h1{font-size:clamp(30px,5vw,56px);line-height:1;font-weight:900;margin-bottom:14px}.desc{color:var(--ink2);line-height:1.65;font-size:15px}.benefits{display:grid;gap:10px;margin-top:22px}.benefits li{list-style:none;color:var(--ink2)}.benefits li:before{content:'✓';display:inline-flex;width:22px;height:22px;border-radius:50%;background:var(--accent);color:var(--accent-text);align-items:center;justify-content:center;margin-right:8px;font-size:12px;font-weight:900}
@@ -2049,7 +2052,7 @@ a{text-decoration:none;color:inherit}.wrap{max-width:1080px;margin:0 auto}.top{d
 </head>
 <body>
 <div class="wrap">
-  <div class="top"><a class="brand" href="${sitePath}">${esc(site.nome_prof)}</a><a class="back" href="${sitePath}/turmas/${encodeURIComponent(turma.id)}">← Voltar para a turma</a></div>
+  <div class="top"><a class="brand" href="${sitePath}"><span class="mark">${esc(layout.header_label || defaultCms().layout.header_label)}</span><span>${esc(site.nome_prof)}</span></a><a class="back" href="${sitePath}/turmas/${encodeURIComponent(turma.id)}">← Voltar para a turma</a></div>
   <main class="checkout">
     <section class="panel">
       <div class="cover">${image ? `<img src="${esc(image)}" alt="${esc(turma.nome)}">` : esc(String(turma.nome || 'TR').slice(0, 2).toUpperCase())}</div>
@@ -2164,6 +2167,7 @@ async function simulatePayment(event){
 function renderPostPage(data: { site: any; turmas: any[] }, post: any) {
   const { site } = data
   const cms = parseCms(site)
+  const layout = cms.layout
   const theme = normalizeTheme(cms.theme, site.cor_primaria, site.cor_accent)
   const brand = theme.primary
   const accent = theme.accent
@@ -2203,7 +2207,7 @@ h1{font-size:clamp(34px,5vw,58px);line-height:1.04;font-weight:900;max-width:900
 </head>
 <body>
 <nav class="nav">
-  <a class="brand" href="${sitePath}"><span class="mark">Redação</span><span>${esc(site.nome_prof)}</span></a>
+  <a class="brand" href="${sitePath}"><span class="mark">${esc(layout.header_label || defaultCms().layout.header_label)}</span><span>${esc(site.nome_prof)}</span></a>
   <div class="nav-actions">
     <a class="nav-link" href="${sitePath}#turmas">Turmas</a>
     <a class="nav-link" href="${sitePath}#conteudos">Conteúdos</a>

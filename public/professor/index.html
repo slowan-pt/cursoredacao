@@ -100,6 +100,10 @@
               <div class="cms-menu-section" data-layout-section="cabecalho">
                 <div class="cms-menu-section-title">Cabeçalho</div>
                 <div class="form-group">
+                  <label>Label do cabeçalho</label>
+                  <input id="cms-header-label" placeholder="Redação" onfocus="pulseSitePreview('header-label')" oninput="updateSitePreview();pulseSitePreview('header-label')">
+                </div>
+                <div class="form-group">
                   <label>Nome exibido no site</label>
                   <input id="site-nome" required onfocus="pulseSitePreview('nome')" oninput="updateSitePreview();pulseSitePreview('nome')">
                 </div>
@@ -211,7 +215,7 @@
           <div class="preview-unsaved" id="preview-unsaved" style="display:none">⚠ Pré-visualização — alterações não salvas</div>
           <div class="site-preview-card" id="site-preview-card">
             <div class="site-preview-nav">
-              <div><span class="site-preview-pill">Redação</span> <strong id="pv-brand-name">Professor(a)</strong></div>
+              <div><span class="site-preview-pill" id="pv-header-label">Redação</span> <strong id="pv-brand-name">Professor(a)</strong></div>
               <div class="site-preview-nav-actions"><span>Turmas</span><span>Conteúdos</span><button type="button">Entrar</button></div>
             </div>
             <div class="site-preview-hero">
@@ -1265,6 +1269,7 @@ const loginPath = tenantSlug ? `${tenantBase}/login` : '/login.html'
 function defaultCms() {
   return {
     layout: {
+      header_label: 'Redação',
       eyebrow: 'Site independente do professor',
       hero_title: 'Redação com acompanhamento direto.',
       cta_text: 'Criar acesso de aluno',
@@ -1473,6 +1478,7 @@ function setSiteEditorTab(tab) {
 function pulseSitePreview(target) {
   const map = {
     nome: ['pv-brand-name', 'pv-prof-name'],
+    'header-label': ['pv-header-label'],
     bio: ['pv-bio'],
     hero: ['site-preview-card'],
     eyebrow: ['pv-eyebrow'],
@@ -1530,6 +1536,7 @@ function loadCmsForm(cms) {
   cmsTemas = Array.isArray(data.themes) ? data.themes : []
   document.getElementById('site-whatsapp').value = data.contact.whatsapp_phone || defaultCms().contact.whatsapp_phone
   setThemeControls(data.theme)
+  document.getElementById('cms-header-label').value = data.layout.header_label || defaultCms().layout.header_label
   document.getElementById('cms-eyebrow').value = data.layout.eyebrow || ''
   document.getElementById('cms-hero-title').value = data.layout.hero_title || ''
   document.getElementById('cms-cta').value = data.layout.cta_text || ''
@@ -1568,6 +1575,7 @@ function collectCmsForm() {
     ...previous,
     layout: {
       ...previousLayout,
+      header_label: document.getElementById('cms-header-label').value.trim() || defaultCms().layout.header_label,
       eyebrow: document.getElementById('cms-eyebrow').value.trim() || defaultCms().layout.eyebrow,
       hero_title: document.getElementById('cms-hero-title').value.trim() || defaultCms().layout.hero_title,
       cta_text: document.getElementById('cms-cta').value.trim() || defaultCms().layout.cta_text,
@@ -2406,6 +2414,7 @@ function renderLayoutPreview() {
   const el = document.getElementById('layout-live-preview')
   if (!el) return
   const nome = document.getElementById('site-nome')?.value.trim() || 'Professor(a)'
+  const headerLabel = document.getElementById('cms-header-label')?.value.trim() || defaultCms().layout.header_label
   const bio = document.getElementById('site-bio')?.value.trim() || 'Turmas, materiais e correções organizadas em uma área própria para alunos.'
   const eyebrow = document.getElementById('cms-eyebrow')?.value.trim() || defaultCms().layout.eyebrow
   const title = document.getElementById('cms-hero-title')?.value.trim() || defaultCms().layout.hero_title
@@ -2417,7 +2426,7 @@ function renderLayoutPreview() {
   const alunoCta = document.getElementById('cms-aluno-cta')?.value.trim() || defaultCms().layout.aluno_cta
   el.innerHTML = `
     <div class="cms-live-site">
-      <div class="cms-live-nav"><span>Redação</span><strong>${esc(nome)}</strong><button type="button">Entrar</button></div>
+      <div class="cms-live-nav"><span>${esc(headerLabel)}</span><strong>${esc(nome)}</strong><button type="button">Entrar</button></div>
       <div class="cms-live-hero">
         <small>${esc(eyebrow)}</small>
         <h3>${esc(title)}</h3>
@@ -3066,6 +3075,7 @@ function updateSitePreview() {
   const brandText = theme.primaryText
   const accentText = theme.accentText
   const nome = document.getElementById('site-nome').value.trim() || 'Professor(a)'
+  const headerLabel = document.getElementById('cms-header-label')?.value.trim() || defaultCms().layout.header_label
   const bio = document.getElementById('site-bio').value.trim() || 'Turmas, materiais e correções organizadas em uma área própria para alunos.'
   const heroTitle = document.getElementById('cms-hero-title').value.trim() || defaultCms().layout.hero_title
   const eyebrow = document.getElementById('cms-eyebrow').value.trim() || defaultCms().layout.eyebrow
@@ -3095,6 +3105,7 @@ function updateSitePreview() {
   preview.style.setProperty('--pv-ink', theme.text)
   preview.style.setProperty('--pv-ink2', theme.textSoft)
   preview.style.setProperty('--pv-ink3', theme.textMuted)
+  document.getElementById('pv-header-label').textContent = headerLabel
   document.getElementById('pv-brand-name').textContent = nome
   document.getElementById('pv-prof-name').textContent = nome
   const profileCard = document.getElementById('pv-profile-card')

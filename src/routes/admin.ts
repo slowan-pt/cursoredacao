@@ -64,6 +64,7 @@ const PENDING_CORRECAO_STATUSES = ['AGUARDANDO', 'EM_ANDAMENTO', 'EM_CORRECAO']
 function defaultCms() {
   return {
     layout: {
+      header_label: 'Redação',
       eyebrow: 'Site independente do professor',
       hero_title: 'Redação com acompanhamento direto.',
       cta_text: 'Criar acesso de aluno',
