@@ -584,8 +584,8 @@ details[open].corretor-accordion .corretor-accordion-summary::before{transform:r
 .site-editor-card{max-width:none!important}
 .site-preview-pane{position:sticky;top:88px;display:flex;flex-direction:column;gap:12px;min-width:0}
 .site-preview-pane>#site-public-link{align-self:flex-end}
-.floating-save-site{display:none;position:sticky;top:80px;align-self:flex-end;z-index:25;font-size:16px;font-weight:950;padding:13px 18px;box-shadow:0 16px 34px rgba(0,0,0,.2);animation:savePulse .9s ease-in-out infinite alternate}
-@keyframes savePulse{0%{transform:translateY(0) scale(1);filter:brightness(1);box-shadow:0 12px 24px rgba(0,0,0,.18)}100%{transform:translateY(-1px) scale(1.025);filter:brightness(1.08);box-shadow:0 18px 38px rgba(0,0,0,.26)}}
+.floating-save-site{display:none;position:sticky;top:80px;align-self:center;z-index:25;font-size:17px;font-weight:950;padding:14px 22px;box-shadow:0 18px 38px rgba(0,0,0,.24);animation:savePulse .55s ease-in-out infinite alternate}
+@keyframes savePulse{0%{transform:translateY(0) scale(1);filter:brightness(1);box-shadow:0 12px 24px rgba(0,0,0,.18),0 0 0 0 rgba(197,241,53,.75)}100%{transform:translateY(-2px) scale(1.06);filter:brightness(1.18);box-shadow:0 22px 46px rgba(0,0,0,.32),0 0 0 8px rgba(197,241,53,0)}}
 .site-preview-pane .site-preview-card{width:100%;max-width:820px;align-self:stretch}
 .site-preview-pane .site-preview-hero{grid-template-columns:1fr}
 .site-preview-pane .site-preview-prof{max-width:320px}
