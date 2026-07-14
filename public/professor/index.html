@@ -68,85 +68,239 @@
 
     <!-- MEU SITE -->
     <div class="page" id="page-site" style="display:none">
-      <div class="card" style="max-width:760px">
-        <div style="display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:20px;flex-wrap:wrap">
-          <strong style="font-size:15px">Meu site</strong>
-          <a class="btn btn-brand btn-sm" id="site-public-link" href="#" target="_blank" rel="noopener">Visualizar site</a>
-        </div>
-        <div id="alert-site" class="alert alert-err"></div>
-        <div id="alert-site-ok" class="alert alert-ok"></div>
-        <form onsubmit="saveSite(event)">
-          <div class="form-group">
-            <label>Nome exibido no site</label>
-            <input id="site-nome" required oninput="updateSitePreview()">
-          </div>
-          <div class="form-group">
-            <label>Descrição / bio</label>
-            <textarea id="site-bio" placeholder="Apresente sua proposta, método, público e diferenciais" oninput="updateSitePreview()"></textarea>
-          </div>
-          <div class="form-group">
-            <label>WhatsApp do site</label>
-            <input id="site-whatsapp" placeholder="Ex: 5521971214042" inputmode="numeric">
-            <div class="hint">Informe país + DDD + número. Ex: 55 21 97121-4042.</div>
-          </div>
-          <div class="site-tabbar" aria-label="Edição do site">
-            <button type="button" class="on" data-site-tab="cores" onclick="setSiteEditorTab('cores')">Cores do site</button>
-            <button type="button" data-site-tab="cabecalho" onclick="setSiteEditorTab('cabecalho')">Cabeçalho</button>
+      <div class="site-editor-shell">
+        <div class="card site-editor-card">
+          <div id="alert-site" class="alert alert-err"></div>
+          <div id="alert-site-ok" class="alert alert-ok"></div>
+          <div class="site-tabbar site-tabbar-main" aria-label="Edição do site">
+            <button type="button" class="on" data-site-tab="layout" onclick="setSiteEditorTab('layout')">Layout do site</button>
             <button type="button" data-site-tab="turmas" onclick="setSiteEditorTab('turmas')">Turmas</button>
-            <button type="button" data-site-tab="conteudos" onclick="setSiteEditorTab('conteudos')">Conteúdos/Postagens</button>
-            <button type="button" data-site-tab="aluno" onclick="setSiteEditorTab('aluno')">Área Aluno</button>
+            <button type="button" data-site-tab="conteudos" onclick="setSiteEditorTab('conteudos')">Conteúdo/Postagens</button>
           </div>
-          <div class="site-tab-panel on" data-site-tab-panel="cores">
-          <div id="site-colors" style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
-            <div class="form-group">
-              <label>Cor primária</label>
-              <div class="color-field">
-                <input type="color" id="site-cor" value="#1A3A2A" oninput="syncColor('site-cor','site-cor-code');updateSitePreview()">
-                <input id="site-cor-code" value="#1A3A2A" placeholder="#1A3A2A ou rgb(26,58,42)" oninput="syncCode('site-cor-code','site-cor');updateSitePreview()">
+          <form onsubmit="saveSite(event)">
+            <div class="site-tab-panel on" data-site-tab-panel="layout">
+              <div class="form-group">
+                <label>Nome exibido no site</label>
+                <input id="site-nome" required onfocus="pulseSitePreview('nome')" oninput="updateSitePreview();pulseSitePreview('nome')">
+              </div>
+              <div class="form-group">
+                <label>Descrição / bio</label>
+                <textarea id="site-bio" placeholder="Apresente sua proposta, método, público e diferenciais" onfocus="pulseSitePreview('bio')" oninput="updateSitePreview();pulseSitePreview('bio')"></textarea>
+              </div>
+              <div class="form-group">
+                <label>WhatsApp do site</label>
+                <input id="site-whatsapp" placeholder="Ex: 5521971214042" inputmode="numeric">
+                <div class="hint">Informe país + DDD + número. Ex: 55 21 97121-4042.</div>
+              </div>
+              <div id="site-colors" class="site-field-grid">
+                <div class="form-group">
+                  <label>Cor primária</label>
+                  <div class="color-field">
+                    <input type="color" id="site-cor" value="#1A3A2A" onfocus="pulseSitePreview('hero')" oninput="syncColor('site-cor','site-cor-code');updateSitePreview();pulseSitePreview('hero')">
+                    <input id="site-cor-code" value="#1A3A2A" placeholder="#1A3A2A ou rgb(26,58,42)" onfocus="pulseSitePreview('hero')" oninput="syncCode('site-cor-code','site-cor');updateSitePreview();pulseSitePreview('hero')">
+                  </div>
+                </div>
+                <div class="form-group">
+                  <label>Cor de destaque</label>
+                  <div class="color-field">
+                    <input type="color" id="site-accent" value="#C5F135" onfocus="pulseSitePreview('cta')" oninput="syncColor('site-accent','site-accent-code');updateSitePreview();pulseSitePreview('cta')">
+                    <input id="site-accent-code" value="#C5F135" placeholder="#C5F135 ou rgb(197,241,53)" onfocus="pulseSitePreview('cta')" oninput="syncCode('site-accent-code','site-accent');updateSitePreview();pulseSitePreview('cta')">
+                  </div>
+                </div>
+              </div>
+              <div class="site-tools-row">
+                <button type="button" class="btn btn-sec" onclick="setDashboardModelDefault()">Definir modelo como padrão</button>
+                <button type="submit" class="btn btn-accent">Salvar site</button>
+              </div>
+              <div class="contrast-hint" id="site-contrast-hint"></div>
+              <div class="cms-menu-section" data-layout-section="cabecalho">
+                <div class="cms-menu-section-title">Cabeçalho</div>
+                <div class="form-group">
+                  <label>Etiqueta acima do título</label>
+                  <input id="cms-eyebrow" placeholder="Site independente do professor" onfocus="pulseSitePreview('eyebrow')" oninput="updateSitePreview();pulseSitePreview('eyebrow')">
+                </div>
+                <div class="form-group">
+                  <label>Texto do botão principal</label>
+                  <input id="cms-cta" placeholder="Criar acesso de aluno" onfocus="pulseSitePreview('cta')" oninput="updateSitePreview();pulseSitePreview('cta')">
+                </div>
+                <div class="form-group">
+                  <label>Título principal</label>
+                  <input id="cms-hero-title" placeholder="Redação com acompanhamento direto." onfocus="pulseSitePreview('hero-title')" oninput="updateSitePreview();pulseSitePreview('hero-title')">
+                </div>
+                <div class="form-group">
+                  <label>Texto do cartão do professor</label>
+                  <textarea id="cms-profile-text" placeholder="Explique como funciona sua área, turmas e acompanhamento" onfocus="pulseSitePreview('profile')" oninput="updateSitePreview();pulseSitePreview('profile')"></textarea>
+                </div>
+                <div class="form-group">
+                  <label>Exibição do cartão do professor</label>
+                  <div class="profile-display-toggle">
+                    <label><input type="radio" name="profile-display-mode" value="text" checked onchange="setProfileDisplayMode('text');pulseSitePreview('profile')"> Texto</label>
+                    <label><input type="radio" name="profile-display-mode" value="photo" onchange="setProfileDisplayMode('photo');pulseSitePreview('profile')"> Foto</label>
+                  </div>
+                  <div class="profile-photo-editor" id="profile-photo-editor">
+                    <div class="profile-photo-actions">
+                      <label class="file-button">
+                        Escolher foto
+                        <input type="file" accept="image/*" onchange="handleProfilePhotoFile(event);pulseSitePreview('profile')">
+                      </label>
+                      <input type="checkbox" id="cms-profile-photo-bg" hidden onchange="reprocessProfilePhoto()">
+                      <div class="photo-bg-toggle">
+                        <button type="button" id="photo-bg-original" class="on" onclick="setProfilePhotoBgMode(false);pulseSitePreview('profile')">Original</button>
+                        <button type="button" id="photo-bg-remove" onclick="setProfilePhotoBgMode(true);pulseSitePreview('profile')">Remover fundo</button>
+                      </div>
+                      <button type="button" class="btn-secondary" onclick="clearProfilePhoto();pulseSitePreview('profile')">Remover foto</button>
+                    </div>
+                    <input type="hidden" id="cms-profile-photo">
+                    <input type="hidden" id="cms-profile-photo-original">
+                    <div class="profile-photo-preview" id="profile-photo-preview">
+                      <span>Prévia da foto</span>
+                    </div>
+                  </div>
+                </div>
+              </div>
+              <div class="cms-menu-section" data-layout-section="turmas">
+                <div class="cms-menu-section-title">Turmas no site</div>
+                <div class="form-group">
+                  <label>Título da seção de turmas</label>
+                  <input id="cms-turmas-title" placeholder="Escolha sua turma" onfocus="pulseSitePreview('turmas')" oninput="updateSitePreview();pulseSitePreview('turmas')">
+                </div>
+                <div class="form-group">
+                  <label>Subtítulo da seção de turmas</label>
+                  <input id="cms-turmas-subtitle" placeholder="Ao criar acesso por aqui..." onfocus="pulseSitePreview('turmas')" oninput="updateSitePreview();pulseSitePreview('turmas')">
+                </div>
+              </div>
+              <div class="cms-menu-section" data-layout-section="conteudos">
+                <div class="cms-menu-section-title">Conteúdos/Postagens no site</div>
+                <div class="form-group">
+                  <label>Título dos conteúdos</label>
+                  <input id="cms-posts-title" placeholder="Dicas e materiais" onfocus="pulseSitePreview('posts')" oninput="updateSitePreview();pulseSitePreview('posts')">
+                </div>
+                <div class="form-group">
+                  <label>Introdução dos conteúdos</label>
+                  <input id="cms-posts-intro" placeholder="Publicações, notícias e matérias do professor." onfocus="pulseSitePreview('posts')" oninput="updateSitePreview();pulseSitePreview('posts')">
+                </div>
+                <label class="inline-switch"><input type="checkbox" id="hide-posts-section" onchange="updateSitePreview();pulseSitePreview('posts')"> Ocultar esta seção no site público</label>
+              </div>
+              <div class="cms-menu-section" data-layout-section="aluno">
+                <div class="cms-menu-section-title">Área Aluno</div>
+                <div class="form-group">
+                  <label>Título da Área Aluno</label>
+                  <input id="cms-aluno-title" placeholder="Acesse a plataforma" onfocus="pulseSitePreview('aluno')" oninput="updateSitePreview();pulseSitePreview('aluno')">
+                </div>
+                <div class="form-group">
+                  <label>Texto da Área Aluno</label>
+                  <input id="cms-aluno-text" placeholder="Entre para acompanhar turmas, envios de redação e correções." onfocus="pulseSitePreview('aluno')" oninput="updateSitePreview();pulseSitePreview('aluno')">
+                </div>
+                <div class="form-group">
+                  <label>Texto do botão da Área Aluno</label>
+                  <input id="cms-aluno-cta" placeholder="Entrar na área do aluno" onfocus="pulseSitePreview('aluno')" oninput="updateSitePreview();pulseSitePreview('aluno')">
+                </div>
               </div>
             </div>
-            <div class="form-group">
-              <label>Cor de destaque</label>
-              <div class="color-field">
-                <input type="color" id="site-accent" value="#C5F135" oninput="syncColor('site-accent','site-accent-code');updateSitePreview()">
-                <input id="site-accent-code" value="#C5F135" placeholder="#C5F135 ou rgb(197,241,53)" oninput="syncCode('site-accent-code','site-accent');updateSitePreview()">
+            <div class="site-tab-panel" data-site-tab-panel="turmas">
+              <div class="site-tab-card">
+                <div>
+                  <strong>Turmas publicadas no site</strong>
+                  <span>Cadastre, edite, oculte ou exclua turmas no menu Turmas. Aqui você mantém a organização visual do site.</span>
+                </div>
+                <button type="button" class="btn btn-brand btn-sm" onclick="showPage('turmas',null)">Abrir menu Turmas</button>
+              </div>
+              <div class="cms-menu-section">
+                <div class="cms-menu-section-title">Textos da seção</div>
+                <p class="hint">Os campos de título e subtítulo das turmas ficam na aba Layout do site para manter a edição visual em um só lugar.</p>
               </div>
             </div>
-          </div>
-          <div class="site-tools-row">
-            <button type="button" class="btn btn-sec" onclick="setDashboardModelDefault()">Definir modelo como padrão</button>
-          </div>
-          <div class="contrast-hint" id="site-contrast-hint"></div>
-          </div>
-          <div class="site-tab-panel" data-site-tab-panel="cabecalho">
-            <div class="site-tab-card">
-              <strong>Cabeçalho do site</strong>
-              <p>Título principal, chamada, botão, cartão do professor e foto.</p>
-              <button type="button" class="btn btn-brand btn-sm" onclick="openLayoutModal('cabecalho')">Editar cabeçalho</button>
+            <div class="site-tab-panel" data-site-tab-panel="conteudos">
+              <div class="cms-menu-section">
+                <div class="cms-menu-section-title">Conteúdo/Postagens</div>
+                <label class="inline-switch" style="margin-bottom:12px"><input type="checkbox" id="hide-posts-section-inline" onchange="document.getElementById('hide-posts-section').checked=this.checked;updateSitePreview();pulseSitePreview('posts')"> Ocultar esta seção no site público</label>
+                <div id="cms-post-list" class="cms-post-list"></div>
+                <div class="cms-post-form">
+                  <div style="display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:10px;flex-wrap:wrap">
+                    <strong style="font-size:13px">Nova publicação</strong>
+                    <button type="button" class="btn btn-sec btn-sm" onclick="clearPostForm();updatePostPreview()">Nova</button>
+                  </div>
+                  <input type="hidden" id="post-id">
+                  <div class="page-grid grid-2">
+                    <div class="form-group">
+                      <label>Tipo</label>
+                      <select id="post-tipo" onchange="updatePostPreview()">
+                        <option value="publicacao">Publicação</option>
+                        <option value="noticia">Notícia</option>
+                        <option value="materia">Matéria</option>
+                        <option value="dica">Dica</option>
+                      </select>
+                    </div>
+                    <div class="form-group">
+                      <label>Status</label>
+                      <select id="post-status" onchange="updatePostPreview()">
+                        <option value="PUBLICADO">Publicado</option>
+                        <option value="RASCUNHO">Rascunho</option>
+                      </select>
+                    </div>
+                    <div class="form-group">
+                      <label>Destaque</label>
+                      <select id="post-pinned" onchange="updatePostPreview()">
+                        <option value="false">Normal</option>
+                        <option value="true">Destacar no topo</option>
+                      </select>
+                    </div>
+                  </div>
+                  <div class="form-group">
+                    <label>Título</label>
+                    <input id="post-titulo" placeholder="Título da notícia, matéria ou publicação" oninput="updatePostPreview()">
+                  </div>
+                  <div class="form-group">
+                    <label>Resumo</label>
+                    <textarea id="post-resumo" maxlength="170" placeholder="Resumo curto que aparecerá no card" oninput="updatePostSummaryLimit();updatePostPreview()"></textarea>
+                    <div class="hint" id="post-resumo-count">0/170 caracteres. O ideal é até 150 para caber bem no card.</div>
+                  </div>
+                  <div class="form-group">
+                    <label>Conteúdo</label>
+                    <div class="rich-toolbar" aria-label="Ferramentas de edição do texto">
+                      <button type="button" title="Negrito" onclick="formatPostContent('bold')"><strong>B</strong></button>
+                      <button type="button" title="Itálico" onclick="formatPostContent('italic')"><em>I</em></button>
+                      <button type="button" title="Sublinhado" onclick="formatPostContent('underline')"><u>U</u></button>
+                      <button type="button" title="Lista com marcadores" onclick="formatPostContent('insertUnorderedList')">•</button>
+                      <button type="button" title="Lista numerada" onclick="formatPostContent('insertOrderedList')">1.</button>
+                      <button type="button" title="Alinhar à esquerda" onclick="formatPostContent('justifyLeft')">☰</button>
+                      <button type="button" title="Centralizar" onclick="formatPostContent('justifyCenter')">≡</button>
+                      <button type="button" title="Justificar" onclick="formatPostContent('justifyFull')">▤</button>
+                      <select title="Fonte" onchange="formatPostContent('fontName', this.value); this.selectedIndex=0">
+                        <option value="">Fonte</option>
+                        <option value="Inter">Inter</option>
+                        <option value="Arial">Arial</option>
+                        <option value="Georgia">Georgia</option>
+                        <option value="Times New Roman">Times</option>
+                      </select>
+                      <select title="Tamanho" onchange="formatPostContent('fontSize', this.value); this.selectedIndex=0">
+                        <option value="">Tamanho</option>
+                        <option value="2">Pequeno</option>
+                        <option value="3">Normal</option>
+                        <option value="4">Médio</option>
+                        <option value="5">Grande</option>
+                        <option value="6">Título</option>
+                      </select>
+                      <label title="Cor do texto"><span>A</span><input type="color" onchange="formatPostContent('foreColor', this.value)"></label>
+                      <label title="Cor de fundo"><span>▣</span><input type="color" onchange="formatPostContent('hiliteColor', this.value)"></label>
+                      <button type="button" title="Inserir link" onclick="insertPostLink()">🔗</button>
+                      <label title="Inserir imagem" class="rich-file">🖼<input type="file" accept="image/*" onchange="insertPostImage(event)"></label>
+                    </div>
+                    <div id="post-conteudo-editor" class="rich-editor" contenteditable="true" data-placeholder="Texto completo, dicas, avisos ou material" oninput="syncPostEditor();updatePostPreview()"></div>
+                    <textarea id="post-conteudo" hidden></textarea>
+                  </div>
+                  <button type="button" class="btn btn-brand" onclick="savePostDraft();pulseSitePreview('posts')">Salvar publicação na lista</button>
+                </div>
+                <div style="margin-top:16px">
+                  <div class="cms-preview-title">Prévia da publicação</div>
+                  <div id="post-live-preview"></div>
+                </div>
+              </div>
             </div>
-          </div>
-          <div class="site-tab-panel" data-site-tab-panel="turmas">
-            <div class="site-tab-card">
-              <strong>Seção de turmas</strong>
-              <p>Edite apenas os textos visuais da seção. Conteúdo, preço e alunos continuam no menu Turmas.</p>
-              <button type="button" class="btn btn-brand btn-sm" onclick="openLayoutModal('turmas')">Editar textos da seção</button>
-            </div>
-          </div>
-          <div class="site-tab-panel" data-site-tab-panel="conteudos">
-            <div class="site-tab-card">
-              <strong>Conteúdos e postagens</strong>
-              <p>Crie matérias, notícias e publicações do site. Você também pode ocultar a seção pública.</p>
-              <label class="inline-switch"><input type="checkbox" id="hide-posts-section" onchange="updateSitePreview()"> Ocultar esta seção no site público</label>
-              <button type="button" class="btn btn-brand btn-sm" onclick="openPostsModal()">Editar postagens</button>
-            </div>
-          </div>
-          <div class="site-tab-panel" data-site-tab-panel="aluno">
-            <div class="site-tab-card">
-              <strong>Área do aluno</strong>
-              <p>Bloco inferior com chamada para acesso à plataforma.</p>
-              <button type="button" class="btn btn-brand btn-sm" onclick="openLayoutModal('aluno')">Editar área do aluno</button>
-            </div>
-          </div>
+          </form>
+        </div>
+        <aside class="site-preview-pane">
+          <a class="btn btn-brand btn-sm" id="site-public-link" href="#" target="_blank" rel="noopener">Visualizar site</a>
           <div class="preview-unsaved" id="preview-unsaved" style="display:none">⚠ Pré-visualização — alterações não salvas</div>
           <div class="site-preview-card" id="site-preview-card">
             <div class="site-preview-nav">
@@ -166,6 +320,22 @@
                 <p id="pv-profile-text">Área do professor com alunos e turmas separados.</p>
               </div>
             </div>
+            <div class="site-preview-section" id="pv-turmas-section">
+              <small>Turmas abertas</small>
+              <strong id="pv-turmas-title">Escolha sua turma</strong>
+              <span id="pv-turmas-subtitle">Ao criar acesso por aqui, seu cadastro fica vinculado a este professor.</span>
+            </div>
+            <div class="site-preview-section" id="pv-posts-section">
+              <small>Conteúdos</small>
+              <strong id="pv-posts-title">Dicas e materiais</strong>
+              <span id="pv-posts-intro">Publicações, notícias e matérias do professor.</span>
+            </div>
+            <div class="site-preview-section band-preview" id="pv-aluno-section">
+              <small>Área do aluno</small>
+              <strong id="pv-aluno-title">Acesse a plataforma</strong>
+              <span id="pv-aluno-text">Entre para acompanhar turmas, envios de redação e correções.</span>
+              <button type="button" id="pv-aluno-cta">Entrar na área do aluno</button>
+            </div>
             <div class="dashboard-preview">
               <aside>
                 <span>PROF</span>
@@ -183,8 +353,7 @@
               </main>
             </div>
           </div>
-          <button type="submit" class="btn btn-accent">Salvar site</button>
-        </form>
+        </aside>
       </div>
     </div>
 
@@ -828,198 +997,6 @@
   </div>
 </div>
 
-<!-- MODAL: Layout do site -->
-<div class="modal-bg" id="modal-layout">
-  <div class="modal modal-site-designer">
-    <button class="modal-close" onclick="closeModal('modal-layout')">×</button>
-    <div class="modal-title">Personalizar layout</div>
-    <div class="page-grid grid-2">
-      <section>
-        <div class="cms-menu-section" data-layout-section="cabecalho">
-        <div class="cms-menu-section-title">Cabeçalho</div>
-        <div class="form-group">
-          <label>Etiqueta acima do título</label>
-          <input id="cms-eyebrow" placeholder="Site independente do professor" oninput="updateSitePreview()">
-        </div>
-        <div class="form-group">
-          <label>Texto do botão principal</label>
-          <input id="cms-cta" placeholder="Criar acesso de aluno" oninput="updateSitePreview()">
-        </div>
-        <div class="form-group">
-          <label>Título principal</label>
-          <input id="cms-hero-title" placeholder="Redação com acompanhamento direto." oninput="updateSitePreview()">
-        </div>
-        <div class="form-group">
-          <label>Texto do cartão do professor</label>
-          <textarea id="cms-profile-text" placeholder="Explique como funciona sua área, turmas e acompanhamento" oninput="updateSitePreview()"></textarea>
-        </div>
-        <div class="form-group">
-          <label>Exibição do cartão do professor</label>
-          <div class="profile-display-toggle">
-            <label><input type="radio" name="profile-display-mode" value="text" checked onchange="setProfileDisplayMode('text')"> Texto</label>
-            <label><input type="radio" name="profile-display-mode" value="photo" onchange="setProfileDisplayMode('photo')"> Foto</label>
-          </div>
-          <div class="profile-photo-editor" id="profile-photo-editor">
-            <div class="profile-photo-actions">
-              <label class="file-button">
-                Escolher foto
-                <input type="file" accept="image/*" onchange="handleProfilePhotoFile(event)">
-              </label>
-              <input type="checkbox" id="cms-profile-photo-bg" hidden onchange="reprocessProfilePhoto()">
-              <div class="photo-bg-toggle">
-                <button type="button" id="photo-bg-original" class="on" onclick="setProfilePhotoBgMode(false)">Original</button>
-                <button type="button" id="photo-bg-remove" onclick="setProfilePhotoBgMode(true)">Remover fundo</button>
-              </div>
-              <button type="button" class="btn-secondary" onclick="clearProfilePhoto()">Remover foto</button>
-            </div>
-            <input type="hidden" id="cms-profile-photo">
-            <input type="hidden" id="cms-profile-photo-original">
-            <div class="profile-photo-preview" id="profile-photo-preview">
-              <span>Prévia da foto</span>
-            </div>
-          </div>
-        </div>
-        </div>
-        <div class="cms-menu-section" data-layout-section="turmas">
-        <div class="cms-menu-section-title">Turmas no site</div>
-        <div class="form-group">
-          <label>Título da seção de turmas</label>
-          <input id="cms-turmas-title" placeholder="Escolha sua turma" oninput="updateSitePreview()">
-        </div>
-        <div class="form-group">
-          <label>Subtítulo da seção de turmas</label>
-          <input id="cms-turmas-subtitle" placeholder="Ao criar acesso por aqui..." oninput="updateSitePreview()">
-        </div>
-        </div>
-        <div class="cms-menu-section" data-layout-section="conteudos">
-        <div class="cms-menu-section-title">Conteúdos/Postagens no site</div>
-        <div class="form-group">
-          <label>Título dos conteúdos</label>
-          <input id="cms-posts-title" placeholder="Dicas e materiais" oninput="updateSitePreview()">
-        </div>
-        <div class="form-group">
-          <label>Introdução dos conteúdos</label>
-          <input id="cms-posts-intro" placeholder="Publicações, notícias e matérias do professor." oninput="updateSitePreview()">
-        </div>
-        </div>
-        <div class="cms-menu-section" data-layout-section="aluno">
-        <div class="cms-menu-section-title">Área Aluno</div>
-        <div class="form-group">
-          <label>Título da Área Aluno</label>
-          <input id="cms-aluno-title" placeholder="Acesse a plataforma" oninput="updateSitePreview()">
-        </div>
-        <div class="form-group">
-          <label>Texto da Área Aluno</label>
-          <input id="cms-aluno-text" placeholder="Entre para acompanhar turmas, envios de redação e correções." oninput="updateSitePreview()">
-        </div>
-        <div class="form-group">
-          <label>Texto do botão da Área Aluno</label>
-          <input id="cms-aluno-cta" placeholder="Entrar na área do aluno" oninput="updateSitePreview()">
-        </div>
-        </div>
-      </section>
-      <section>
-        <div class="cms-preview-title">Prévia</div>
-        <div id="layout-live-preview"></div>
-      </section>
-    </div>
-    <button type="button" class="btn btn-accent btn-full" onclick="closeModal('modal-layout');saveSite()">Salvar layout no site</button>
-  </div>
-</div>
-
-<!-- MODAL: Publicações -->
-<div class="modal-bg" id="modal-posts">
-  <div class="modal modal-site-designer">
-    <button class="modal-close" onclick="closeModal('modal-posts')">×</button>
-    <div class="modal-title">Publicações, notícias e matérias</div>
-    <div class="page-grid grid-2">
-      <section>
-        <div style="display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:10px">
-          <strong style="font-size:13px">Conteúdos cadastrados</strong>
-          <button type="button" class="btn btn-sec btn-sm" onclick="clearPostForm();updatePostPreview()">Nova</button>
-        </div>
-        <div id="cms-post-list" class="cms-post-list"></div>
-        <div class="cms-post-form">
-          <input type="hidden" id="post-id">
-          <div class="page-grid grid-3">
-            <div class="form-group">
-              <label>Tipo</label>
-              <select id="post-tipo" onchange="updatePostPreview()">
-                <option value="POST">Publicação</option>
-                <option value="NOTICIA">Notícia</option>
-                <option value="MATERIA">Matéria</option>
-              </select>
-            </div>
-            <div class="form-group">
-              <label>Status</label>
-              <select id="post-status" onchange="updatePostPreview()">
-                <option value="PUBLICADO">Publicado</option>
-                <option value="RASCUNHO">Rascunho</option>
-              </select>
-            </div>
-            <div class="form-group">
-              <label>Destaque</label>
-              <select id="post-pinned" onchange="updatePostPreview()">
-                <option value="false">Normal</option>
-                <option value="true">Fixar no topo</option>
-              </select>
-            </div>
-          </div>
-          <div class="form-group">
-            <label>Título</label>
-            <input id="post-titulo" placeholder="Título da notícia, matéria ou publicação" oninput="updatePostPreview()">
-          </div>
-          <div class="form-group">
-            <label>Resumo</label>
-            <textarea id="post-resumo" maxlength="170" placeholder="Resumo curto que aparecerá no card" oninput="updatePostSummaryLimit();updatePostPreview()"></textarea>
-            <div class="hint" id="post-resumo-count">0/170 caracteres. O ideal é até 150 para caber bem no card.</div>
-          </div>
-          <div class="form-group">
-            <label>Conteúdo</label>
-            <div class="rich-toolbar" aria-label="Ferramentas de edição do texto">
-              <button type="button" title="Negrito" onclick="formatPostContent('bold')"><strong>B</strong></button>
-              <button type="button" title="Itálico" onclick="formatPostContent('italic')"><em>I</em></button>
-              <button type="button" title="Sublinhado" onclick="formatPostContent('underline')"><u>U</u></button>
-              <button type="button" title="Lista com marcadores" onclick="formatPostContent('insertUnorderedList')">•</button>
-              <button type="button" title="Lista numerada" onclick="formatPostContent('insertOrderedList')">1.</button>
-              <button type="button" title="Alinhar à esquerda" onclick="formatPostContent('justifyLeft')">☰</button>
-              <button type="button" title="Centralizar" onclick="formatPostContent('justifyCenter')">≡</button>
-              <button type="button" title="Justificar" onclick="formatPostContent('justifyFull')">▤</button>
-              <select title="Fonte" onchange="formatPostContent('fontName', this.value); this.selectedIndex=0">
-                <option value="">Fonte</option>
-                <option value="Inter">Inter</option>
-                <option value="Arial">Arial</option>
-                <option value="Georgia">Georgia</option>
-                <option value="Times New Roman">Times</option>
-              </select>
-              <select title="Tamanho" onchange="formatPostContent('fontSize', this.value); this.selectedIndex=0">
-                <option value="">Tamanho</option>
-                <option value="2">Pequeno</option>
-                <option value="3">Normal</option>
-                <option value="4">Médio</option>
-                <option value="5">Grande</option>
-                <option value="6">Título</option>
-              </select>
-              <label title="Cor do texto"><span>A</span><input type="color" onchange="formatPostContent('foreColor', this.value)"></label>
-              <label title="Cor de fundo"><span>▣</span><input type="color" onchange="formatPostContent('hiliteColor', this.value)"></label>
-              <button type="button" title="Inserir link" onclick="insertPostLink()">🔗</button>
-              <label title="Inserir imagem" class="rich-file">🖼<input type="file" accept="image/*" onchange="insertPostImage(event)"></label>
-            </div>
-            <div id="post-conteudo-editor" class="rich-editor" contenteditable="true" data-placeholder="Texto completo, dicas, avisos ou material" oninput="syncPostEditor();updatePostPreview()"></div>
-            <textarea id="post-conteudo" hidden></textarea>
-          </div>
-          <button type="button" class="btn btn-brand" onclick="savePostDraft()">Salvar publicação na lista</button>
-        </div>
-      </section>
-      <section>
-        <div class="cms-preview-title">Prévia da publicação</div>
-        <div id="post-live-preview"></div>
-      </section>
-    </div>
-    <button type="button" class="btn btn-accent btn-full" onclick="closeModal('modal-posts');saveSite()">Salvar publicações no site</button>
-  </div>
-</div>
-
 <!-- MODAL: Modo de avaliação -->
 <div class="modal-bg" id="modal-avaliacao-modo">
   <div class="modal modal-site-designer">
@@ -1443,10 +1420,34 @@ function setSiteEditorTab(tab) {
   document.querySelectorAll('[data-site-tab-panel]').forEach(panel => panel.classList.toggle('on', panel.dataset.siteTabPanel === tab))
 }
 
+function pulseSitePreview(target) {
+  const map = {
+    nome: ['pv-brand-name', 'pv-prof-name'],
+    bio: ['pv-bio'],
+    hero: ['site-preview-card'],
+    eyebrow: ['pv-eyebrow'],
+    cta: ['pv-cta'],
+    'hero-title': ['pv-hero-title'],
+    profile: ['pv-profile-card'],
+    turmas: ['pv-turmas-section'],
+    posts: ['pv-posts-section'],
+    aluno: ['pv-aluno-section']
+  }
+  const ids = map[target] || []
+  ids.forEach(id => {
+    const el = document.getElementById(id)
+    if (!el) return
+    el.classList.remove('site-preview-pulse')
+    void el.offsetWidth
+    el.classList.add('site-preview-pulse')
+    setTimeout(() => el.classList.remove('site-preview-pulse'), 1400)
+  })
+}
+
 function focusSiteArea(id) {
   const el = document.getElementById(id)
   if (!el) return
-  setSiteEditorTab('cores')
+  setSiteEditorTab('layout')
   el.scrollIntoView({ behavior: 'smooth', block: 'center' })
   el.classList.add('site-focus-pulse')
   setTimeout(() => el.classList.remove('site-focus-pulse'), 1800)
@@ -1454,7 +1455,7 @@ function focusSiteArea(id) {
 
 function openLayoutModal(section = '') {
   updateSitePreview()
-  openModal('modal-layout')
+  setSiteEditorTab('layout')
   if (section) {
     const target = document.querySelector(`[data-layout-section="${section}"]`)
     setTimeout(() => target?.scrollIntoView({ behavior: 'smooth', block: 'start' }), 80)
@@ -1462,9 +1463,10 @@ function openLayoutModal(section = '') {
 }
 
 function openPostsModal() {
+  setSiteEditorTab('conteudos')
   renderCmsPosts()
   updatePostPreview()
-  openModal('modal-posts')
+  document.getElementById('cms-post-list')?.scrollIntoView({ behavior: 'smooth', block: 'start' })
 }
 
 function loadCmsForm(cms) {
@@ -1494,7 +1496,10 @@ function loadCmsForm(cms) {
   document.getElementById('cms-turmas-subtitle').value = data.layout.turmas_subtitle || ''
   document.getElementById('cms-posts-title').value = data.layout.posts_title || ''
   document.getElementById('cms-posts-intro').value = data.layout.posts_intro || ''
-  document.getElementById('hide-posts-section').checked = Array.isArray(data.layout.hidden_elements) && data.layout.hidden_elements.includes('block:conteudos')
+  const hidePosts = Array.isArray(data.layout.hidden_elements) && data.layout.hidden_elements.includes('block:conteudos')
+  document.getElementById('hide-posts-section').checked = hidePosts
+  const hidePostsInline = document.getElementById('hide-posts-section-inline')
+  if (hidePostsInline) hidePostsInline.checked = hidePosts
   document.getElementById('cms-aluno-title').value = data.layout.aluno_title || ''
   document.getElementById('cms-aluno-text').value = data.layout.aluno_text || ''
   document.getElementById('cms-aluno-cta').value = data.layout.aluno_cta || ''
@@ -2456,13 +2461,15 @@ function applySuggestedTheme() {
   const primary = normalizeColor(document.getElementById('site-cor-code')?.value) || document.getElementById('site-cor')?.value || '#1A3A2A'
   const accent = normalizeColor(document.getElementById('site-accent-code')?.value) || document.getElementById('site-accent')?.value || '#C5F135'
   setThemeDraftControls(defaultTheme(primary, accent))
-  document.getElementById('theme-auto').checked = true
+  const auto = document.getElementById('theme-auto')
+  if (auto) auto.checked = true
   updateSitePreview()
 }
 
 function resetAdvancedTheme() {
   setThemeDraftControls(defaultTheme())
-  document.getElementById('theme-auto').checked = true
+  const auto = document.getElementById('theme-auto')
+  if (auto) auto.checked = true
   setColor('site-cor', 'site-cor-code', '#1A3A2A')
   setColor('site-accent', 'site-accent-code', '#C5F135')
   updateSitePreview()
@@ -2877,6 +2884,13 @@ function updateSitePreview() {
   const heroTitle = document.getElementById('cms-hero-title').value.trim() || defaultCms().layout.hero_title
   const eyebrow = document.getElementById('cms-eyebrow').value.trim() || defaultCms().layout.eyebrow
   const cta = document.getElementById('cms-cta').value.trim() || defaultCms().layout.cta_text
+  const turmasTitle = document.getElementById('cms-turmas-title')?.value.trim() || defaultCms().layout.turmas_title
+  const turmasSubtitle = document.getElementById('cms-turmas-subtitle')?.value.trim() || defaultCms().layout.turmas_subtitle
+  const postsTitle = document.getElementById('cms-posts-title')?.value.trim() || defaultCms().layout.posts_title
+  const postsIntro = document.getElementById('cms-posts-intro')?.value.trim() || defaultCms().layout.posts_intro
+  const alunoTitle = document.getElementById('cms-aluno-title')?.value.trim() || defaultCms().layout.aluno_title
+  const alunoText = document.getElementById('cms-aluno-text')?.value.trim() || defaultCms().layout.aluno_text
+  const alunoCta = document.getElementById('cms-aluno-cta')?.value.trim() || defaultCms().layout.aluno_cta
   const profileText = document.getElementById('cms-profile-text')?.value.trim() || defaultCms().layout.profile_text
   const profileMode = document.querySelector('input[name="profile-display-mode"]:checked')?.value === 'photo' ? 'photo' : 'text'
   const profilePhoto = document.getElementById('cms-profile-photo')?.value || ''
@@ -2908,6 +2922,17 @@ function updateSitePreview() {
   document.getElementById('pv-hero-title').textContent = heroTitle
   document.getElementById('pv-eyebrow').textContent = eyebrow
   document.getElementById('pv-cta').textContent = cta
+  document.getElementById('pv-turmas-title').textContent = turmasTitle
+  document.getElementById('pv-turmas-subtitle').textContent = turmasSubtitle
+  document.getElementById('pv-posts-title').textContent = postsTitle
+  document.getElementById('pv-posts-intro').textContent = postsIntro
+  document.getElementById('pv-aluno-title').textContent = alunoTitle
+  document.getElementById('pv-aluno-text').textContent = alunoText
+  document.getElementById('pv-aluno-cta').textContent = alunoCta
+  const hidePosts = Boolean(document.getElementById('hide-posts-section')?.checked)
+  const inlineHide = document.getElementById('hide-posts-section-inline')
+  if (inlineHide) inlineHide.checked = hidePosts
+  document.getElementById('pv-posts-section')?.classList.toggle('is-hidden-preview', hidePosts)
   document.getElementById('site-contrast-hint').textContent = `Sugestão automática: cor primária usa texto ${brandText === '#111111' ? 'escuro' : 'claro'}; botões de destaque usam texto ${accentText === '#111111' ? 'escuro' : 'claro'}.`
   // Atualiza painel de componentes com as cores de estado.
   updateThemeLocalPreviews(theme)
