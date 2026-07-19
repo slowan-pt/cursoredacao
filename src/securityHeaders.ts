@@ -1,5 +1,7 @@
 import { createMiddleware } from 'hono/factory'
 
+// unsafe-inline em script-src é necessário pois login.html e auth-callback.html
+// têm scripts inline. Para remover, migrar para nonce-based CSP com injeção no Worker.
 const CSP_DIRECTIVES = [
   "default-src 'self'",
   "base-uri 'self'",
@@ -19,4 +21,6 @@ export const appSecurityHeaders = createMiddleware(async (c, next) => {
   c.header('Referrer-Policy', 'strict-origin-when-cross-origin')
   c.header('Permissions-Policy', 'camera=(), microphone=(), geolocation=(), payment=()')
   c.header('Cross-Origin-Opener-Policy', 'same-origin')
+  c.header('Strict-Transport-Security', 'max-age=63072000; includeSubDomains')
+  c.header('X-XSS-Protection', '1; mode=block')
 })

@@ -6,6 +6,7 @@ import { createToken } from '../auth'
 import { requireAuth } from '../middleware'
 import { expiredSessionCookieOptions, getConfig, sessionCookieOptions } from '../config'
 import { getEmailProvider, renderPasswordRecoveryEmail } from '../email'
+import { checkRateLimit, rateLimitKey } from '../rateLimit'
 
 const auth = new Hono<{ Bindings: Env }>()
 const CMS_PREFIX = 'CMS:'
@@ -287,6 +288,9 @@ async function applyPaidCheckoutForStudent(
 }
 
 auth.post('/login', async (c) => {
+  if (!checkRateLimit(rateLimitKey(c, 'login'), 10, 60_000)) {
+    return c.json({ error: 'Muitas tentativas. Aguarde alguns minutos e tente novamente.' }, 429)
+  }
   let body: { email: string; password: string; site_slug?: string; site_id?: string }
   try {
     body = await c.req.json()
@@ -366,6 +370,9 @@ auth.post('/login', async (c) => {
 })
 
 auth.post('/register', async (c) => {
+  if (!checkRateLimit(rateLimitKey(c, 'register'), 5, 60_000)) {
+    return c.json({ error: 'Muitas tentativas. Aguarde alguns minutos e tente novamente.' }, 429)
+  }
   let body: { email: string; password: string; nome: string; cpf?: string; site_slug?: string; site_id?: string; turma_id?: string; course_id?: string; course?: string; product?: string; checkout_code?: string }
   try {
     body = await c.req.json()
@@ -397,14 +404,10 @@ auth.post('/register', async (c) => {
   })
   if (!checkoutValidation.ok) return c.json({ error: checkoutValidation.error }, 400)
 
-  const existingUsers = await sb.auth.admin.listUsers()
+  const existingUsers = await sb.auth.admin.listUsers({ page: 1, perPage: 1000 })
   const cpfOwner = existingUsers.data.users.find((item) => onlyDigits((item.user_metadata as any)?.cpf) === cpf)
   if (cpfOwner?.id) {
-    return c.json({
-      error: String(cpfOwner.email || '').toLowerCase() === email
-        ? 'Já existe cadastro para este CPF e e-mail. Faça login para acessar sua turma.'
-        : 'Este CPF já está vinculado a outro cadastro.'
-    }, 409)
+    return c.json({ error: 'Este CPF já está vinculado a um cadastro. Faça login ou use outro CPF.' }, 409)
   }
 
   const { data, error } = await sb.auth.admin.createUser({
@@ -541,6 +544,9 @@ auth.post('/oauth-session', async (c) => {
 })
 
 auth.post('/forgot-password', async (c) => {
+  if (!checkRateLimit(rateLimitKey(c, 'forgot'), 3, 60_000)) {
+    return c.json({ error: 'Muitas tentativas. Aguarde alguns minutos e tente novamente.' }, 429)
+  }
   let body: { email: string; site_slug?: string; redirect_to?: string }
   try {
     body = await c.req.json()
@@ -595,9 +601,8 @@ auth.post('/forgot-password', async (c) => {
       teacherName
     }))
     if (!sent.sent) {
-      const detail = sent.reason ? ` Código técnico: ${sent.reason}.` : ''
       console.warn('password_recovery_email_failed', { provider: sent.provider, reason: sent.reason || 'unknown' })
-      return c.json({ error: `Envio de recuperação indisponível no momento.${detail} Tente novamente mais tarde ou fale com o suporte.` }, 503)
+      return c.json({ error: 'Envio de recuperação indisponível no momento. Tente novamente mais tarde ou fale com o suporte.' }, 503)
     }
 
     return c.json({ ok: true, delivery: sent.provider })

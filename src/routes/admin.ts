@@ -668,7 +668,11 @@ app.patch('/site', async (c) => {
       .eq('id', user.site_id)
       .single()
     if (currentErr) return c.json(dbError(), 500)
-    update.allowed_origins = withCmsOrigins(current?.allowed_origins, body.cms)
+    const existingCms = parseCms(current)
+    const cmsAllowed = ['layout', 'contact', 'theme', 'social'] as const
+    const cmsPatch: Record<string, unknown> = {}
+    for (const key of cmsAllowed) if (key in (body.cms ?? {})) cmsPatch[key] = body.cms[key]
+    update.allowed_origins = withCmsOrigins(current?.allowed_origins, { ...existingCms, ...cmsPatch })
   }
   if (!Object.keys(update).length) return c.json({ error: 'Nada para atualizar' }, 400)
 
@@ -773,12 +777,16 @@ app.patch('/correcoes/:id', async (c) => {
   const access = await requireCorrecaoAccess(sb, user, c.req.param('id'), 'gerenciar_redacoes')
   if ('error' in access) return c.json({ error: access.error }, access.status)
 
-  if (body.status === 'FINALIZADA') body.finalizada_em = new Date().toISOString()
-  body.prof_id = user.sub
-  body.updated_at = new Date().toISOString()
+  const allowed = ['nota', 'texto_ocr', 'status'] as const
+  const patch: Record<string, unknown> = {}
+  for (const key of allowed) if (key in body) patch[key] = body[key]
+
+  if (patch.status === 'FINALIZADA') patch.finalizada_em = new Date().toISOString()
+  patch.prof_id = user.sub
+  patch.updated_at = new Date().toISOString()
 
   const { data, error } = await sb.from('correcoes')
-    .update(body)
+    .update(patch)
     .eq('id', c.req.param('id'))
     .eq('site_id', access.siteId)
     .select()
@@ -856,7 +864,11 @@ app.delete('/correcoes/:id/anotacoes/:aid', async (c) => {
   if ('error' in access) return c.json({ error: access.error }, access.status)
   if (annotationEditBlockedForUser(access.cms, user, access.correcao)) return c.json({ error: 'Esta redação está direcionada para outro corretor.' }, 403)
   if (correctionAnnotationsLocked(access.correcao)) return c.json({ error: 'Reabra a correção antes de editar marcações.' }, 409)
-  await sb.from('anotacoes').delete().eq('id', c.req.param('aid'))
+  const { error: delErr } = await sb.from('anotacoes')
+    .delete()
+    .eq('id', c.req.param('aid'))
+    .eq('correcao_id', c.req.param('id'))
+  if (delErr) return c.json(dbError(), 500)
   return c.json({ ok: true })
 })
 
