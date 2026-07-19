@@ -567,7 +567,17 @@ function renderSitePage(data: { site: any; turmas: any[] }) {
   const turmaUrl = (id: string) => `${sitePath}/turmas/${encodeURIComponent(id)}`
   const validBlocks = ['hero', 'turmas', 'video_courses', 'conteudos', 'aluno']
   const savedOrder = Array.isArray(layout.block_order) ? layout.block_order.filter((id: string) => validBlocks.includes(id)) : []
-  const blockOrder = [...savedOrder, ...validBlocks.filter(id => !savedOrder.includes(id))]
+  // Migração: se video_courses não estava no block_order salvo, insere após turmas (não no fim)
+  const missingBlocks = validBlocks.filter(id => !savedOrder.includes(id))
+  const blockOrder = [...savedOrder]
+  for (const id of missingBlocks) {
+    if (id === 'video_courses') {
+      const turmasIdx = blockOrder.indexOf('turmas')
+      blockOrder.splice(turmasIdx >= 0 ? turmasIdx + 1 : 1, 0, id)
+    } else {
+      blockOrder.push(id)
+    }
+  }
   const blockOrderCss = blockOrder.map((id, index) => `[data-block="${id}"]{order:${index + 1}}`).join('')
   const positions = layout.positions && typeof layout.positions === 'object' ? layout.positions : {}
   const hiddenElements = new Set(Array.isArray(layout.hidden_elements) ? layout.hidden_elements : [])
