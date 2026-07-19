@@ -1696,6 +1696,8 @@ function loadCmsForm(cms) {
   data.theme = normalizeTheme(data.theme, currentSite?.cor_primaria, currentSite?.cor_accent)
   cmsPosts = Array.isArray(data.posts) ? data.posts : []
   cmsVideoCourses = Array.isArray(data.video_courses) ? data.video_courses : []
+  const sbCursos = document.querySelector('.sb-item[onclick*="cursosvideo"]')
+  if (sbCursos) sbCursos.style.display = cmsVideoCourses.length > 0 ? '' : 'none'
   const loadedPre = Array.isArray(data.pre_comments) ? data.pre_comments : []
   preComentarios = loadedPre
   cmsTemas = Array.isArray(data.themes) ? data.themes : []
