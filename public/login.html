@@ -7,99 +7,154 @@
 <meta name="description" content="Acesse sua conta de aluno, professor ou administrador na plataforma Redação com Estratégia.">
 <link rel="canonical" href="https://redacaocomestrategia.com.br/login.html">
 <meta name="robots" content="noindex,nofollow">
-<meta name="theme-color" content="#1A3A2A">
+<meta name="theme-color" content="#0D2218">
 <link rel="manifest" href="/site.webmanifest">
 <link rel="icon" href="/favicon.svg" type="image/svg+xml">
-<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
 <style>
 *{box-sizing:border-box;margin:0;padding:0}
 :root{
-  --brand:#1A3A2A;--brand2:#2D5C42;--brand3:#3D7A58;--brand-light:#EAF2EC;
+  --brand:#0D2218;--brand2:#1C3A2A;--brand3:#2D5C42;--brand4:#3E7A5A;
   --brand-text:#FFFFFF;--brand-text-soft:rgba(255,255,255,.55);
-  --accent:#C5F135;--accent-dark:#9ABF1A;--accent-text:#1A2A00;
-  --ink:#0F0F0F;--ink2:#3A3A3A;--ink3:#787878;
-  --surface:#F8F7F4;--card:#FFFFFF;--border:#E8E5E0;--border2:#D0CCC4;
-  --danger:#C84040;--danger-light:#FEF0F0;--r:8px;--r2:12px;
-  --success:#2D7A4D;--success-light:#EEF8F1;
+  --accent:#C8FF47;--accent-dark:#AADE2F;--accent-text:#0A1800;
+  --ink:#0C150B;--ink2:#354130;--ink3:#6B7A64;
+  --surface:#F1F5EE;--card:#FFFFFF;--border:#DDE5D8;--border2:#C2D0BC;
+  --danger:#C13E3E;--danger-light:#FEF0F0;
+  --success:#237A45;--success-light:#EEF8F1;
+  --r:8px;--r2:12px;--r3:18px
 }
-body{font-family:'Inter',system-ui,sans-serif;background:var(--brand);min-height:100vh;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:20px;-webkit-font-smoothing:antialiased}
+body{
+  font-family:'Inter',system-ui,sans-serif;
+  min-height:100vh;display:flex;flex-direction:column;align-items:center;justify-content:center;
+  padding:24px 20px;-webkit-font-smoothing:antialiased;position:relative;overflow:hidden;
+  background:var(--brand)
+}
 
-/* BACK PATTERN */
-body::before{content:'';position:fixed;inset:0;background:radial-gradient(ellipse at 20% 50%,rgba(61,122,88,.4) 0,transparent 60%),radial-gradient(ellipse at 80% 20%,rgba(197,241,53,.08) 0,transparent 50%);pointer-events:none}
+/* Background */
+body::before{
+  content:'';position:fixed;inset:0;pointer-events:none;
+  background:radial-gradient(ellipse at 18% 52%,rgba(45,92,66,.45) 0,transparent 55%),
+             radial-gradient(ellipse at 82% 18%,rgba(62,122,90,.2) 0,transparent 48%),
+             radial-gradient(ellipse at 50% 90%,rgba(8,18,12,.5) 0,transparent 48%)
+}
+body::after{
+  content:'';position:fixed;inset:0;pointer-events:none;
+  background-image:linear-gradient(rgba(255,255,255,.028) 1px,transparent 1px),linear-gradient(90deg,rgba(255,255,255,.028) 1px,transparent 1px);
+  background-size:52px 52px
+}
 
 .login-wrap{width:100%;max-width:420px;position:relative;z-index:1}
 body.tenant-login .login-wrap{max-width:860px}
 
-/* LOGO */
-.logo{text-align:center;margin-bottom:32px}
-.logo-mark{display:inline-block;background:var(--accent);color:var(--accent-text);font-size:10px;font-weight:900;padding:3px 10px;border-radius:5px;letter-spacing:.06em;text-transform:uppercase;margin-bottom:8px}
-.logo h1{font-size:22px;font-weight:800;color:var(--brand-text);letter-spacing:-.5px}
-.logo p{font-size:13px;color:var(--brand-text-soft);margin-top:4px}
+/* Logo */
+.logo{text-align:center;margin-bottom:28px}
+.logo-mark{
+  display:inline-flex;align-items:center;gap:6px;
+  background:var(--accent);color:var(--accent-text);
+  font-size:10px;font-weight:900;padding:4px 10px;border-radius:6px;
+  letter-spacing:.06em;text-transform:uppercase;margin-bottom:10px
+}
+.logo-mark-grid{
+  display:inline-grid;grid-template-columns:1fr 1fr;gap:2px;
+  background:var(--accent-text);padding:4px;border-radius:3px;width:18px;height:18px
+}
+.logo-mark-grid span{background:var(--accent);border-radius:1px}
+.logo h1{font-size:22px;font-weight:800;color:var(--brand-text);letter-spacing:-.04em}
+.logo p{font-size:13px;color:var(--brand-text-soft);margin-top:4px;font-weight:500}
 
-/* CARD */
-.login-card{background:var(--card);border-radius:16px;padding:32px;box-shadow:0 24px 64px rgba(0,0,0,.35)}
-body.tenant-login .login-card{padding:24px}
+/* Card */
+.login-card{background:var(--card);border-radius:20px;padding:32px;box-shadow:0 24px 80px rgba(0,0,0,.28),0 0 0 1px rgba(255,255,255,.06)}
+body.tenant-login .login-card{padding:28px}
 .auth-panels{display:block}
-body.tenant-login .auth-panels{display:grid;grid-template-columns:1fr 1fr;gap:22px;align-items:start}
+body.tenant-login .auth-panels{display:grid;grid-template-columns:1fr 1fr;gap:20px;align-items:start}
 .auth-panel{min-width:0}
-body.tenant-login .auth-panel{border:1px solid var(--border);border-radius:14px;padding:22px;background:rgba(255,255,255,.74)}
+body.tenant-login .auth-panel{border:1px solid var(--border);border-radius:14px;padding:22px;background:rgba(255,255,255,.6)}
 body.auth-signup-only .login-wrap,body.auth-login-only .login-wrap{max-width:460px}
 body.auth-signup-only .auth-panels,body.auth-login-only .auth-panels{display:block}
 body.auth-signup-only #login-panel,body.auth-login-only #signup-box{display:none!important}
 body.auth-signup-only #signup-box{display:block!important}
 
-/* FORM */
-.form-title{font-size:16px;font-weight:700;margin-bottom:4px}
-.form-sub{font-size:12px;color:var(--ink3);margin-bottom:24px}
-.form-group{display:flex;flex-direction:column;gap:6px;margin-bottom:16px}
-label{font-size:12px;font-weight:600;color:var(--ink2)}
-input{width:100%;padding:11px 14px;border:1.5px solid var(--border2);border-radius:var(--r);font-family:inherit;font-size:14px;color:var(--ink);background:var(--card);transition:border-color .2s;outline:none}
-input:focus{border-color:var(--brand3);box-shadow:0 0 0 3px rgba(61,122,88,.1)}
-input.is-invalid{border-color:var(--danger);box-shadow:0 0 0 3px rgba(200,64,64,.12)}
-input.is-valid{border-color:var(--success);box-shadow:0 0 0 3px rgba(45,122,77,.1)}
-.hint{font-size:11px;color:var(--ink3)}
-.cpf-status{display:none;font-size:11px;font-weight:800}
+/* Form */
+.form-title{font-size:15px;font-weight:800;margin-bottom:4px;letter-spacing:-.02em;color:var(--ink)}
+.form-sub{font-size:12px;color:var(--ink3);margin-bottom:22px;line-height:1.55;font-weight:500}
+.form-group{display:flex;flex-direction:column;gap:5px;margin-bottom:14px}
+label{font-size:11px;font-weight:700;color:var(--ink2);letter-spacing:.02em;text-transform:uppercase}
+input{
+  width:100%;padding:11px 14px;border:1.5px solid var(--border2);border-radius:var(--r);
+  font-family:inherit;font-size:14px;color:var(--ink);background:var(--card);
+  transition:border-color .18s,box-shadow .18s;outline:none
+}
+input:focus{border-color:var(--brand3);box-shadow:0 0 0 3px rgba(45,92,66,.12)}
+input.is-invalid{border-color:var(--danger);box-shadow:0 0 0 3px rgba(193,62,62,.1)}
+input.is-valid{border-color:var(--success);box-shadow:0 0 0 3px rgba(35,122,69,.1)}
+input::placeholder{color:var(--ink3);opacity:.7}
+.hint{font-size:11px;color:var(--ink3);font-weight:500;line-height:1.45}
+.cpf-status{display:none;font-size:11px;font-weight:700}
 .cpf-status.invalid{display:block;color:var(--danger)}
 .cpf-status.valid{display:block;color:var(--success)}
-.btn{width:100%;padding:13px;border:none;border-radius:var(--r);font-family:inherit;font-size:14px;font-weight:700;cursor:pointer;transition:all .2s;margin-top:8px}
-.btn-accent{background:var(--accent);color:var(--accent-text)}
-.btn-accent:hover{background:var(--accent-dark)}
-.btn-accent:disabled{opacity:.55;cursor:not-allowed}
-.forgot-link{display:inline-block;margin-top:14px;font-size:12px;font-weight:600;color:var(--brand2);text-decoration:none}
+
+/* Buttons */
+.btn{
+  width:100%;padding:13px 16px;border:none;border-radius:var(--r);
+  font-family:inherit;font-size:14px;font-weight:800;cursor:pointer;
+  transition:all .2s;margin-top:8px;display:flex;align-items:center;justify-content:center;gap:8px
+}
+.btn-accent{background:var(--accent);color:var(--accent-text);box-shadow:0 0 20px rgba(200,255,71,.18)}
+.btn-accent:hover{background:#D4FF5A;box-shadow:0 4px 28px rgba(200,255,71,.3);transform:translateY(-1px)}
+.btn-accent:disabled{opacity:.5;cursor:not-allowed;transform:none;box-shadow:none}
+
+.forgot-link{display:inline-block;margin-top:12px;font-size:12px;font-weight:600;color:var(--brand3);text-decoration:none}
 .forgot-link:hover{text-decoration:underline}
-.divider{display:flex;align-items:center;gap:12px;margin:20px 0;color:var(--ink3);font-size:11px;font-weight:700;text-transform:uppercase}
+
+.divider{display:flex;align-items:center;gap:10px;margin:18px 0;color:var(--ink3);font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.06em}
 .divider::before,.divider::after{content:'';height:1px;background:var(--border);flex:1}
-.sso-btn{width:100%;padding:12px;border:1px solid var(--border2);border-radius:var(--r);background:#fff;color:var(--ink2);font-family:inherit;font-size:13px;font-weight:800;cursor:pointer}
-.signup-box{margin-top:20px;padding-top:20px;border-top:1px solid var(--border);display:none}
+
+.signup-box{margin-top:18px;padding-top:18px;border-top:1px solid var(--border);display:none}
 .signup-box.open{display:block}
 body.tenant-login .signup-box{display:block;margin-top:0;padding-top:0;border-top:0}
-.mini-link{margin-top:14px;text-align:center;font-size:12px;color:var(--ink3)}
-.mini-link a{color:var(--brand2);font-weight:800;text-decoration:none}
-.action-link-card{display:block;margin-top:12px;padding:12px 14px;border:1px solid var(--border);border-radius:12px;background:var(--brand-light);color:var(--brand);font-size:13px;font-weight:900;text-align:center;text-decoration:none}
-.action-link-card:hover{filter:brightness(.98);transform:translateY(-1px)}
+
+.mini-link{margin-top:12px;text-align:center;font-size:12px;color:var(--ink3);font-weight:500}
+.mini-link a{color:var(--brand2);font-weight:700;text-decoration:none}
+.mini-link a:hover{text-decoration:underline}
+
+.action-link-card{
+  display:block;margin-top:12px;padding:12px 14px;border:1px solid var(--border);
+  border-radius:12px;background:var(--surface);color:var(--brand);
+  font-size:13px;font-weight:800;text-align:center;text-decoration:none;transition:all .18s
+}
+.action-link-card:hover{background:var(--border);transform:translateY(-1px)}
+
 .email-open-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px;margin-top:12px}
-.email-open-grid a{display:flex;align-items:center;gap:8px;min-height:44px;border:1px solid var(--border);border-radius:10px;background:#fff;color:var(--ink);text-decoration:none;font-size:12px;font-weight:900;padding:9px 10px}
-.email-open-grid a:hover{border-color:var(--brand3);background:var(--brand-light)}
-.email-open-icon{width:24px;height:24px;border-radius:7px;display:flex;align-items:center;justify-content:center;background:var(--accent);color:var(--accent-text);font-size:11px;font-weight:900;flex-shrink:0}
-.email-open-hint{font-size:11px;color:var(--ink3);margin-top:10px;line-height:1.45}
+.email-open-grid a{
+  display:flex;align-items:center;gap:8px;min-height:44px;border:1px solid var(--border);
+  border-radius:10px;background:#fff;color:var(--ink);text-decoration:none;
+  font-size:12px;font-weight:700;padding:9px 10px;transition:all .15s
+}
+.email-open-grid a:hover{border-color:var(--brand3);background:var(--surface)}
+.email-open-icon{
+  width:24px;height:24px;border-radius:7px;display:flex;align-items:center;justify-content:center;
+  background:var(--accent);color:var(--accent-text);font-size:11px;font-weight:900;flex-shrink:0
+}
+.email-open-hint{font-size:11px;color:var(--ink3);margin-top:10px;line-height:1.5;font-weight:500}
+
 .checkout-code-field{display:none}
 .checkout-code-field.open{display:flex}
 
-/* ERROR */
-.alert-err{background:var(--danger-light);color:var(--danger);border:1px solid #f5c6c6;border-radius:var(--r);padding:11px 14px;font-size:13px;margin-bottom:16px;display:none}
-.alert-ok{background:var(--success-light);color:var(--success);border:1px solid #bfebcc;border-radius:var(--r);padding:11px 14px;font-size:13px;margin-bottom:16px;display:none}
+/* Alerts */
+.alert-err{background:var(--danger-light);color:var(--danger);border:1px solid rgba(193,62,62,.22);border-radius:var(--r);padding:11px 14px;font-size:13px;margin-bottom:16px;display:none;line-height:1.5}
+.alert-ok{background:var(--success-light);color:var(--success);border:1px solid rgba(35,122,69,.2);border-radius:var(--r);padding:11px 14px;font-size:13px;margin-bottom:16px;display:none;line-height:1.5}
 
-/* BACK */
-.back-link{text-align:center;margin-top:20px}
-.back-link a{font-size:13px;color:var(--brand-text-soft);transition:color .2s}
+/* Back link */
+.back-link{text-align:center;margin-top:20px;position:relative;z-index:1}
+.back-link a{font-size:13px;color:var(--brand-text-soft);transition:color .18s;font-weight:500}
 .back-link a:hover{color:var(--brand-text)}
 
-/* LOADING */
-.spinner{display:inline-block;width:16px;height:16px;border:2px solid rgba(26,42,0,.3);border-top-color:var(--accent-text);border-radius:50%;animation:spin .6s linear infinite;vertical-align:middle;margin-right:6px}
+/* Spinner */
+.spinner{display:inline-block;width:14px;height:14px;border:2px solid rgba(10,24,0,.25);border-top-color:var(--accent-text);border-radius:50%;animation:spin .55s linear infinite;flex-shrink:0}
 @keyframes spin{to{transform:rotate(360deg)}}
 
 @media(max-width:400px){
-  .login-card{padding:24px 20px}
+  .login-card{padding:24px 18px;border-radius:16px}
 }
 @media(max-width:780px){
   body.tenant-login .login-wrap{max-width:420px}
@@ -111,7 +166,12 @@ body.tenant-login .signup-box{display:block;margin-top:0;padding-top:0;border-to
 
 <div class="login-wrap">
   <div class="logo">
-    <div><span class="logo-mark">CURSOS</span></div>
+    <div>
+      <span class="logo-mark">
+        <span class="logo-mark-grid" aria-hidden="true"><span></span><span></span><span></span><span></span></span>
+        CURSOS
+      </span>
+    </div>
     <h1>Redação</h1>
     <p>Acesse sua conta</p>
   </div>
@@ -262,7 +322,7 @@ if (paidTargetId) {
 if (params.get('pendente') === '1') showOk('Seu acesso de professor ainda está aguardando aprovação do admin geral.')
 
 function contrastText(hex) {
-  const clean = String(hex || '#1A3A2A').replace('#', '')
+  const clean = String(hex || '#0D2218').replace('#', '')
   const r = parseInt(clean.slice(0, 2), 16)
   const g = parseInt(clean.slice(2, 4), 16)
   const b = parseInt(clean.slice(4, 6), 16)
@@ -271,8 +331,8 @@ function contrastText(hex) {
 }
 
 function applyThemeVars(theme, fallbackSite = {}) {
-  const brand = theme?.primary || fallbackSite.cor_primaria || '#1A3A2A'
-  const accent = theme?.accent || fallbackSite.cor_accent || '#C5F135'
+  const brand = theme?.primary || fallbackSite.cor_primaria || '#0D2218'
+  const accent = theme?.accent || fallbackSite.cor_accent || '#C8FF47'
   document.documentElement.style.setProperty('--brand', brand)
   document.documentElement.style.setProperty('--brand-text', theme?.primaryText || contrastText(brand))
   document.documentElement.style.setProperty('--brand-text-soft', theme?.primaryText === '#111111' || contrastText(brand) === '#111111' ? 'rgba(17,17,17,.62)' : 'rgba(255,255,255,.62)')
@@ -281,32 +341,25 @@ function applyThemeVars(theme, fallbackSite = {}) {
   document.documentElement.style.setProperty('--accent', accent)
   document.documentElement.style.setProperty('--accent-dark', accent)
   document.documentElement.style.setProperty('--accent-text', theme?.accentText || contrastText(accent))
-  document.documentElement.style.setProperty('--surface', theme?.background || '#F8F7F4')
+  document.documentElement.style.setProperty('--surface', theme?.background || '#F1F5EE')
   document.documentElement.style.setProperty('--card', theme?.card || '#FFFFFF')
-  document.documentElement.style.setProperty('--border', theme?.border || '#E8E5E0')
-  document.documentElement.style.setProperty('--border2', theme?.borderStrong || '#D0CCC4')
-  document.documentElement.style.setProperty('--ink', theme?.text || '#0F0F0F')
-  document.documentElement.style.setProperty('--ink2', theme?.textSoft || '#3A3A3A')
-  document.documentElement.style.setProperty('--ink3', theme?.textMuted || '#787878')
-  document.documentElement.style.setProperty('--danger', theme?.danger || '#C84040')
-  document.documentElement.style.setProperty('--success', theme?.success || '#2D7A4D')
+  document.documentElement.style.setProperty('--border', theme?.border || '#DDE5D8')
+  document.documentElement.style.setProperty('--border2', theme?.borderStrong || '#C2D0BC')
+  document.documentElement.style.setProperty('--ink', theme?.text || '#0C150B')
+  document.documentElement.style.setProperty('--ink2', theme?.textSoft || '#354130')
+  document.documentElement.style.setProperty('--ink3', theme?.textMuted || '#6B7A64')
+  document.documentElement.style.setProperty('--danger', theme?.danger || '#C13E3E')
+  document.documentElement.style.setProperty('--success', theme?.success || '#237A45')
 }
 
-function onlyDigits(value) {
-  return String(value || '').replace(/\D/g, '')
-}
+function onlyDigits(value) { return String(value || '').replace(/\D/g, '') }
 
 function formatCpf(value) {
   const digits = onlyDigits(value).slice(0, 11)
-  return digits
-    .replace(/(\d{3})(\d)/, '$1.$2')
-    .replace(/(\d{3})(\d)/, '$1.$2')
-    .replace(/(\d{3})(\d{1,2})$/, '$1-$2')
+  return digits.replace(/(\d{3})(\d)/, '$1.$2').replace(/(\d{3})(\d)/, '$1.$2').replace(/(\d{3})(\d{1,2})$/, '$1-$2')
 }
 
-function maskCpfInput(input) {
-  input.value = formatCpf(input.value)
-}
+function maskCpfInput(input) { input.value = formatCpf(input.value) }
 
 function isValidCpf(value) {
   const cpf = onlyDigits(value)
@@ -326,41 +379,22 @@ function validateCpfField(input) {
   maskCpfInput(input)
   input.classList.remove('is-valid', 'is-invalid')
   status?.classList.remove('valid', 'invalid')
-  if (!cpf) {
-    if (status) status.textContent = ''
-    input.setCustomValidity('')
-    return false
-  }
+  if (!cpf) { if (status) status.textContent = ''; input.setCustomValidity(''); return false }
   if (cpf.length < 11) {
-    if (status) {
-      status.textContent = 'Digite os 11 números do CPF.'
-      status.classList.add('invalid')
-    }
-    input.classList.add('is-invalid')
-    input.setCustomValidity('Digite os 11 números do CPF.')
-    return false
+    if (status) { status.textContent = 'Digite os 11 números do CPF.'; status.classList.add('invalid') }
+    input.classList.add('is-invalid'); input.setCustomValidity('Digite os 11 números do CPF.'); return false
   }
   if (!isValidCpf(cpf)) {
-    if (status) {
-      status.textContent = 'CPF inválido. Confira os números digitados.'
-      status.classList.add('invalid')
-    }
-    input.classList.add('is-invalid')
-    input.setCustomValidity('CPF inválido.')
-    return false
+    if (status) { status.textContent = 'CPF inválido. Confira os números digitados.'; status.classList.add('invalid') }
+    input.classList.add('is-invalid'); input.setCustomValidity('CPF inválido.'); return false
   }
-  if (status) {
-    status.textContent = 'CPF válido.'
-    status.classList.add('valid')
-  }
-  input.classList.add('is-valid')
-  input.setCustomValidity('')
-  return true
+  if (status) { status.textContent = 'CPF válido.'; status.classList.add('valid') }
+  input.classList.add('is-valid'); input.setCustomValidity(''); return true
 }
 
-document.querySelectorAll('input[data-mask="cpf"], input[id*="cpf"]').forEach((input) => {
-  input.addEventListener('input', (event) => validateCpfField(event.target))
-  input.addEventListener('blur', (event) => validateCpfField(event.target))
+document.querySelectorAll('input[data-mask="cpf"], input[id*="cpf"]').forEach(input => {
+  input.addEventListener('input', e => validateCpfField(e.target))
+  input.addEventListener('blur', e => validateCpfField(e.target))
   if (input.value) maskCpfInput(input)
 })
 
@@ -393,18 +427,12 @@ function showOk(msg) {
 }
 function hideErr() { document.getElementById('alert-err').style.display = 'none' }
 function hideOk() { document.getElementById('alert-ok').style.display = 'none' }
-function hideAlerts() {
-  hideErr()
-  hideOk()
-}
+function hideAlerts() { hideErr(); hideOk() }
 
 function toggleSignup(e) {
   e.preventDefault()
   hideAlerts()
-  if (paidTargetId) {
-    location.href = paidSignupHref
-    return
-  }
+  if (paidTargetId) { location.href = paidSignupHref; return }
   const box = document.createElement('div')
   box.append('Para criar cadastro, primeiro escolha uma turma e finalize o pagamento.')
   const link = document.createElement('a')
@@ -422,10 +450,8 @@ async function doLogin(e) {
   const btn = document.getElementById('btn-submit')
   btn.disabled = true
   btn.innerHTML = '<span class="spinner"></span>Entrando...'
-
   const email = document.getElementById('email').value.trim()
   const password = document.getElementById('password').value
-
   try {
     const res = await fetch('/api/auth/login', {
       method: 'POST',
@@ -433,17 +459,10 @@ async function doLogin(e) {
       body: JSON.stringify({ email, password, site_slug: siteSlug || undefined })
     })
     const data = await res.json()
-
-    if (!res.ok) {
-      showErr(data.error || 'Erro ao fazer login')
-      return
-    }
+    if (!res.ok) { showErr(data.error || 'Erro ao fazer login'); return }
     if ((data.role === 'CORRETOR' || data.role === 'ADMIN') && data.ativo === false) {
-      showOk('Seu acesso de professor está aguardando aprovação do admin geral.')
-      return
+      showOk('Seu acesso de professor está aguardando aprovação do admin geral.'); return
     }
-
-    // Redirect based on role
     const redirects = siteSlug
       ? { SUPERADMIN: '/superadmin/', ADMIN: `${siteBase}/app`, ALUNO: `${siteBase}/aluno`, CORRETOR: `${siteBase}/app` }
       : { SUPERADMIN: '/superadmin/', ADMIN: '/professor/', ALUNO: '/aluno/', CORRETOR: '/professor/' }
@@ -459,25 +478,13 @@ async function doLogin(e) {
 async function registerStudent(e) {
   e.preventDefault()
   hideAlerts()
-  if (!siteSlug) {
-    showErr('Abra o cadastro pelo site do professor.')
-    return
-  }
-  if (!canShowPaidSignup) {
-    showErr('Cadastro disponível somente após pagamento confirmado.')
-    return
-  }
+  if (!siteSlug) { showErr('Abra o cadastro pelo site do professor.'); return }
+  if (!canShowPaidSignup) { showErr('Cadastro disponível somente após pagamento confirmado.'); return }
   const cpfInput = document.getElementById('signup-cpf')
-  if (!validateCpfField(cpfInput)) {
-    showErr('Informe um CPF válido para concluir o cadastro.')
-    cpfInput.focus()
-    return
-  }
-
+  if (!validateCpfField(cpfInput)) { showErr('Informe um CPF válido para concluir o cadastro.'); cpfInput.focus(); return }
   const btn = document.getElementById('btn-signup')
   btn.disabled = true
   btn.innerHTML = '<span class="spinner"></span>Criando...'
-
   const body = {
     nome: document.getElementById('signup-name').value.trim(),
     email: document.getElementById('signup-email').value.trim(),
@@ -489,7 +496,6 @@ async function registerStudent(e) {
     course_id: paidCourseId || undefined,
     checkout_code: document.getElementById('signup-checkout-code')?.value.trim() || undefined
   }
-
   try {
     const res = await fetch('/api/auth/register', {
       method: 'POST',
@@ -497,10 +503,7 @@ async function registerStudent(e) {
       body: JSON.stringify(body)
     })
     const data = await res.json()
-    if (!res.ok) {
-      showErr(data.error || 'Não foi possível criar seu acesso.')
-      return
-    }
+    if (!res.ok) { showErr(data.error || 'Não foi possível criar seu acesso.'); return }
     showOk(data.status === 'ATIVO_POR_PAGAMENTO'
       ? 'Cadastro criado e matrícula liberada pelo pagamento. Agora entre com email e senha.'
       : 'Cadastro criado. Agora entre com email e senha. O professor precisa aprovar para liberar o envio de redações.')
@@ -522,13 +525,8 @@ async function registerStudent(e) {
 async function forgotPassword(e) {
   e.preventDefault()
   hideAlerts()
-
   const email = document.getElementById('email').value.trim()
-  if (!email) {
-    showErr('Informe seu email para recuperar a senha.')
-    document.getElementById('email').focus()
-    return
-  }
+  if (!email) { showErr('Informe seu email para recuperar a senha.'); document.getElementById('email').focus(); return }
   try {
     const res = await fetch('/api/auth/forgot-password', {
       method: 'POST',
@@ -536,12 +534,7 @@ async function forgotPassword(e) {
       body: JSON.stringify({ email, site_slug: siteSlug || undefined, redirect_to: location.pathname })
     })
     const data = await res.json()
-
-    if (!res.ok) {
-      showRecoveryMessage(data.error || 'Não foi possível enviar a recuperação de senha.', email, true)
-      return
-    }
-
+    if (!res.ok) { showRecoveryMessage(data.error || 'Não foi possível enviar a recuperação de senha.', email, true); return }
     showRecoveryMessage('Enviamos um e-mail com o link para redefinir sua senha.', email)
   } catch {
     showRecoveryMessage('Erro de conexão ao tentar enviar o e-mail de recuperação.', email, true)
@@ -568,7 +561,7 @@ function showRecoveryMessage(message, email, isError = false) {
   if (!isError) {
     const actions = document.createElement('div')
     actions.className = 'email-open-grid'
-    emailProviderLinks(email).forEach((provider) => {
+    emailProviderLinks(email).forEach(provider => {
       const link = document.createElement('a')
       link.href = provider.url
       link.target = '_blank'
@@ -612,7 +605,6 @@ async function resetPassword(e) {
     btn.innerHTML = 'Salvar nova senha'
   }
 }
-
 </script>
 </body>
 </html>
