@@ -360,7 +360,7 @@ function defaultCms() {
       posts_title: 'Dicas e materiais',
       posts_intro: 'Publicações, notícias e matérias do professor.',
       profile_side: 'right',
-      block_order: ['hero', 'turmas', 'video_courses', 'conteudos', 'aluno'],
+      block_order: ['hero', 'video_courses', 'turmas', 'conteudos', 'aluno'],
       avatar_text: 'PR',
       avatar_image: '',
       profile_display_mode: 'text',
@@ -565,15 +565,15 @@ function renderSitePage(data: { site: any; turmas: any[] }) {
   const profilePhotoMode = layout.profile_display_mode === 'photo' && profilePhoto
   const turmaSettings = cms.turma_settings && typeof cms.turma_settings === 'object' ? cms.turma_settings : {}
   const turmaUrl = (id: string) => `${sitePath}/turmas/${encodeURIComponent(id)}`
-  const validBlocks = ['hero', 'turmas', 'video_courses', 'conteudos', 'aluno']
+  const validBlocks = ['hero', 'video_courses', 'turmas', 'conteudos', 'aluno']
   const savedOrder = Array.isArray(layout.block_order) ? layout.block_order.filter((id: string) => validBlocks.includes(id)) : []
-  // Migração: se video_courses não estava no block_order salvo, insere após turmas (não no fim)
+  // Migração: se video_courses não estava no block_order salvo, insere antes de turmas
   const missingBlocks = validBlocks.filter(id => !savedOrder.includes(id))
   const blockOrder = [...savedOrder]
   for (const id of missingBlocks) {
     if (id === 'video_courses') {
       const turmasIdx = blockOrder.indexOf('turmas')
-      blockOrder.splice(turmasIdx >= 0 ? turmasIdx + 1 : 1, 0, id)
+      blockOrder.splice(turmasIdx >= 0 ? turmasIdx : 1, 0, id)
     } else {
       blockOrder.push(id)
     }
@@ -1502,7 +1502,7 @@ function editWhatsappNumber() {
 
 function applySavedBlockOrder() {
   const wrap = document.getElementById('site-blocks')
-  const order = Array.isArray(inlineCms.layout?.block_order) ? inlineCms.layout.block_order : ['hero','turmas','video_courses','conteudos','aluno']
+  const order = Array.isArray(inlineCms.layout?.block_order) ? inlineCms.layout.block_order : ['hero','video_courses','turmas','conteudos','aluno']
   order.forEach(id => {
     const block = document.querySelector('[data-block="' + id + '"]')
     if (wrap && block) wrap.appendChild(block)
