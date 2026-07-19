@@ -154,6 +154,60 @@ function validateCreditCardPayload(card: any) {
   return null
 }
 
+function maskEmail(value: unknown) {
+  const email = String(value || '').trim().toLowerCase()
+  const [user, domain] = email.split('@')
+  if (!user || !domain) return ''
+  const visible = user.length <= 2 ? user[0] || '' : `${user[0]}${user[user.length - 1]}`
+  return `${visible}${'*'.repeat(Math.max(2, user.length - visible.length))}@${domain}`
+}
+
+async function lookupStudentAccountByCpf(sb: ReturnType<typeof getAdmin>, siteId: string, cpf: string) {
+  const authUsers = await sb.auth.admin.listUsers()
+  let authUser = authUsers.data.users.find((item) => onlyDigits((item.user_metadata as any)?.cpf) === cpf)
+  if (!authUser?.id) {
+    const { data: paymentMatch } = await sb.from('payments')
+      .select('aluno_id')
+      .eq('site_id', siteId)
+      .eq('raw_summary->>cpf', cpf)
+      .not('aluno_id', 'is', null)
+      .order('created_at', { ascending: false })
+      .limit(1)
+      .maybeSingle()
+    authUser = authUsers.data.users.find((item) => String(item.id) === String(paymentMatch?.aluno_id))
+  }
+  if (!authUser?.id) {
+    const { data: site } = await sb.from('sites')
+      .select('allowed_origins')
+      .eq('id', siteId)
+      .maybeSingle()
+    const cms = parseCms(site)
+    const lead = Object.values(cms.checkout_leads || {}).find((item: any) => onlyDigits(item?.cpf) === cpf) as any
+    const leadUserId = String(lead?.user_id || '').trim()
+    const leadEmail = String(lead?.email || '').trim().toLowerCase()
+    authUser = authUsers.data.users.find((item) =>
+      (leadUserId && String(item.id) === leadUserId) ||
+      (leadEmail && String(item.email || '').toLowerCase() === leadEmail)
+    )
+  }
+  if (!authUser?.id) {
+    return { exists: false, sameSite: false, active: true, emailHint: '', authUser: null }
+  }
+  const { data: profile } = await sb.from('profiles')
+    .select('role, site_id, ativo')
+    .eq('id', authUser.id)
+    .maybeSingle()
+  const sameSite = String(profile?.site_id || '') === String(siteId)
+  const isStudent = String(profile?.role || '').toUpperCase() === 'ALUNO'
+  return {
+    exists: Boolean(sameSite && isStudent),
+    sameSite,
+    active: profile?.ativo !== false,
+    emailHint: sameSite && isStudent ? maskEmail(authUser.email) : '',
+    authUser
+  }
+}
+
 function tomorrowIsoDate() {
   const date = new Date()
   date.setDate(date.getDate() + 1)
@@ -2437,9 +2491,45 @@ function validateCpfField(input){
   input.setCustomValidity('')
   return true
 }
+let cpfLookupState={exists:false,same_site:false,active:true,email_hint:''}
+let cpfLookupTimer
+async function lookupCpfAccount(input){
+  if(!validateCpfField(input)){cpfLookupState={exists:false,same_site:false,active:true,email_hint:''};return}
+  const cpf=onlyDigits(input.value)
+  const status=document.getElementById(input.id+'-status')
+  clearTimeout(cpfLookupTimer)
+  cpfLookupTimer=setTimeout(async()=>{
+    try{
+      const res=await fetch('/api/site/'+encodeURIComponent(siteSlug)+'/cpf-lookup?cpf='+encodeURIComponent(cpf))
+      const data=await res.json().catch(()=>({}))
+      if(onlyDigits(input.value)!==cpf)return
+      cpfLookupState={exists:Boolean(data.exists),same_site:Boolean(data.same_site),active:data.active!==false,email_hint:data.email_hint||''}
+      if(status&&data.exists){
+        status.textContent='CPF já tem cadastro neste site'+(data.email_hint?' ('+data.email_hint+')':'')+'. Após pagar, use Fazer login.'
+        status.classList.remove('invalid');status.classList.add('valid')
+      }else if(status){
+        status.textContent='CPF válido. Após pagar, você poderá criar seu cadastro.'
+        status.classList.remove('invalid');status.classList.add('valid')
+      }
+    }catch{}
+  },350)
+}
+function applyCheckoutAccessLinks(hasAccount, loginHref, signupHref){
+  const loginEls=[document.getElementById('login-link'),document.getElementById('modal-login-link')].filter(Boolean)
+  const signupEls=[document.getElementById('signup-link'),document.getElementById('modal-signup-link')].filter(Boolean)
+  loginEls.forEach((el)=>{el.href=loginHref;el.textContent=hasAccount?'Fazer login para acessar':'Fazer login'})
+  signupEls.forEach((el)=>{el.href=signupHref;el.style.display=hasAccount?'none':''})
+  const postNote=document.querySelector('#postpay .note')
+  const modalNote=document.querySelector('.modal-note')
+  const msg=hasAccount
+    ? 'Identificamos cadastro para este CPF neste site. Após o pagamento, faça login com sua senha atual para acessar.'
+    : 'Após o pagamento, crie cadastro com o mesmo e-mail. Se sair desta tela, use o código único para concluir o cadastro depois.'
+  if(postNote)postNote.textContent=msg
+  if(modalNote)modalNote.textContent=msg
+}
 document.querySelectorAll('input[data-mask="cpf"], input[id*="cpf"]').forEach((input)=>{
-  input.addEventListener('input',(event)=>validateCpfField(event.target))
-  input.addEventListener('blur',(event)=>validateCpfField(event.target))
+  input.addEventListener('input',(event)=>lookupCpfAccount(event.target))
+  input.addEventListener('blur',(event)=>lookupCpfAccount(event.target))
   if(input.value) maskCpfInput(input)
 })
 document.getElementById('card-number')?.addEventListener('input',(event)=>{event.target.value=maskCardNumber(event.target.value)})
@@ -2502,10 +2592,7 @@ async function simulatePayment(event){
     document.getElementById('postpay').classList.add('open')
     const loginHref='${loginUrl}?paid=1&turma='+encodeURIComponent(turmaId)+'&email='+encodeURIComponent(email)
     const signupHref='${loginUrl}?signup=1&paid=1&turma='+encodeURIComponent(turmaId)+'&email='+encodeURIComponent(email)+'&nome='+encodeURIComponent(nome)+'&cpf='+encodeURIComponent(cpf)+'&checkout_code='+encodeURIComponent(code)
-    document.getElementById('login-link').href=loginHref
-    document.getElementById('signup-link').href=signupHref
-    document.getElementById('modal-login-link').href=loginHref
-    document.getElementById('modal-signup-link').href=signupHref
+    applyCheckoutAccessLinks(Boolean(data.has_account||cpfLookupState.exists),loginHref,signupHref)
     document.getElementById('payment-title').textContent=data.billing_type==='PIX'?'Pague com Pix para liberar a turma':'Conclua o pagamento para liberar a turma'
     document.getElementById('modal-name').textContent=nome
     document.getElementById('modal-email').textContent=email
@@ -2650,7 +2737,7 @@ h1{font-size:clamp(36px,6vw,66px);line-height:1.02;font-weight:900;max-width:850
 .cover{aspect-ratio:4/3;border-radius:20px;overflow:hidden;background:#111;box-shadow:0 30px 70px rgba(0,0,0,.28);display:flex;align-items:center;justify-content:center;font-size:54px}.cover img{width:100%;height:100%;object-fit:cover;display:block}
 .details{padding:42px 6% 74px;display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:16px}.info-card{border:1px solid var(--border);border-radius:14px;background:var(--card);padding:20px}.info-card strong{display:block;font-size:15px;margin-bottom:8px}.info-card p{font-size:13px;line-height:1.6;color:var(--ink3)}
 .full{grid-column:1/-1}.price{font-size:28px;font-weight:900;color:var(--brand);margin-top:6px}.lesson-meta{display:flex;gap:8px;flex-wrap:wrap;margin-top:14px}.lesson-meta span{background:var(--surface);border:1px solid var(--border);border-radius:999px;padding:7px 10px;font-size:12px;font-weight:800;color:var(--ink2)}
-.checkout-box{grid-column:1/-1;border:1px solid var(--border);border-radius:18px;background:var(--card);padding:22px;min-width:0}.checkout-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px;margin-top:16px}.field{display:flex;flex-direction:column;gap:6px;min-width:0}.field label{font-size:12px;font-weight:900;color:var(--ink2)}input,select,textarea{font:inherit;border:1px solid var(--border);border-radius:10px;padding:12px;background:#fff;color:var(--ink);width:100%;min-width:0}.pay-methods{display:flex;gap:8px;flex-wrap:wrap;margin:14px 0}.pay-methods label{border:1px solid var(--border);border-radius:999px;padding:9px 12px;font-size:12px;font-weight:900;cursor:pointer}.card-fields{display:none;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px;margin-top:10px}.card-fields.open{display:grid}.checkout-alert{display:none;border-radius:10px;padding:12px;margin-top:12px;font-size:13px;font-weight:700}.checkout-alert.err{display:block;background:#fff0f0;color:#b42318;border:1px solid #ffd2d2}.checkout-alert.ok{display:block;background:#ecfdf3;color:#067647;border:1px solid #abefc6}.field-focus input{border-color:#f04438;box-shadow:0 0 0 4px rgba(240,68,56,.14)}.payment-result{display:none;margin-top:16px;border:1px solid var(--border);border-radius:14px;padding:16px;background:var(--surface);min-width:0}.payment-result.open{display:block}.qr-row{display:grid;grid-template-columns:180px minmax(0,1fr);gap:14px;align-items:start}.qr-row img{width:180px;max-width:100%;border:1px solid var(--border);border-radius:12px;background:#fff;justify-self:center}.payment-code{font-weight:900}.login-actions{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:14px}
+.checkout-box{grid-column:1/-1;border:1px solid var(--border);border-radius:18px;background:var(--card);padding:22px;min-width:0}.checkout-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px;margin-top:16px}.field{display:flex;flex-direction:column;gap:6px;min-width:0}.field label{font-size:12px;font-weight:900;color:var(--ink2)}input,select,textarea{font:inherit;border:1px solid var(--border);border-radius:10px;padding:12px;background:#fff;color:var(--ink);width:100%;min-width:0}.cpf-status{display:none;font-size:11px;font-weight:800}.cpf-status.invalid{display:block;color:#b42318}.cpf-status.valid{display:block;color:#067647}.pay-methods{display:flex;gap:8px;flex-wrap:wrap;margin:14px 0}.pay-methods label{border:1px solid var(--border);border-radius:999px;padding:9px 12px;font-size:12px;font-weight:900;cursor:pointer}.card-fields{display:none;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px;margin-top:10px}.card-fields.open{display:grid}.checkout-alert{display:none;border-radius:10px;padding:12px;margin-top:12px;font-size:13px;font-weight:700}.checkout-alert.err{display:block;background:#fff0f0;color:#b42318;border:1px solid #ffd2d2}.checkout-alert.ok{display:block;background:#ecfdf3;color:#067647;border:1px solid #abefc6}.field-focus input{border-color:#f04438;box-shadow:0 0 0 4px rgba(240,68,56,.14)}.payment-result{display:none;margin-top:16px;border:1px solid var(--border);border-radius:14px;padding:16px;background:var(--surface);min-width:0}.payment-result.open{display:block}.qr-row{display:grid;grid-template-columns:180px minmax(0,1fr);gap:14px;align-items:start}.qr-row img{width:180px;max-width:100%;border:1px solid var(--border);border-radius:12px;background:#fff;justify-self:center}.payment-code{font-weight:900}.login-actions{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:14px}
 @media(max-width:780px){.hero{grid-template-columns:1fr;padding:48px 22px}.details{grid-template-columns:1fr;padding:26px 16px 52px}.nav-actions .nav-link{display:none}.btn{width:100%}.hero-actions{flex-direction:column}}
 @media(max-width:780px){.nav{padding:0 16px}.brand span:last-child{max-width:170px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.checkout-grid,.card-fields,.login-actions,.qr-row{grid-template-columns:1fr}.pay-methods{display:grid;grid-template-columns:1fr}.pay-methods label{text-align:center}.cover{max-width:360px;width:100%;justify-self:center}.payment-result{padding:14px}.qr-row textarea{min-height:150px}}
 </style>
@@ -2708,7 +2795,7 @@ h1{font-size:clamp(36px,6vw,66px);line-height:1.02;font-weight:900;max-width:850
       <div class="checkout-grid">
         <div class="field"><label>Nome completo</label><input id="vc-nome" required autocomplete="name"></div>
         <div class="field"><label>E-mail</label><input id="vc-email" type="email" required autocomplete="email"></div>
-        <div class="field"><label>CPF</label><input id="vc-cpf" required inputmode="numeric" maxlength="14" autocomplete="off" oninput="this.value=formatCpf(this.value)"></div>
+        <div class="field"><label>CPF</label><input id="vc-cpf" required inputmode="numeric" maxlength="14" autocomplete="off" oninput="onVideoCpfInput(this)"><small id="vc-cpf-status" class="cpf-status" aria-live="polite"></small></div>
       </div>
       <div class="pay-methods">
         <label><input type="radio" name="vc-pay" value="PIX" checked onchange="updateVideoPayFields()"> Pix</label>
@@ -2744,6 +2831,11 @@ const videoCourseId=${jsonForScript(String(course.id || ''))}
 const videoLoginBase=${jsonForScript(loginUrl)}
 function onlyDigits(v){return String(v||'').replace(/\\D/g,'')}
 function formatCpf(v){const d=onlyDigits(v).slice(0,11);return d.replace(/(\\d{3})(\\d)/,'$1.$2').replace(/(\\d{3})(\\d)/,'$1.$2').replace(/(\\d{3})(\\d{1,2})$/,'$1-$2')}
+function isValidCpf(v){const cpf=onlyDigits(v);if(cpf.length!==11||/^(\\d)\\1{10}$/.test(cpf))return false;const calc=(base,factor)=>{let sum=0;for(const digit of base)sum+=Number(digit)*factor--;const rest=(sum*10)%11;return rest===10?0:rest};return calc(cpf.slice(0,9),10)===Number(cpf[9])&&calc(cpf.slice(0,10),11)===Number(cpf[10])}
+let videoCpfLookup={exists:false}
+let videoCpfTimer
+function setVideoCpfStatus(msg,type){const el=document.getElementById('vc-cpf-status');if(!el)return;el.textContent=msg;el.className='cpf-status '+type}
+function onVideoCpfInput(input){input.value=formatCpf(input.value);const cpf=onlyDigits(input.value);clearTimeout(videoCpfTimer);videoCpfLookup={exists:false};if(!cpf){setVideoCpfStatus('','');return}if(cpf.length<11){setVideoCpfStatus('Digite os 11 números do CPF.','invalid');return}if(!isValidCpf(cpf)){setVideoCpfStatus('CPF inválido. Confira os números digitados.','invalid');return}setVideoCpfStatus('CPF válido. Verificando cadastro...','valid');videoCpfTimer=setTimeout(async()=>{try{const res=await fetch('/api/site/${encodeURIComponent(site.slug)}/cpf-lookup?cpf='+encodeURIComponent(cpf));const data=await res.json().catch(()=>({}));if(onlyDigits(input.value)!==cpf)return;videoCpfLookup={exists:Boolean(data.exists)};setVideoCpfStatus(data.exists?'CPF já tem cadastro neste site'+(data.email_hint?' ('+data.email_hint+')':'')+'. Após pagar, use Fazer login.':'CPF válido. Após pagar, você poderá criar seu cadastro.','valid')}catch{}},350)}
 function payChoice(){return document.querySelector('input[name="vc-pay"]:checked')?.value||'PIX'}
 function updateVideoPayFields(){const card=payChoice()==='CREDIT_CARD';document.getElementById('vc-card-fields').classList.toggle('open',card);document.getElementById('vc-installments-wrap').style.display=card?'flex':'none'}
 function showVideoError(msg){const el=document.getElementById('video-checkout-error');el.textContent=msg;el.className='checkout-alert err'}
@@ -2793,13 +2885,16 @@ async function startVideoCheckout(e){
     const paid=String(data.status||'').toUpperCase()==='RECEIVED'||String(data.status||'').toUpperCase()==='CONFIRMED'
     document.getElementById('video-payment-title').textContent=paid?'Pagamento aprovado. Acesso liberado em sandbox.':data.billing_type==='PIX'?'Pague com Pix para liberar o curso':data.billing_type==='BOLETO'?'Boleto gerado para liberar o curso':'Pagamento por cartão enviado'
     if(paid)showVideoOk('Pagamento aprovado no sandbox. Faça login se já tiver cadastro ou crie cadastro com os dados desta compra.')
+    const hasAccount=Boolean(data.has_account||videoCpfLookup.exists)
     const loginHref=videoLoginBase+'?paid=1&product=video&course='+encodeURIComponent(videoCourseId)+'&email='+encodeURIComponent(email)
     const signupHref=videoLoginBase+'?signup=1&paid=1&product=video&course='+encodeURIComponent(videoCourseId)+'&email='+encodeURIComponent(email)+'&nome='+encodeURIComponent(nome)+'&cpf='+encodeURIComponent(cpf)+'&checkout_code='+encodeURIComponent(code)
     document.getElementById('video-login-link').href=loginHref
+    document.getElementById('video-login-link').textContent=hasAccount?'Fazer login para acessar':'Fazer login'
     document.getElementById('video-signup-link').href=signupHref
+    document.getElementById('video-signup-link').style.display=hasAccount?'none':''
     const body=document.getElementById('video-payment-body')
     if(paid){
-      body.innerHTML='<p style="font-size:13px;color:var(--ink3)">Se você já tem cadastro neste site, clique em Fazer login. Se ainda não tem, clique em Criar cadastro; seus dados e código de compra já irão preenchidos.</p>'
+      body.innerHTML='<p style="font-size:13px;color:var(--ink3)">'+(hasAccount?'Identificamos cadastro para este CPF neste site. Clique em Fazer login para acessar o curso.':'Se você ainda não tem cadastro, clique em Criar cadastro; seus dados e código de compra já irão preenchidos.')+'</p>'
     }else if(data.pix?.encodedImage||data.pix?.payload){
       body.innerHTML='<div class="qr-row">'+(data.pix.encodedImage?'<img src="data:image/png;base64,'+data.pix.encodedImage+'" alt="QR Code Pix">':'')+'<textarea readonly rows="8">'+(data.pix.payload||'')+'</textarea></div>'
     }else if(data.boleto?.identificationField){
@@ -2863,6 +2958,29 @@ app.get('/api/site/:slug', async (c) => {
   const cms = parseCms(data.site)
   const theme = normalizeTheme(cms.theme, data.site.cor_primaria, data.site.cor_accent)
   return c.json({ ...data, cms: { ...cms, theme }, site: { ...data.site, allowed_origins: undefined } })
+})
+
+app.get('/api/site/:slug/cpf-lookup', async (c) => {
+  const cpf = onlyDigits(c.req.query('cpf'))
+  if (!isValidCpf(cpf)) return c.json({ error: 'CPF inválido.' }, 400)
+
+  const sb = getAdmin(c.env)
+  const { data: site, error: siteErr } = await sb.from('sites')
+    .select('id')
+    .eq('slug', c.req.param('slug'))
+    .eq('ativo', true)
+    .maybeSingle()
+  if (siteErr || !site) return c.json({ error: 'Site não encontrado' }, 404)
+
+  const account = await lookupStudentAccountByCpf(sb, site.id, cpf)
+
+  return c.json({
+    exists: account.exists,
+    same_site: account.sameSite,
+    active: account.active,
+    email_hint: account.emailHint,
+    action: account.exists ? 'login' : 'signup'
+  })
 })
 
 app.post('/api/site/:slug/checkout', async (c) => {
@@ -2951,6 +3069,7 @@ app.post('/api/site/:slug/checkout', async (c) => {
   const checkoutCode = previous.checkout_code || previous.code || makeCheckoutCode()
   const now = new Date().toISOString()
   const gateway = getPaymentGateway(c.env)
+  const cpfAccount = await lookupStudentAccountByCpf(sb, site.id, cpf)
 
   const { data: pendingPayment } = await sb.from('payments')
     .select('id, provider_payment_id, external_reference, checkout_code, status, amount_cents, billing_type, created_at')
@@ -3049,18 +3168,23 @@ app.post('/api/site/:slug/checkout', async (c) => {
       boleto: {
         identificationField: boleto?.identificationField || boleto?.barCode || null
       },
-      email_sent: false
+      email_sent: false,
+      has_account: cpfAccount.exists,
+      account_email_hint: cpfAccount.emailHint
     })
   }
 
   const externalReference = `ASAAS-PUB-${crypto.randomUUID()}`
   const authUsers = await sb.auth.admin.listUsers()
   const authUser = authUsers.data.users.find((item) => String(item.email || '').toLowerCase() === email)
-  const cpfOwner = authUsers.data.users.find((item) => onlyDigits((item.user_metadata as any)?.cpf) === cpf)
+  const cpfOwner = cpfAccount.authUser || authUsers.data.users.find((item) => onlyDigits((item.user_metadata as any)?.cpf) === cpf)
   if (cpfOwner?.id && cpfOwner.email && String(cpfOwner.email).toLowerCase() !== email) {
     return c.json({ error: 'Este CPF já está vinculado a outro e-mail cadastrado.' }, 409)
   }
   if (authUser?.id) {
+    await sb.auth.admin.updateUserById(authUser.id, {
+      user_metadata: { ...(authUser.user_metadata || {}), nome, role: 'ALUNO', cpf }
+    })
     await sb.from('profiles').upsert({
       id: authUser.id,
       nome,
@@ -3238,7 +3362,9 @@ app.post('/api/site/:slug/checkout', async (c) => {
     boleto: {
       identificationField: billingType === 'BOLETO' ? (qrCode?.identificationField || qrCode?.barCode || null) : null
     },
-    email_sent: emailResult.sent
+    email_sent: emailResult.sent,
+    has_account: cpfAccount.exists,
+    account_email_hint: cpfAccount.emailHint
   })
 })
 
@@ -3322,14 +3448,18 @@ app.post('/api/site/:slug/video-checkout', async (c) => {
   const checkoutCode = previous.checkout_code || previous.code || makeCheckoutCode()
   const now = new Date().toISOString()
   const gateway = getPaymentGateway(c.env)
+  const cpfAccount = await lookupStudentAccountByCpf(sb, site.id, cpf)
 
   const authUsers = await sb.auth.admin.listUsers()
   const authUser = authUsers.data.users.find((item) => String(item.email || '').toLowerCase() === email)
-  const cpfOwner = authUsers.data.users.find((item) => onlyDigits((item.user_metadata as any)?.cpf) === cpf)
+  const cpfOwner = cpfAccount.authUser || authUsers.data.users.find((item) => onlyDigits((item.user_metadata as any)?.cpf) === cpf)
   if (cpfOwner?.id && cpfOwner.email && String(cpfOwner.email).toLowerCase() !== email) {
     return c.json({ error: 'Este CPF já está vinculado a outro e-mail cadastrado.' }, 409)
   }
   if (authUser?.id) {
+    await sb.auth.admin.updateUserById(authUser.id, {
+      user_metadata: { ...(authUser.user_metadata || {}), nome, role: 'ALUNO', cpf }
+    })
     await sb.from('profiles').upsert({
       id: authUser.id,
       nome,
@@ -3579,7 +3709,9 @@ app.post('/api/site/:slug/video-checkout', async (c) => {
     email_sent: emailResult.sent,
     sandbox_auto_received: sandboxAutoReceived,
     enrollment_granted: enrollmentGranted,
-    enrollment_reason: enrollmentReason || null
+    enrollment_reason: enrollmentReason || null,
+    has_account: cpfAccount.exists,
+    account_email_hint: cpfAccount.emailHint
   })
 })
 
