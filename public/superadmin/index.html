@@ -22,6 +22,7 @@
       <div class="sb-grp">Plataforma</div>
       <a class="sb-item" href="#" onclick="showPage('sites',this)">🏫 Sites / Tenants</a>
       <a class="sb-item" href="#" onclick="showPage('users',this)">👥 Usuários</a>
+      <a class="sb-item" href="#" onclick="showPage('financial',this)">💳 Financeiro</a>
       <a class="sb-item" href="#" onclick="showPage('health',this)">🩺 Saúde</a>
       <div class="sb-grp">Ações</div>
       <a class="sb-item" href="#" onclick="openSiteModal()">➕ Novo Site</a>
@@ -104,6 +105,21 @@
     </div>
 
     <!-- HEALTH PAGE -->
+    <div class="page" id="page-financial" style="display:none">
+      <div class="card">
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:20px;gap:12px;flex-wrap:wrap">
+          <div>
+            <strong style="font-size:15px">Financeiro da plataforma</strong>
+            <div class="muted" style="font-size:12px;margin-top:4px">Acompanhe compras de pacotes, receita dos sites e custos operacionais.</div>
+          </div>
+          <button class="btn btn-sec btn-sm" onclick="loadFinancial()">Atualizar</button>
+        </div>
+        <div id="financial-summary" class="page-grid grid-4"></div>
+        <div id="financial-sites" style="margin-top:18px"></div>
+      </div>
+    </div>
+
+    <!-- HEALTH PAGE -->
     <div class="page" id="page-health" style="display:none">
       <div class="card">
         <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:20px">
@@ -126,7 +142,7 @@
     <form onsubmit="saveSite(event)">
       <input type="hidden" id="s-id">
       <div class="form-group">
-        <label>Nome do Professor(a)</label>
+        <label>Nome exibido no site</label>
         <input id="s-nome" placeholder="Ex: Prof. Maria Silva" required oninput="updateSitePreview()">
       </div>
       <div class="form-group">
@@ -136,6 +152,55 @@
       <div class="form-group">
         <label>Bio / descrição do site</label>
         <textarea id="s-bio" placeholder="Texto curto que aparece no site do professor" oninput="updateSitePreview()"></textarea>
+      </div>
+      <div style="border:1px solid var(--border);border-radius:14px;padding:14px;background:rgba(26,58,42,.04);margin:12px 0">
+        <div style="font-weight:900;margin-bottom:10px">Acesso do professor</div>
+        <div style="display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px">
+          <div class="form-group">
+            <label>Nome do usuário/professor(a)</label>
+            <input id="s-prof-nome" placeholder="Nome que aparecerá no login">
+          </div>
+          <div class="form-group">
+            <label>Email de login</label>
+            <input type="email" id="s-prof-email" placeholder="professor@email.com">
+          </div>
+          <div class="form-group">
+            <label>Sexo</label>
+            <select id="s-prof-sexo" onchange="updateSitePreview()">
+              <option value="FEMININO">Feminino</option>
+              <option value="MASCULINO">Masculino</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label>Senha do professor</label>
+            <input type="password" id="s-prof-senha" placeholder="Informe para criar ou trocar senha" minlength="6" autocomplete="new-password">
+          </div>
+          <div class="form-group">
+            <label>Papel</label>
+            <select id="s-prof-role">
+              <option value="ADMIN">Professor dono do site</option>
+              <option value="CORRETOR">Professor/corretor</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label>Status do login</label>
+            <select id="s-prof-ativo">
+              <option value="true">Ativo</option>
+              <option value="false">Inativo / bloqueado</option>
+            </select>
+          </div>
+        </div>
+        <p style="margin:4px 0 0;color:var(--ink3);font-size:12px">Este acesso fica vinculado automaticamente a este site.</p>
+      </div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
+        <div class="form-group">
+          <label>Plano / pacote</label>
+          <input id="s-plan-name" placeholder="Ex: Plano Mensal">
+        </div>
+        <div class="form-group">
+          <label>Site ativo até</label>
+          <input type="date" id="s-plan-expires">
+        </div>
       </div>
       <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
         <div class="form-group" style="flex:1">
@@ -171,7 +236,7 @@
           <div class="site-preview-prof">
             <div id="pv-avatar">PR</div>
             <strong id="pv-prof-name">Professor(a)</strong>
-            <p>Área do professor com alunos e turmas separados.</p>
+            <p id="pv-prof-desc">Área do professor com alunos e turmas separados.</p>
           </div>
         </div>
         <div class="dashboard-preview">
@@ -224,6 +289,13 @@
         </select>
       </div>
       <div class="form-group">
+        <label>Sexo (quando for professor)</label>
+        <select id="u-sexo">
+          <option value="FEMININO">Feminino</option>
+          <option value="MASCULINO">Masculino</option>
+        </select>
+      </div>
+      <div class="form-group">
         <label>Site (deixe vazio para SUPERADMIN)</label>
         <select id="u-site"><option value="">— Nenhum —</option></select>
       </div>
@@ -262,6 +334,13 @@
         </select>
       </div>
       <div class="form-group">
+        <label>Sexo (quando for professor)</label>
+        <select id="eu-sexo">
+          <option value="FEMININO">Feminino</option>
+          <option value="MASCULINO">Masculino</option>
+        </select>
+      </div>
+      <div class="form-group">
         <label>Site</label>
         <select id="eu-site"><option value="">— Nenhum —</option></select>
       </div>
@@ -283,6 +362,7 @@ let sites = []
 let users = []
 let usersTreeOpen = {}
 let health = null
+let financial = null
 const primaryColors = ['#1A3A2A', '#123C69', '#4B2E83', '#7A1F2B', '#2B2D42', '#004D40']
 const accentColors = ['#C5F135', '#FFD166', '#06D6A0', '#4CC9F0', '#F72585', '#FFFFFF']
 
@@ -333,14 +413,18 @@ function renderSites(list, containerId) {
     <thead><tr style="border-bottom:1px solid var(--border)">
       <th style="text-align:left;padding:8px 12px;font-size:11px;color:var(--ink3)">NOME</th>
       <th style="text-align:left;padding:8px 12px;font-size:11px;color:var(--ink3)">SLUG</th>
+      <th style="text-align:left;padding:8px 12px;font-size:11px;color:var(--ink3)">PROFESSOR</th>
       <th style="text-align:left;padding:8px 12px;font-size:11px;color:var(--ink3)">STATUS</th>
+      <th style="text-align:left;padding:8px 12px;font-size:11px;color:var(--ink3)">VALIDADE</th>
       <th style="text-align:left;padding:8px 12px;font-size:11px;color:var(--ink3)">CRIADO EM</th>
       <th style="text-align:right;padding:8px 12px;font-size:11px;color:var(--ink3)">AÇÕES</th>
     </tr></thead>
     <tbody>${list.map(s => `<tr style="border-bottom:1px solid var(--border)">
       <td style="padding:12px;font-weight:600">${esc(s.nome_prof)}</td>
       <td style="padding:12px"><a class="site-link" href="${siteUrl(s)}" target="_blank" rel="noopener">${esc(s.slug)}</a></td>
+      <td style="padding:12px;color:var(--ink2);font-size:12px">${s.owner_user?.email ? esc(s.owner_user.email) : '<span style="color:var(--ink3)">Sem login</span>'}</td>
       <td style="padding:12px"><span class="tag ${s.ativo ? 'tag-done' : 'tag-pend'}">${s.ativo ? 'Ativo' : 'Inativo'}</span></td>
+      <td style="padding:12px;color:var(--ink2);font-size:12px">${planValidityLabel(s)}</td>
       <td style="padding:12px;color:var(--ink3);font-size:12px">${fmtDate(s.created_at)}</td>
       <td style="padding:12px">
         <div class="site-actions">
@@ -348,6 +432,7 @@ function renderSites(list, containerId) {
           <button class="btn btn-sec btn-sm" onclick="copySiteLink('${s.id}')">Copiar link</button>
           <button class="btn btn-accent btn-sm" onclick="openSiteModal('${s.id}')">Editar</button>
           <button class="btn ${s.ativo ? 'btn-danger' : 'btn-brand'} btn-sm" onclick="toggleSite('${s.id}', ${!s.ativo})">${s.ativo ? 'Inativar' : 'Ativar'}</button>
+          <button class="btn btn-danger btn-sm" onclick="deleteSite('${s.id}')">Excluir</button>
         </div>
       </td>
     </tr>`).join('')}</tbody>
@@ -476,13 +561,61 @@ function showPage(name, link) {
   document.getElementById('page-' + name).style.display = 'block'
   document.querySelectorAll('.sb-item').forEach(i => i.classList.remove('on'))
   if (link) link.classList.add('on')
-  const titles = { dashboard: 'Dashboard', sites: 'Sites / Tenants', users: 'Usuários', health: 'Saúde' }
+  const titles = { dashboard: 'Dashboard', sites: 'Sites / Tenants', users: 'Usuários', financial: 'Financeiro', health: 'Saúde' }
   document.getElementById('topbar-title').textContent = titles[name] || name
   if (name === 'users') loadUsers()
   if (name === 'sites') loadSites()
+  if (name === 'financial') loadFinancial()
   if (name === 'health') loadHealth()
   closeSidebar()
   return false
+}
+
+async function loadFinancial() {
+  const summary = document.getElementById('financial-summary')
+  const sitesBox = document.getElementById('financial-sites')
+  summary.innerHTML = '<div class="empty"><p>Carregando financeiro...</p></div>'
+  sitesBox.innerHTML = ''
+  const res = await fetch('/api/superadmin/financial')
+  if (!res.ok) {
+    summary.innerHTML = '<div class="alert alert-err" style="display:block">Não foi possível carregar o financeiro.</div>'
+    return
+  }
+  financial = await res.json()
+  const s = financial.summary || {}
+  summary.innerHTML = [
+    financialCard('Receita recebida', moneyBR(s.revenue), 'Pacotes e vendas confirmadas via Asaas.'),
+    financialCard('Custo com corretores', moneyBR(s.due_to_child_teachers), 'Valores gerados para professores corretores filhos.'),
+    financialCard('Pago a corretores', moneyBR(s.paid_to_child_teachers), 'Pagamentos internos já registrados.'),
+    financialCard('Pendente a pagar', moneyBR(s.pending_to_child_teachers), 'Saldo ainda em aberto para corretores.')
+  ].join('')
+  const rows = financial.sites || []
+  sitesBox.innerHTML = `<div class="table-wrap"><table style="width:100%;border-collapse:collapse">
+    <thead><tr style="border-bottom:1px solid var(--border)">
+      <th style="text-align:left;padding:8px 12px;font-size:11px;color:var(--ink3)">SITE / PROFESSOR</th>
+      <th style="text-align:left;padding:8px 12px;font-size:11px;color:var(--ink3)">STATUS</th>
+      <th style="text-align:right;padding:8px 12px;font-size:11px;color:var(--ink3)">RECEITA</th>
+      <th style="text-align:right;padding:8px 12px;font-size:11px;color:var(--ink3)">A PAGAR CORRETORES</th>
+      <th style="text-align:right;padding:8px 12px;font-size:11px;color:var(--ink3)">JÁ PAGO</th>
+      <th style="text-align:right;padding:8px 12px;font-size:11px;color:var(--ink3)">FECHAMENTOS ABERTOS</th>
+    </tr></thead>
+    <tbody>${rows.map(row => `<tr style="border-bottom:1px solid var(--border)">
+      <td style="padding:12px"><strong>${esc(row.nome_prof || row.slug)}</strong><div style="font-size:12px;color:var(--ink3)">${esc(row.slug)}</div></td>
+      <td style="padding:12px"><span class="tag ${row.ativo ? 'tag-done' : 'tag-pend'}">${row.ativo ? 'Ativo' : 'Inativo'}</span></td>
+      <td style="padding:12px;text-align:right;font-weight:800">${moneyBR(row.revenue)}</td>
+      <td style="padding:12px;text-align:right">${moneyBR(row.due_to_child_teachers)}</td>
+      <td style="padding:12px;text-align:right">${moneyBR(row.paid_to_child_teachers)}</td>
+      <td style="padding:12px;text-align:right">${row.pending_closings || 0}</td>
+    </tr>`).join('')}</tbody>
+  </table></div>`
+}
+
+function financialCard(label, value, sub) {
+  return `<div class="kpi-card">
+    <div class="kpi-label">${esc(label)}</div>
+    <div class="kpi-value" style="font-size:24px;margin-top:4px">${esc(value)}</div>
+    <div class="kpi-sub">${esc(sub || '')}</div>
+  </div>`
 }
 
 async function loadHealth() {
@@ -533,6 +666,16 @@ function openSiteModal(id) {
     document.getElementById('s-nome').value = site.nome_prof || ''
     document.getElementById('s-slug').value = site.slug || ''
     document.getElementById('s-bio').value = site.bio_prof || ''
+    document.getElementById('s-prof-nome').value = site.owner_user?.nome || site.nome_prof || ''
+    document.getElementById('s-prof-email').value = site.owner_user?.email || ''
+    document.getElementById('s-prof-senha').value = ''
+    document.getElementById('s-prof-sexo').value = site.owner_user?.sexo || site.cms?.owner_gender || 'FEMININO'
+    document.getElementById('s-prof-role').value = ['ADMIN', 'CORRETOR'].includes(site.owner_user?.role) ? site.owner_user.role : 'ADMIN'
+    document.getElementById('s-prof-ativo').value = site.owner_user?.ativo === false ? 'false' : 'true'
+    document.getElementById('s-prof-email').required = false
+    document.getElementById('s-prof-senha').required = false
+    document.getElementById('s-plan-name').value = site.platform_plan?.name || ''
+    document.getElementById('s-plan-expires').value = dateInputValue(site.platform_plan?.expires_at)
     setColor('s-cor', 's-cor-code', site.cor_primaria || '#1A3A2A')
     setColor('s-accent', 's-accent-code', site.cor_accent || '#C5F135')
   }
@@ -548,6 +691,16 @@ function clearSiteForm() {
   document.getElementById('s-nome').value = ''
   document.getElementById('s-slug').value = ''
   document.getElementById('s-bio').value = ''
+  document.getElementById('s-prof-nome').value = ''
+  document.getElementById('s-prof-email').value = ''
+  document.getElementById('s-prof-senha').value = ''
+  document.getElementById('s-prof-sexo').value = 'FEMININO'
+  document.getElementById('s-prof-role').value = 'ADMIN'
+  document.getElementById('s-prof-ativo').value = 'true'
+  document.getElementById('s-prof-email').required = true
+  document.getElementById('s-prof-senha').required = true
+  document.getElementById('s-plan-name').value = 'Manual'
+  document.getElementById('s-plan-expires').value = ''
   setColor('s-cor', 's-cor-code', '#1A3A2A')
   setColor('s-accent', 's-accent-code', '#C5F135')
   updateSitePreview()
@@ -561,7 +714,17 @@ async function saveSite(e) {
     nome_prof: document.getElementById('s-nome').value.trim(),
     bio_prof: document.getElementById('s-bio').value.trim(),
     cor_primaria: document.getElementById('s-cor').value,
-    cor_accent: document.getElementById('s-accent').value
+    cor_accent: document.getElementById('s-accent').value,
+    professor_email: document.getElementById('s-prof-email').value.trim(),
+    professor_password: document.getElementById('s-prof-senha').value.trim(),
+    professor_nome: document.getElementById('s-prof-nome').value.trim() || document.getElementById('s-nome').value.trim(),
+    professor_gender: document.getElementById('s-prof-sexo').value,
+    professor_role: document.getElementById('s-prof-role').value,
+    professor_ativo: document.getElementById('s-prof-ativo').value === 'true',
+    owner_user_id: id ? (sites.find(s => s.id === id)?.owner_user?.id || '') : '',
+    plan_name: document.getElementById('s-plan-name').value.trim() || 'Manual',
+    plan_expires_at: document.getElementById('s-plan-expires').value || null,
+    plan_status: 'ACTIVE'
   }
   if (!id) body.ativo = true
 
@@ -593,6 +756,28 @@ async function toggleSite(id, ativo) {
   loadStats()
 }
 
+async function deleteSite(id) {
+  const site = sites.find(s => s.id === id)
+  if (!site) return
+  const typed = prompt(`Para excluir o site "${site.nome_prof}", digite o slug exatamente: ${site.slug}`)
+  if (typed === null) return
+  if (typed.trim() !== site.slug) {
+    showToast('Exclusão cancelada: slug diferente.')
+    return
+  }
+  if (!confirm(`Excluir definitivamente o site "${site.nome_prof}"?\n\nEsta ação só será permitida se não houver usuários, turmas, pagamentos ou redações vinculados.`)) return
+  const res = await fetch(`/api/superadmin/sites/${id}`, { method: 'DELETE' })
+  const data = await res.json().catch(() => ({}))
+  if (!res.ok) {
+    showToast(data.error || 'Não foi possível excluir o site.')
+    return
+  }
+  showToast('Site excluído.')
+  loadSites()
+  loadStats()
+  loadUsers()
+}
+
 async function copySiteLink(id) {
   const site = sites.find(s => s.id === id)
   if (!site) return
@@ -613,7 +798,7 @@ async function copySiteLink(id) {
 
 async function createUser(e) {
   e.preventDefault()
-  const body = { email: document.getElementById('u-email').value, password: document.getElementById('u-senha').value, nome: document.getElementById('u-nome').value, role: document.getElementById('u-role').value, site_id: document.getElementById('u-site').value || null }
+  const body = { email: document.getElementById('u-email').value, password: document.getElementById('u-senha').value, nome: document.getElementById('u-nome').value, role: document.getElementById('u-role').value, sexo: document.getElementById('u-sexo').value, site_id: document.getElementById('u-site').value || null }
   const res = await fetch('/api/superadmin/users', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) })
   const d = await res.json()
   if (!res.ok) { showAlert('alert-user', d.error); return }
@@ -632,6 +817,7 @@ function openEditUserModal(id) {
   document.getElementById('eu-email').value = user.email || ''
   document.getElementById('eu-senha').value = ''
   document.getElementById('eu-role').value = user.role || 'ALUNO'
+  document.getElementById('eu-sexo').value = user.sexo || 'FEMININO'
   populateSiteSelect('eu-site', user.site_id || '')
   document.getElementById('eu-ativo').value = user.ativo === false ? 'false' : 'true'
   syncEditUserRole()
@@ -655,6 +841,7 @@ async function saveEditedUser(event) {
     nome: document.getElementById('eu-nome').value.trim(),
     email: document.getElementById('eu-email').value.trim(),
     role,
+    sexo: document.getElementById('eu-sexo').value,
     site_id: role === 'SUPERADMIN' ? null : (document.getElementById('eu-site').value || null),
     ativo: document.getElementById('eu-ativo').value === 'true'
   }
@@ -737,7 +924,9 @@ function updateSitePreview() {
   const accent = normalizeColor(document.getElementById('s-accent-code').value) || document.getElementById('s-accent').value || '#C5F135'
   const brandText = contrastText(brand)
   const accentText = contrastText(accent)
-  const nome = document.getElementById('s-nome').value.trim() || 'Professor(a)'
+  const sexo = document.getElementById('s-prof-sexo')?.value || 'FEMININO'
+  const professorLabel = sexo === 'MASCULINO' ? 'Professor' : 'Professora'
+  const nome = document.getElementById('s-nome').value.trim() || professorLabel
   const bio = document.getElementById('s-bio').value.trim() || 'Turmas, materiais e correções organizadas em uma área própria para alunos.'
   const preview = document.getElementById('site-preview-card')
   if (!preview) return
@@ -752,6 +941,7 @@ function updateSitePreview() {
   document.getElementById('pv-prof-name').textContent = nome
   document.getElementById('pv-avatar').textContent = nome.slice(0, 2).toUpperCase()
   document.getElementById('pv-bio').textContent = bio
+  document.getElementById('pv-prof-desc').textContent = `Área do ${professorLabel.toLowerCase()} com alunos e turmas separados.`
   document.getElementById('site-contrast-hint').textContent = `Sugestão automática: cor primária usa texto ${brandText === '#111111' ? 'escuro' : 'claro'}; botões de destaque usam texto ${accentText === '#111111' ? 'escuro' : 'claro'}.`
 }
 
@@ -791,6 +981,17 @@ function toggleSidebar() { document.getElementById('sidebar').classList.toggle('
 function closeSidebar() { document.getElementById('sidebar').classList.remove('open'); document.getElementById('overlay').classList.remove('open') }
 async function logout() { await fetch('/api/auth/logout', { method: 'POST' }); location.href = '/login.html' }
 function fmtDate(s) { if (!s) return '—'; return new Date(s).toLocaleDateString('pt-BR') }
+function dateInputValue(s) { return s ? String(s).slice(0, 10) : '' }
+function moneyBR(value) {
+  return Number(value || 0).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })
+}
+function planValidityLabel(site) {
+  const expires = site?.platform_plan?.expires_at
+  if (!expires) return '<span style="color:var(--ink3)">Sem data</span>'
+  const end = new Date(`${String(expires).slice(0, 10)}T23:59:59`)
+  const expired = Number.isFinite(end.getTime()) && end.getTime() < Date.now()
+  return `<span class="tag ${expired ? 'tag-pend' : 'tag-done'}">${expired ? 'Expirado em ' : 'Até '}${fmtDate(expires)}</span>`
+}
 
 init()
 </script>

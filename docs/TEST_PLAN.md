@@ -178,6 +178,31 @@ git diff --check
   - matrícula duplicada é impedida por `turma_id,aluno_id`;
   - API de produção não deve ser chamada com `ASAAS_ENV=sandbox`.
 
+### Cursos em vídeo
+
+- Professor:
+  - criar curso em vídeo com título, resumo, descrição, preço, capa e UID do Cloudflare Stream;
+  - publicar, ocultar e excluir curso pelo menu "Cursos em vídeo";
+  - validar prévia em desktop e mobile;
+  - confirmar que o curso publicado aparece no site público correto.
+- Checkout público de curso:
+  - abrir `/redacao/:slug/videos/:courseId`;
+  - confirmar que o preço vem do CMS do professor, não do navegador;
+  - gerar cobrança Pix Sandbox;
+  - gerar cobrança Boleto Sandbox;
+  - gerar cobrança Cartão Sandbox com dados de teste;
+  - confirmar que `PAYMENT_CREATED` não libera acesso;
+  - confirmar que `PAYMENT_CONFIRMED` ou `PAYMENT_RECEIVED` cria uma única matrícula em `video_course_enrollments`;
+  - validar que o link de cadastro pós-pagamento usa `product=video`, `course` e `checkout_code`.
+- Aluno:
+  - aluno sem matrícula vê curso bloqueado;
+  - aluno matriculado abre player protegido;
+  - com `ENABLE_CLOUDFLARE_STREAM=false`, o player mostra mensagem controlada;
+  - com Stream configurado, o Worker deve gerar iframe temporário apenas para aluno matriculado;
+  - salvar anotação;
+  - reabrir curso e confirmar anotação persistida;
+  - validar responsividade do player e do painel de anotações em celular.
+
 #### Evidência de homologação comercial — 2026-07-13
 
 - Turma: `Homologacao Comercial 20260713-000003`.

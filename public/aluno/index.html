@@ -28,6 +28,7 @@
       <a class="sb-item" href="#" onclick="showPage('enviar',this)">✏️ Enviar Redação</a>
       <div class="sb-grp">Turmas</div>
       <a class="sb-item" href="#" onclick="showPage('turmas',this)">🏫 Minhas Turmas</a>
+      <a class="sb-item" href="#" onclick="showPage('cursosvideo',this)">🎬 Cursos em vídeo</a>
     </nav>
     <div class="sb-user">
       <div class="sb-av" id="sb-av">AL</div>
@@ -165,6 +166,52 @@
       </div>
     </div>
 
+    <!-- CURSOS EM VÍDEO -->
+    <div class="page" id="page-cursosvideo" style="display:none">
+      <div class="card">
+        <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:12px;flex-wrap:wrap;margin-bottom:16px">
+          <div>
+            <strong style="font-size:15px">Cursos em vídeo</strong>
+            <p style="font-size:12px;color:var(--ink3);margin-top:4px">Acesse aulas gravadas, continue de onde parou e salve suas anotações.</p>
+          </div>
+          <span class="tag tag-prog">Acesso protegido</span>
+        </div>
+        <div id="video-courses-list"></div>
+      </div>
+      <div class="card" id="video-course-player-card" style="display:none;margin-top:18px">
+        <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:12px;flex-wrap:wrap;margin-bottom:14px">
+          <div>
+            <strong style="font-size:16px" id="video-player-title">Curso</strong>
+            <p style="font-size:12px;color:var(--ink3);margin-top:4px" id="video-player-summary"></p>
+          </div>
+          <button type="button" class="btn btn-sec btn-sm" onclick="closeVideoCoursePlayer()">Fechar</button>
+        </div>
+        <div class="video-learning-grid">
+          <section>
+            <div class="student-video-shell" id="student-video-shell">
+              <div class="empty">
+                <div class="empty-icon">🎬</div>
+                <p>Carregando player protegido...</p>
+              </div>
+            </div>
+            <div style="display:flex;align-items:center;gap:10px;margin-top:12px;flex-wrap:wrap">
+              <span style="font-size:12px;font-weight:800;color:var(--ink2)">Progresso</span>
+              <div class="video-progress-track"><span id="video-progress-bar"></span></div>
+              <strong id="video-progress-label" style="font-size:12px;color:var(--brand)">0%</strong>
+            </div>
+          </section>
+          <aside class="video-notes-panel">
+            <strong style="font-size:14px">Minhas anotações</strong>
+            <p style="font-size:12px;color:var(--ink3);margin-top:4px">Registre ideias importantes enquanto assiste.</p>
+            <textarea id="video-note-text" maxlength="2000" placeholder="Escreva uma anotação desta aula"></textarea>
+            <button type="button" class="btn btn-accent btn-full" onclick="saveVideoNote()">Salvar anotação</button>
+            <div id="video-note-alert" class="alert alert-err"></div>
+            <div id="video-notes-list"></div>
+          </aside>
+        </div>
+      </div>
+    </div>
+
     <!-- VER CORREÇÃO -->
     <div class="page page-aluno-correcao" id="page-correcao" style="display:none">
       <div class="correcao-header">
@@ -216,6 +263,8 @@ let alunoAprovado = true
 let selectedArquivo = null
 let editingEnvioId = null
 let redirectAfterSendTimer = null
+let videoCoursesData = []
+let currentVideoCourse = null
 const tenantMatch = location.pathname.match(/^\/redacao\/([^/]+)\/aluno\/?$/)
 const tenantSlug = new URLSearchParams(location.search).get('site') || (tenantMatch ? decodeURIComponent(tenantMatch[1]) : '')
 const tenantBase = tenantSlug ? `/redacao/${encodeURIComponent(tenantSlug)}` : ''
@@ -372,6 +421,129 @@ async function loadTurmas() {
       </div>
     </div>`).join('')
   renderTurmasDisponiveis()
+}
+
+async function loadVideoCourses() {
+  const el = document.getElementById('video-courses-list')
+  if (!el) return
+  el.innerHTML = '<div class="empty"><div class="empty-icon">🎬</div><p>Carregando cursos...</p></div>'
+  const res = await fetch('/api/aluno/video-courses')
+  if (!res.ok) {
+    el.innerHTML = '<div class="empty"><div class="empty-icon">⚠</div><p>Não foi possível carregar os cursos em vídeo.</p></div>'
+    return
+  }
+  const payload = await res.json()
+  videoCoursesData = payload.data || []
+  if (!videoCoursesData.length) {
+    el.innerHTML = '<div class="empty"><div class="empty-icon">🎬</div><p>Nenhum curso em vídeo disponível neste site ainda.</p></div>'
+    return
+  }
+  el.innerHTML = `<div class="student-video-grid">${videoCoursesData.map(course => {
+    const progress = Number(course.progress?.percent_watched || 0)
+    return `
+      <article class="student-video-card ${course.enrolled ? '' : 'is-locked'}">
+        <div class="student-video-cover">
+          ${course.cover_url ? `<img src="${escAl(course.cover_url)}" alt="${escAl(course.title)}">` : '<span>🎬</span>'}
+          <b>${course.enrolled ? 'Matriculado' : 'Bloqueado'}</b>
+        </div>
+        <div class="student-video-body">
+          <h3>${escAl(course.title)}</h3>
+          <p>${escAl(course.summary || 'Curso gravado do professor.')}</p>
+          <div class="student-video-meta">
+            <span>${Number(course.duration_hours || 0) ? `${numPt(course.duration_hours)}h` : 'Aulas gravadas'}</span>
+            <span>${Number(course.lessons_count || 0) ? `${course.lessons_count} aulas` : moneyBR(course.price)}</span>
+          </div>
+          <div class="video-progress-track"><span style="width:${Math.max(0, Math.min(100, progress))}%"></span></div>
+          <button type="button" class="btn ${course.enrolled ? 'btn-accent' : 'btn-sec'} btn-full" onclick="openVideoCourse('${escAl(course.id)}')">${course.enrolled ? 'Continuar assistindo' : 'Ver detalhes'}</button>
+        </div>
+      </article>
+    `
+  }).join('')}</div>`
+}
+
+async function openVideoCourse(id) {
+  const card = document.getElementById('video-course-player-card')
+  card.style.display = 'block'
+  document.getElementById('student-video-shell').innerHTML = '<div class="empty"><div class="empty-icon">🎬</div><p>Preparando aula...</p></div>'
+  const res = await fetch(`/api/aluno/video-courses/${encodeURIComponent(id)}`)
+  const payload = await res.json().catch(() => ({}))
+  if (!res.ok && res.status !== 403) {
+    document.getElementById('student-video-shell').innerHTML = `<div class="empty"><div class="empty-icon">⚠</div><p>${escAl(payload.error || 'Não foi possível abrir o curso.')}</p></div>`
+    return
+  }
+  currentVideoCourse = payload
+  renderVideoPlayer(payload)
+  card.scrollIntoView({ behavior: 'smooth', block: 'start' })
+}
+
+function renderVideoPlayer(payload) {
+  const course = payload.course || {}
+  document.getElementById('video-player-title').textContent = course.title || 'Curso em vídeo'
+  document.getElementById('video-player-summary').textContent = course.description || course.summary || ''
+  const shell = document.getElementById('student-video-shell')
+  if (payload.locked || !course.enrolled) {
+    shell.innerHTML = '<div class="empty"><div class="empty-icon">🔒</div><p>Este curso ainda não está liberado para sua matrícula.</p></div>'
+  } else if (payload.stream?.available && payload.stream?.iframe_url) {
+    shell.innerHTML = `<iframe src="${escAl(payload.stream.iframe_url)}" allow="accelerometer; gyroscope; autoplay; encrypted-media; picture-in-picture;" allowfullscreen></iframe>`
+  } else {
+    shell.innerHTML = `<div class="empty"><div class="empty-icon">🎬</div><p>${escAl(payload.stream?.reason || 'Player protegido ainda não configurado.')}</p></div>`
+  }
+  const progress = Number(course.progress?.percent_watched || 0)
+  document.getElementById('video-progress-bar').style.width = `${Math.max(0, Math.min(100, progress))}%`
+  document.getElementById('video-progress-label').textContent = `${numPt(progress)}%`
+  renderVideoNotes(payload.notes || [])
+}
+
+function renderVideoNotes(notes) {
+  const el = document.getElementById('video-notes-list')
+  if (!notes.length) {
+    el.innerHTML = '<div class="empty" style="padding:18px"><p>Nenhuma anotação ainda.</p></div>'
+    return
+  }
+  el.innerHTML = notes.map(note => `
+    <div class="video-note-item">
+      <strong>${formatSeconds(note.timestamp_seconds || 0)}</strong>
+      <p>${escAl(note.note || '')}</p>
+    </div>
+  `).join('')
+}
+
+async function saveVideoNote() {
+  if (!currentVideoCourse?.course?.id) return
+  const noteEl = document.getElementById('video-note-text')
+  const alertEl = document.getElementById('video-note-alert')
+  alertEl.style.display = 'none'
+  const note = noteEl.value.trim()
+  if (!note) {
+    alertEl.textContent = 'Escreva uma anotação antes de salvar.'
+    alertEl.style.display = 'block'
+    return
+  }
+  const res = await fetch(`/api/aluno/video-courses/${encodeURIComponent(currentVideoCourse.course.id)}/notes`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ note, timestamp_seconds: currentVideoCourse.course.progress?.current_time_seconds || 0 })
+  })
+  const d = await res.json().catch(() => ({}))
+  if (!res.ok) {
+    alertEl.textContent = d.error || 'Não foi possível salvar a anotação.'
+    alertEl.style.display = 'block'
+    return
+  }
+  noteEl.value = ''
+  await openVideoCourse(currentVideoCourse.course.id)
+}
+
+function closeVideoCoursePlayer() {
+  currentVideoCourse = null
+  document.getElementById('video-course-player-card').style.display = 'none'
+}
+
+function formatSeconds(total) {
+  const safe = Math.max(0, Math.floor(Number(total) || 0))
+  const m = Math.floor(safe / 60)
+  const s = safe % 60
+  return `${m}:${String(s).padStart(2, '0')}`
 }
 
 function renderTurmasDisponiveis() {
@@ -599,10 +771,11 @@ function showPage(name, link) {
   document.getElementById('page-' + name).style.display = 'block'
   document.querySelectorAll('.sb-item').forEach(i => i.classList.remove('on'))
   if (link) link.classList.add('on')
-  const titles = { dashboard:'Início', minhas:'Minhas Redações', enviar: editingEnvioId ? 'Editar Redação' : 'Enviar Redação', turmas:'Turmas', correcao:'Correção da Redação' }
+  const titles = { dashboard:'Início', minhas:'Minhas Redações', enviar: editingEnvioId ? 'Editar Redação' : 'Enviar Redação', turmas:'Turmas', cursosvideo:'Cursos em vídeo', correcao:'Correção da Redação' }
   document.getElementById('topbar-title').textContent = titles[name] || name
   if (name === 'minhas') loadCorrecoes('lista')
   if (name === 'turmas') loadTurmas()
+  if (name === 'cursosvideo') loadVideoCourses()
   closeSidebar(); return false
 }
 function toggleSidebar() { document.getElementById('sidebar').classList.toggle('open'); document.getElementById('overlay').classList.toggle('open') }

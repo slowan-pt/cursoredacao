@@ -35,6 +35,7 @@
       <div class="sb-grp owner-only">Turmas & Alunos</div>
       <a class="sb-item owner-only" href="#" onclick="showPage('conteudos',this)">📰 Conteúdos/Postagens</a>
       <a class="sb-item owner-only" href="#" onclick="showPage('turmas',this)">🏫 Turmas</a>
+      <a class="sb-item owner-only" href="#" onclick="showPage('cursosvideo',this)">🎬 Cursos em vídeo</a>
       <a class="sb-item owner-only" href="#" onclick="showPage('alunos',this)">👥 Alunos</a>
       <a class="sb-item owner-only" href="#" onclick="showPage('professores',this)">👨‍🏫 Professores</a>
       <a class="sb-item owner-only" href="#" onclick="showPage('temas',this)">📚 Temas</a>
@@ -85,6 +86,7 @@
                       <input id="site-cor-code" value="#1A3A2A" placeholder="#1A3A2A ou rgb(26,58,42)" onfocus="beginMainColorEdit('primary');pulseSitePreview('hero')" oninput="syncMainColorCode('primary')">
                       <button type="button" class="btn btn-brand btn-sm color-confirm-btn" id="site-cor-confirm" onclick="confirmMainColor('primary')" style="display:none">Confirmar</button>
                     </div>
+                    <div class="color-presets" id="site-primary-presets" aria-label="Sugestões de cor primária"></div>
                   </div>
                   <div class="form-group">
                     <label>Cor de destaque</label>
@@ -93,6 +95,7 @@
                       <input id="site-accent-code" value="#C5F135" placeholder="#C5F135 ou rgb(197,241,53)" onfocus="beginMainColorEdit('accent');pulseSitePreview('cta')" oninput="syncMainColorCode('accent')">
                       <button type="button" class="btn btn-brand btn-sm color-confirm-btn" id="site-accent-confirm" onclick="confirmMainColor('accent')" style="display:none">Confirmar</button>
                     </div>
+                    <div class="color-presets" id="site-accent-presets" aria-label="Sugestões de cor de destaque"></div>
                   </div>
                 </div>
                 <div class="contrast-hint" id="site-contrast-hint"></div>
@@ -281,6 +284,26 @@
         <div id="alert-conteudos" class="alert alert-err"></div>
         <div id="alert-conteudos-ok" class="alert alert-ok"></div>
         <div class="cms-post-list content-post-list" id="cms-post-list"></div>
+      </div>
+    </div>
+
+    <!-- CURSOS EM VÍDEO -->
+    <div class="page" id="page-cursosvideo" style="display:none">
+      <div class="card">
+        <div class="content-page-head">
+          <div>
+            <strong style="font-size:15px">Cursos em vídeo</strong>
+            <p style="font-size:12px;color:var(--ink3);margin-top:4px">Cadastre cursos gravados para aparecerem abaixo das turmas no site público. O player privado do Cloudflare Stream será ativado na próxima fase.</p>
+          </div>
+          <button type="button" class="btn btn-accent" onclick="openVideoCourseEditor()">+ Novo curso</button>
+        </div>
+        <div class="card-soft" style="margin-bottom:14px;background:#eef6ff;border-color:#b7d7ff">
+          <strong>Proteção planejada do vídeo</strong>
+          <p style="font-size:12px;color:var(--ink3);margin:6px 0 0">Os vídeos deverão ficar privados no Cloudflare Stream, com token temporário gerado pelo Worker, acesso só para aluno matriculado, retomada automática de onde parou e área de anotações.</p>
+        </div>
+        <div id="alert-video-courses" class="alert alert-err"></div>
+        <div id="alert-video-courses-ok" class="alert alert-ok"></div>
+        <div class="cms-post-list content-post-list" id="video-course-list"></div>
       </div>
     </div>
 
@@ -556,6 +579,11 @@
           <button type="button" data-pre-tab="Comentários gerais" onclick="setPreComentarioSubmenu('Comentários gerais')">Comentários gerais</button>
         </div>
         <div style="display:flex;align-items:flex-start;justify-content:flex-end;gap:14px;margin-bottom:14px;flex-wrap:wrap">
+          <button class="btn btn-sec btn-sm" type="button" onclick="exportPreComentarios()">Exportar</button>
+          <label class="btn btn-sec btn-sm" style="cursor:pointer">
+            Importar
+            <input type="file" accept="application/json,.json" style="display:none" onchange="importPreComentarios(event)">
+          </label>
           <button class="btn btn-accent btn-sm" type="button" onclick="openPreComentarioModal()">+ Novo comentário</button>
         </div>
         <div class="pre-filter-row">
@@ -671,6 +699,86 @@
       </div>
     </div>
   </main>
+</div>
+
+<!-- MODAL: Curso em vídeo -->
+<div class="modal-bg" id="modal-video-course-editor">
+  <div class="modal modal-post-editor">
+    <button class="modal-close" onclick="closeVideoCourseEditor()">×</button>
+    <div class="modal-title" id="video-course-modal-title">Novo curso em vídeo</div>
+    <div id="alert-video-course-editor" class="alert alert-err"></div>
+    <input type="hidden" id="video-course-id">
+    <div class="post-editor-grid">
+      <section class="post-editor-form">
+        <div class="page-grid grid-3">
+          <div class="form-group">
+            <label>Status</label>
+            <select id="video-course-status" onchange="updateVideoCoursePreview()">
+              <option value="PUBLICADO">Publicado</option>
+              <option value="OCULTO">Oculto</option>
+              <option value="RASCUNHO">Rascunho</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label>Destaque</label>
+            <select id="video-course-pinned" onchange="updateVideoCoursePreview()">
+              <option value="false">Normal</option>
+              <option value="true">Destacar no topo</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label>Preço</label>
+            <input id="video-course-price" inputmode="numeric" placeholder="397,00" oninput="maskMoneyInput(this);updateVideoCoursePreview()">
+          </div>
+        </div>
+        <div class="form-group">
+          <label>Título</label>
+          <input id="video-course-title" placeholder="Ex: Curso completo de redação" oninput="updateVideoCoursePreview()">
+        </div>
+        <div class="form-group">
+          <label>Resumo do card</label>
+          <textarea id="video-course-summary" maxlength="170" placeholder="Resumo curto que aparecerá no site" oninput="updateVideoCoursePreview()"></textarea>
+          <div class="hint">Use até 150 caracteres para caber bem no card.</div>
+        </div>
+        <div class="form-group">
+          <label>Descrição completa</label>
+          <textarea id="video-course-description" placeholder="Detalhe o que o aluno encontrará dentro do curso" oninput="updateVideoCoursePreview()"></textarea>
+        </div>
+        <div class="page-grid grid-3">
+          <div class="form-group">
+            <label>Horas de vídeo</label>
+            <input id="video-course-hours" type="number" min="0" step="0.5" placeholder="10" oninput="updateVideoCoursePreview()">
+          </div>
+          <div class="form-group">
+            <label>Quantidade de aulas</label>
+            <input id="video-course-lessons" type="number" min="0" step="1" placeholder="24" oninput="updateVideoCoursePreview()">
+          </div>
+          <div class="form-group">
+            <label>UID do Cloudflare Stream</label>
+            <input id="video-course-stream-uid" placeholder="Será usado no player privado" oninput="updateVideoCoursePreview()">
+          </div>
+        </div>
+        <div class="form-group">
+          <label>Capa do curso</label>
+          <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center">
+            <input id="video-course-cover" placeholder="URL ou imagem em base64" oninput="updateVideoCoursePreview()">
+            <label class="file-button">
+              Escolher imagem
+              <input type="file" accept="image/*" onchange="handleVideoCourseCover(event)">
+            </label>
+          </div>
+        </div>
+      </section>
+      <aside class="post-editor-preview">
+        <div class="cms-preview-title">Prévia no site</div>
+        <div id="video-course-live-preview"></div>
+      </aside>
+    </div>
+    <div class="post-editor-actions">
+      <button type="button" class="btn btn-sec" onclick="closeVideoCourseEditor()">Cancelar</button>
+      <button type="button" class="btn btn-accent" onclick="saveVideoCourse()">Salvar curso</button>
+    </div>
+  </div>
 </div>
 
 <!-- MODAL: Publicação -->
@@ -820,9 +928,52 @@
           <label><input type="checkbox" id="t-envios" checked> Alunos podem enviar redações</label>
         </div>
         <div class="form-group" style="margin-top:12px">
-          <label>Redações por aluno</label>
-          <input type="number" id="t-limite-redacoes" min="1" step="1" value="3" inputmode="numeric">
-          <div class="hint">Quantidade máxima de redações que cada aluno poderá enviar nesta turma. Padrão: 3.</div>
+          <label>Formas de pagamento desta turma</label>
+          <div class="turma-switches">
+            <label><input type="checkbox" id="t-pay-pix" checked onchange="updateTurmaPreview()"> Pix</label>
+            <label><input type="checkbox" id="t-pay-boleto" onchange="updateTurmaPreview()"> Boleto</label>
+            <label><input type="checkbox" id="t-pay-card" onchange="toggleTurmaCardPayment();updateTurmaPreview()"> Cartão / página Asaas</label>
+          </div>
+          <div class="turma-form-row turma-form-row-compact" id="t-card-options" style="display:none;margin-top:10px">
+            <div class="form-group" style="margin-bottom:0">
+              <label>Parcelas no cartão</label>
+              <input type="number" id="t-card-installments" min="1" max="12" step="1" value="1" inputmode="numeric" oninput="updateTurmaPreview()">
+            </div>
+            <div class="form-group" style="margin-bottom:0">
+              <label>Quem paga as taxas?</label>
+              <select id="t-fee-payer" onchange="updateTurmaPreview()">
+                <option value="PROFESSOR">Professor absorve</option>
+                <option value="ALUNO">Aluno paga embutido</option>
+              </select>
+            </div>
+            <div class="form-group" style="margin-bottom:0">
+              <label>Taxa embutida (%)</label>
+              <input type="number" id="t-fee-percent" min="0" max="30" step="0.01" value="0" inputmode="decimal" oninput="updateTurmaPreview()">
+            </div>
+          </div>
+          <div class="hint">O checkout público só exibirá as formas marcadas. Se o aluno pagar taxa, o valor exibido e cobrado será recalculado.</div>
+        </div>
+        <div class="form-group" style="margin-top:12px">
+          <label>Limite de envio por aluno</label>
+          <div class="turma-form-row turma-form-row-compact">
+            <div class="form-group" style="margin-bottom:0">
+              <label>Quantidade de redação(ões)</label>
+              <input type="number" id="t-limite-redacoes" min="1" step="1" value="1" inputmode="numeric">
+            </div>
+            <div class="form-group" style="margin-bottom:0">
+              <label>Periodicidade</label>
+              <select id="t-limite-periodicidade" onchange="toggleTurmaPeriodoCustom()">
+                <option value="DIA">Por dia</option>
+                <option value="SEMANA" selected>Por semana</option>
+                <option value="CUSTOM_DIAS">A cada X dias</option>
+              </select>
+            </div>
+            <div class="form-group" id="t-limite-dias-box" style="margin-bottom:0;display:none">
+              <label>A cada quantos dias?</label>
+              <input type="number" id="t-limite-dias" min="1" step="1" value="7" inputmode="numeric">
+            </div>
+          </div>
+          <div class="hint">Define quantas redações cada aluno pode enviar dentro do período escolhido. Padrão: 1 por semana.</div>
         </div>
       </section>
       <section class="turma-form-section">
@@ -976,6 +1127,13 @@
         <div class="form-grid-2">
           <div class="form-group"><label>Nome</label><input id="pf-nome" placeholder="Nome do professor"></div>
           <div class="form-group"><label>Email</label><input id="pf-email" type="email" placeholder="email@exemplo.com"></div>
+          <div class="form-group">
+            <label>Sexo</label>
+            <select id="pf-sexo">
+              <option value="FEMININO">Feminino</option>
+              <option value="MASCULINO">Masculino</option>
+            </select>
+          </div>
           <div class="form-group"><label>Telefone</label><input id="pf-telefone" placeholder="DDD + número"></div>
           <div class="form-group"><label>Senha padrão</label><input id="pf-password" type="password" placeholder="Obrigatória ao criar"></div>
           <div class="form-group"><label>Valor por redação corrigida</label><input id="pf-valor-correcao" inputmode="decimal" placeholder="0,00" onblur="maskMoneyInput(this)"></div>
@@ -1140,6 +1298,7 @@ let currentSite = null
 let currentUser = null
 let currentChildTeacher = null
 let cmsPosts = []
+let cmsVideoCourses = []
 let preComentarios = []
 let cmsTemas = []
 let turmasCache = []
@@ -1265,6 +1424,8 @@ const tenantMatch = location.pathname.match(/^\/redacao\/([^/]+)\/app\/?$/)
 const tenantSlug = new URLSearchParams(location.search).get('site') || (tenantMatch ? decodeURIComponent(tenantMatch[1]) : '')
 const tenantBase = tenantSlug ? `/redacao/${encodeURIComponent(tenantSlug)}` : ''
 const loginPath = tenantSlug ? `${tenantBase}/login` : '/login.html'
+const sitePrimaryPresets = ['#004D40', '#123C69', '#4B2E83', '#7A1F2B', '#2B2D42', '#00695C', '#111111', '#5B21B6', '#B45309', '#0F766E']
+const siteAccentPresets = ['#C5F135', '#FFD166', '#06D6A0', '#4CC9F0', '#F72585', '#FFFFFF', '#F97316', '#A3E635', '#FACC15', '#E879F9']
 
 function defaultCms() {
   return {
@@ -1276,10 +1437,12 @@ function defaultCms() {
       profile_text: 'Este site tem turmas, alunos e correções separados dos demais professores da plataforma.',
       turmas_title: 'Escolha sua turma',
       turmas_subtitle: 'Ao criar acesso por aqui, seu cadastro fica vinculado a este professor.',
+      video_courses_title: 'Cursos em vídeo',
+      video_courses_intro: 'Aulas gravadas, materiais de apoio e acompanhamento dentro da plataforma.',
       posts_title: 'Dicas e materiais',
       posts_intro: 'Publicações, notícias e matérias do professor.',
       profile_side: 'right',
-      block_order: ['hero', 'turmas', 'conteudos', 'aluno'],
+      block_order: ['hero', 'turmas', 'video_courses', 'conteudos', 'aluno'],
       avatar_text: 'PR',
       avatar_image: '',
       profile_display_mode: 'text',
@@ -1297,6 +1460,7 @@ function defaultCms() {
     },
     theme: defaultTheme(),
     posts: [],
+    video_courses: [],
     child_teachers: [],
     pre_comments: [],
     themes: [],
@@ -1357,6 +1521,7 @@ async function loadSite() {
   document.getElementById('site-whatsapp').value = currentSite.cms?.contact?.whatsapp_phone || defaultCms().contact.whatsapp_phone
   setColor('site-cor', 'site-cor-code', currentSite.cor_primaria || '#1A3A2A')
   setColor('site-accent', 'site-accent-code', currentSite.cor_accent || '#C5F135')
+  renderMainColorPresets()
   loadCmsForm(currentSite.cms || defaultCms())
   avaliacaoModos = Array.isArray(currentSite.cms?.evaluation_modes) ? currentSite.cms.evaluation_modes : []
   renderAvaliacaoModos()
@@ -1530,9 +1695,9 @@ function loadCmsForm(cms) {
   data.contact = { ...defaultCms().contact, ...(data.contact || {}) }
   data.theme = normalizeTheme(data.theme, currentSite?.cor_primaria, currentSite?.cor_accent)
   cmsPosts = Array.isArray(data.posts) ? data.posts : []
+  cmsVideoCourses = Array.isArray(data.video_courses) ? data.video_courses : []
   const loadedPre = Array.isArray(data.pre_comments) ? data.pre_comments : []
-  preComentarios = mergeDefaultPreComentarios(loadedPre)
-  if (JSON.stringify(preComentarios) !== JSON.stringify(loadedPre)) setTimeout(() => persistPreComentarios(), 0)
+  preComentarios = loadedPre
   cmsTemas = Array.isArray(data.themes) ? data.themes : []
   document.getElementById('site-whatsapp').value = data.contact.whatsapp_phone || defaultCms().contact.whatsapp_phone
   setThemeControls(data.theme)
@@ -1558,6 +1723,7 @@ function loadCmsForm(cms) {
   document.getElementById('cms-aluno-text').value = data.layout.aluno_text || ''
   document.getElementById('cms-aluno-cta').value = data.layout.aluno_cta || ''
   renderCmsPosts()
+  renderVideoCourses()
   renderPreComentarios()
   renderTemas()
   clearPostForm()
@@ -1599,6 +1765,7 @@ function collectCmsForm() {
     },
     theme,
     posts: cmsPosts,
+    video_courses: cmsVideoCourses,
     pre_comments: preComentarios,
     themes: cmsTemas,
     evaluation_modes: avaliacaoModos
@@ -1830,6 +1997,78 @@ async function deletePreComentario(id) {
   const ok = await persistPreComentarios()
   if (!ok) return alert('Não foi possível excluir o pré-comentário.')
   renderPreComentarios()
+}
+
+function exportPreComentarios() {
+  const payload = {
+    version: 1,
+    exported_at: new Date().toISOString(),
+    site_slug: currentSite?.site?.slug || currentSite?.slug || '',
+    pre_comments: preComentariosForUse()
+  }
+  const blob = new Blob([JSON.stringify(payload, null, 2)], { type: 'application/json' })
+  const url = URL.createObjectURL(blob)
+  const a = document.createElement('a')
+  const slug = payload.site_slug || 'site'
+  a.href = url
+  a.download = `pre-comentarios-${slug}-${new Date().toISOString().slice(0, 10)}.json`
+  document.body.appendChild(a)
+  a.click()
+  a.remove()
+  URL.revokeObjectURL(url)
+}
+
+async function importPreComentarios(event) {
+  const input = event?.target
+  const file = input?.files?.[0]
+  if (!file) return
+  try {
+    const text = await file.text()
+    const parsed = JSON.parse(text)
+    const incoming = Array.isArray(parsed) ? parsed : (Array.isArray(parsed.pre_comments) ? parsed.pre_comments : [])
+    if (!incoming.length) {
+      alert('Arquivo sem pré-comentários para importar.')
+      return
+    }
+    const existingShortcuts = new Set(preComentarios.map(item => normalizeAtalho(item.atalho)).filter(Boolean))
+    const existingIds = new Set(preComentarios.map(item => String(item.id || '')).filter(Boolean))
+    const now = new Date().toISOString()
+    const additions = []
+    incoming.forEach((raw, index) => {
+      const atalho = normalizeAtalho(raw?.atalho)
+      const conteudo = String(raw?.conteudo || '').trim()
+      if (!atalho || !conteudo || existingShortcuts.has(atalho)) return
+      const rawId = String(raw?.id || `pre-import-${Date.now()}-${index}`)
+      const id = existingIds.has(rawId) ? `pre-import-${Date.now()}-${index}` : rawId
+      existingShortcuts.add(atalho)
+      existingIds.add(id)
+      additions.push({
+        id,
+        atalho,
+        titulo: String(raw?.titulo || atalho).trim(),
+        categoria: String(raw?.categoria || 'Marcação no corpo do texto').trim(),
+        conteudo,
+        created_at: now,
+        updated_at: now
+      })
+    })
+    if (!additions.length) {
+      alert('Nenhum comentário novo foi importado. Os atalhos já existiam neste site.')
+      return
+    }
+    preComentarios = [...additions, ...preComentarios]
+    const ok = await persistPreComentarios()
+    if (!ok) {
+      alert('Não foi possível salvar os comentários importados.')
+      return
+    }
+    renderPreComentarios()
+    alert(`${additions.length} pré-comentário(s) importado(s).`)
+  } catch {
+    alert('Arquivo inválido. Envie um JSON exportado pelo sistema.')
+  } finally {
+    if (input) input.value = ''
+  }
 }
 
 function temaStatusLabel(status) {
@@ -2175,6 +2414,158 @@ function renderCmsPosts() {
       </div>
     </div>
   `).join('')
+}
+
+function videoCourseStatusLabel(status) {
+  return ({ PUBLICADO: 'Publicado', OCULTO: 'Oculto', RASCUNHO: 'Rascunho' })[String(status || '').toUpperCase()] || 'Publicado'
+}
+
+function renderVideoCourses() {
+  const el = document.getElementById('video-course-list')
+  if (!el) return
+  if (!cmsVideoCourses.length) {
+    el.innerHTML = '<div class="empty" style="padding:18px"><p>Nenhum curso em vídeo criado ainda.</p></div>'
+    return
+  }
+  el.innerHTML = cmsVideoCourses.map(course => `
+    <div class="cms-post-item content-post-item">
+      <div class="content-post-preview" style="display:grid;grid-template-columns:72px minmax(0,1fr);gap:14px;align-items:center">
+        <div style="width:72px;aspect-ratio:2/3;border-radius:10px;background:#111;overflow:hidden;display:flex;align-items:center;justify-content:center;color:#fff;font-weight:900">
+          ${course.cover_url ? `<img src="${esc(course.cover_url)}" alt="${esc(course.title || 'Curso')}" style="width:100%;height:100%;object-fit:cover">` : '▶'}
+        </div>
+        <div>
+          <div class="mark-type">Curso em vídeo · ${videoCourseStatusLabel(course.status)} · ${course.pinned ? 'Destaque' : 'Normal'}</div>
+          <div class="content-post-title">${esc(course.title || 'Sem título')}</div>
+          <div class="content-post-summary">${esc(truncateText(course.summary || course.description || '', 170))}</div>
+          <div style="font-size:12px;color:var(--ink3);margin-top:6px">${formatPriceBR(course.price)} · ${Number(course.duration_hours || 0) || 0}h · ${Number(course.lessons_count || 0) || 0} aula(s) ${course.stream_uid ? '· Stream UID cadastrado' : '· sem UID do Stream'}</div>
+        </div>
+      </div>
+      <div class="content-post-actions">
+        <button type="button" class="btn btn-sm ${course.status === 'PUBLICADO' ? 'btn-brand' : 'btn-sec'}" onclick="toggleVideoCourseStatus('${course.id}')">${course.status === 'PUBLICADO' ? 'Publicada' : 'Oculta'}</button>
+        <button type="button" class="btn btn-sec btn-sm" onclick="openVideoCourseEditor('${course.id}')">Editar</button>
+        <button type="button" class="btn btn-danger btn-sm" onclick="deleteVideoCourse('${course.id}')">Excluir</button>
+      </div>
+    </div>
+  `).join('')
+}
+
+function videoCourseFormData() {
+  return {
+    id: document.getElementById('video-course-id').value || `video-${Date.now()}`,
+    title: document.getElementById('video-course-title').value.trim(),
+    summary: document.getElementById('video-course-summary').value.trim(),
+    description: document.getElementById('video-course-description').value.trim(),
+    cover_url: document.getElementById('video-course-cover').value.trim(),
+    price: parseMoneyBR(document.getElementById('video-course-price').value),
+    duration_hours: Number(document.getElementById('video-course-hours').value || 0),
+    lessons_count: Number(document.getElementById('video-course-lessons').value || 0),
+    stream_uid: document.getElementById('video-course-stream-uid').value.trim(),
+    status: document.getElementById('video-course-status').value || 'PUBLICADO',
+    pinned: document.getElementById('video-course-pinned').value === 'true'
+  }
+}
+
+function updateVideoCoursePreview() {
+  const el = document.getElementById('video-course-live-preview')
+  if (!el) return
+  const course = videoCourseFormData()
+  el.innerHTML = `
+    <article class="post-card" style="min-height:0">
+      <div style="width:160px;aspect-ratio:2/3;border-radius:14px;background:#111;overflow:hidden;margin:0 auto 12px;display:flex;align-items:center;justify-content:center;color:#fff;font-size:28px;font-weight:900">
+        ${course.cover_url ? `<img src="${esc(course.cover_url)}" alt="${esc(course.title || 'Curso')}" style="width:100%;height:100%;object-fit:cover">` : '▶'}
+      </div>
+      <div class="post-type">Curso protegido · ${videoCourseStatusLabel(course.status)}</div>
+      <h3>${esc(course.title || 'Título do curso')}</h3>
+      <p>${esc(truncateText(course.summary || course.description || 'Resumo do curso em vídeo.', 155))}</p>
+      <div style="font-size:12px;color:var(--ink3);line-height:1.6">${formatPriceBR(course.price)}<br>${course.duration_hours || 0}h · ${course.lessons_count || 0} aula(s)<br>${course.stream_uid ? 'UID do Stream informado' : 'UID do Stream será configurado depois'}</div>
+    </article>`
+}
+
+function openVideoCourseEditor(id = '') {
+  hideVideoCourseAlerts()
+  const course = cmsVideoCourses.find(item => item.id === id) || {}
+  document.getElementById('video-course-modal-title').textContent = id ? 'Editar curso em vídeo' : 'Novo curso em vídeo'
+  document.getElementById('video-course-id').value = course.id || ''
+  document.getElementById('video-course-title').value = course.title || ''
+  document.getElementById('video-course-summary').value = course.summary || ''
+  document.getElementById('video-course-description').value = course.description || ''
+  document.getElementById('video-course-cover').value = course.cover_url || ''
+  document.getElementById('video-course-price').value = formatMoneyBR(Number(course.price || 0))
+  document.getElementById('video-course-hours').value = course.duration_hours || ''
+  document.getElementById('video-course-lessons').value = course.lessons_count || ''
+  document.getElementById('video-course-stream-uid').value = course.stream_uid || ''
+  document.getElementById('video-course-status').value = course.status || 'PUBLICADO'
+  document.getElementById('video-course-pinned').value = String(Boolean(course.pinned))
+  updateVideoCoursePreview()
+  openModal('modal-video-course-editor')
+}
+
+function closeVideoCourseEditor() {
+  closeModal('modal-video-course-editor')
+}
+
+function showVideoCourseErr(msg) {
+  const el = document.getElementById('alert-video-course-editor')
+  if (el) { el.textContent = msg; el.style.display = 'block' }
+}
+
+function hideVideoCourseAlerts() {
+  ;['alert-video-courses','alert-video-courses-ok','alert-video-course-editor'].forEach(id => {
+    const el = document.getElementById(id)
+    if (el) el.style.display = 'none'
+  })
+}
+
+async function saveVideoCourse() {
+  hideVideoCourseAlerts()
+  const course = videoCourseFormData()
+  if (!course.title) return showVideoCourseErr('Informe o título do curso.')
+  if (course.price < 0) return showVideoCourseErr('Informe um preço válido.')
+  const previous = cmsVideoCourses.find(item => item.id === course.id)
+  const saved = {
+    ...previous,
+    ...course,
+    updated_at: new Date().toISOString(),
+    created_at: previous?.created_at || new Date().toISOString()
+  }
+  cmsVideoCourses = [saved, ...cmsVideoCourses.filter(item => item.id !== saved.id)]
+  const ok = await persistContentChanges('Curso em vídeo salvo. As alterações já aparecem na página pública.')
+  if (!ok) return showVideoCourseErr('Não foi possível salvar o curso.')
+  closeVideoCourseEditor()
+  renderVideoCourses()
+  const msg = document.getElementById('alert-video-courses-ok')
+  if (msg) { msg.textContent = 'Curso em vídeo salvo.'; msg.style.display = 'block' }
+}
+
+async function toggleVideoCourseStatus(id) {
+  const course = cmsVideoCourses.find(item => item.id === id)
+  if (!course) return
+  course.status = course.status === 'PUBLICADO' ? 'OCULTO' : 'PUBLICADO'
+  course.updated_at = new Date().toISOString()
+  const ok = await persistContentChanges('Status do curso em vídeo atualizado.')
+  if (!ok) return alert('Não foi possível atualizar o curso.')
+  renderVideoCourses()
+}
+
+async function deleteVideoCourse(id) {
+  if (!confirm('Excluir este curso em vídeo?')) return
+  cmsVideoCourses = cmsVideoCourses.filter(item => item.id !== id)
+  const ok = await persistContentChanges('Curso em vídeo excluído.')
+  if (!ok) return alert('Não foi possível excluir o curso.')
+  renderVideoCourses()
+}
+
+function handleVideoCourseCover(event) {
+  const file = event.target.files?.[0]
+  if (!file) return
+  if (!file.type.startsWith('image/')) return showVideoCourseErr('Escolha uma imagem válida.')
+  if (file.size > 1.5 * 1024 * 1024) return showVideoCourseErr('Use uma imagem de até 1,5 MB para a capa nesta fase.')
+  const reader = new FileReader()
+  reader.onload = () => {
+    document.getElementById('video-course-cover').value = String(reader.result || '')
+    updateVideoCoursePreview()
+  }
+  reader.readAsDataURL(file)
 }
 
 function postTypeLabel(tipo) {
@@ -2799,6 +3190,44 @@ function setColor(colorId, codeId, value) {
   if (key) clearMainColorDraft(key)
 }
 
+function renderMainColorPresets() {
+  const render = (containerId, key, colors) => {
+    const el = document.getElementById(containerId)
+    if (!el) return
+    el.innerHTML = colors.map((color) => {
+      const hex = normalizeColor(color) || color
+      const border = hex.toUpperCase() === '#FFFFFF' ? 'border-color:#d8d8d8' : ''
+      return `<button type="button" class="color-swatch" style="background:${hex};${border}" title="${hex}" aria-label="Usar cor ${hex}" onclick="chooseMainColorPreset('${key}','${hex}')"></button>`
+    }).join('')
+    updateMainColorPresetState(key)
+  }
+  render('site-primary-presets', 'primary', sitePrimaryPresets)
+  render('site-accent-presets', 'accent', siteAccentPresets)
+}
+
+function updateMainColorPresetState(key) {
+  const ids = mainColorIds(key)
+  const current = normalizeColor(document.getElementById(ids.code)?.value || document.getElementById(ids.color)?.value)
+  const container = document.getElementById(key === 'accent' ? 'site-accent-presets' : 'site-primary-presets')
+  container?.querySelectorAll('.color-swatch').forEach((btn) => {
+    btn.classList.toggle('is-active', normalizeColor(btn.getAttribute('title')) === current)
+  })
+}
+
+function chooseMainColorPreset(key, value) {
+  const ids = mainColorIds(key)
+  const hex = normalizeColor(value)
+  const color = document.getElementById(ids.color)
+  const code = document.getElementById(ids.code)
+  if (!hex || !color || !code) return
+  beginMainColorEdit(key)
+  color.value = hex
+  code.value = hex
+  updateMainColorPresetState(key)
+  updateSitePreview()
+  pulseSitePreview(ids.pulse)
+}
+
 function syncColor(colorId, codeId) {
   document.getElementById(codeId).value = document.getElementById(colorId).value
 }
@@ -2845,6 +3274,7 @@ function syncMainColorInput(key) {
   const ids = mainColorIds(key)
   beginMainColorEdit(key)
   syncColor(ids.color, ids.code)
+  updateMainColorPresetState(key)
   updateSitePreview()
   pulseSitePreview(ids.pulse)
 }
@@ -2853,6 +3283,7 @@ function syncMainColorCode(key) {
   const ids = mainColorIds(key)
   beginMainColorEdit(key)
   syncCode(ids.code, ids.color)
+  updateMainColorPresetState(key)
   updateSitePreview()
   pulseSitePreview(ids.pulse)
 }
@@ -2870,6 +3301,7 @@ function confirmMainColor(key) {
   if (color) color.value = hex
   if (code) code.value = hex
   clearMainColorDraft(key)
+  updateMainColorPresetState(key)
   updateSitePreview()
   pulseSitePreview(ids.pulse)
 }
@@ -2883,6 +3315,7 @@ function revertMainColor(key) {
   if (color) color.value = draft.color
   if (code) code.value = draft.code
   clearMainColorDraft(key)
+  updateMainColorPresetState(key)
   updateSitePreview()
 }
 
@@ -3175,12 +3608,13 @@ async function loadPagamentosRecentes() {
     const amount = formatPriceBR(Number(p.amount || 0))
     const status = String(p.status || 'PENDING')
     const cls = ['CONFIRMED', 'RECEIVED'].includes(status) ? 'tag-done' : status === 'PENDING' ? 'tag-pend' : 'tag-prog'
+    const productLabel = p.produto_tipo === 'VIDEO_COURSE' ? 'Curso em vídeo' : 'Turma'
     return `
       <div class="corr-card" style="margin-bottom:10px">
         <div class="corr-thumb">💳</div>
         <div class="corr-info">
           <div class="corr-aluno">${esc(p.aluno_nome || p.payer_name || p.payer_email || 'Aluno')}</div>
-          <div class="corr-tema">${esc(p.turma_nome || 'Turma')} · ${esc(p.billing_type || 'PIX')}</div>
+          <div class="corr-tema">${esc(productLabel)}: ${esc(p.produto_nome || p.turma_nome || p.course_nome || 'Produto')} · ${esc(p.billing_type || 'PIX')}</div>
           <div class="corr-meta">
             <span class="tag ${cls}">${esc(status)}</span>
             <span style="font-size:11px;font-weight:700;color:var(--brand)">${amount}</span>
@@ -3385,6 +3819,7 @@ function openProfessorFilhoModal(id = '') {
   document.getElementById('pf-nome').value = item?.nome || ''
   document.getElementById('pf-email').value = item?.email || ''
   document.getElementById('pf-email').disabled = Boolean(item)
+  document.getElementById('pf-sexo').value = item?.sexo || 'FEMININO'
   document.getElementById('pf-telefone').value = item?.telefone || ''
   document.getElementById('pf-password').value = ''
   document.getElementById('pf-password').placeholder = item ? 'Não altera senha por aqui' : 'Obrigatória ao criar'
@@ -3402,6 +3837,7 @@ function collectProfessorFilhoPayload() {
   return {
     nome: document.getElementById('pf-nome').value.trim(),
     email: document.getElementById('pf-email').value.trim(),
+    sexo: document.getElementById('pf-sexo').value,
     telefone: document.getElementById('pf-telefone').value.trim(),
     password: document.getElementById('pf-password').value,
     valor_correcao: parseMoneyBR(document.getElementById('pf-valor-correcao').value),
@@ -4537,7 +4973,17 @@ function openTurmaModal(id) {
   document.getElementById('t-status').value = 'ABERTA'
   document.getElementById('t-matriculas').checked = true
   document.getElementById('t-envios').checked = true
-  document.getElementById('t-limite-redacoes').value = '3'
+  document.getElementById('t-limite-redacoes').value = '1'
+  document.getElementById('t-limite-periodicidade').value = 'SEMANA'
+  document.getElementById('t-limite-dias').value = '7'
+  document.getElementById('t-pay-pix').checked = true
+  document.getElementById('t-pay-boleto').checked = false
+  document.getElementById('t-pay-card').checked = false
+  document.getElementById('t-card-installments').value = '1'
+  document.getElementById('t-fee-payer').value = 'PROFESSOR'
+  document.getElementById('t-fee-percent').value = '0'
+  toggleTurmaPeriodoCustom()
+  toggleTurmaCardPayment()
   document.getElementById('turma-modal-title').textContent = 'Nova Turma'
   document.getElementById('turma-submit').textContent = 'Criar Turma'
 
@@ -4560,12 +5006,45 @@ function openTurmaModal(id) {
     document.getElementById('t-status').value = turma.status || 'ABERTA'
     document.getElementById('t-matriculas').checked = turma.settings?.matriculas_abertas !== false
     document.getElementById('t-envios').checked = turma.settings?.envios_abertos !== false
-    document.getElementById('t-limite-redacoes').value = Math.max(1, Math.floor(Number(turma.settings?.limite_redacoes_por_aluno) || 3))
+    document.getElementById('t-limite-redacoes').value = Math.max(1, Math.floor(Number(turma.settings?.limite_redacoes_por_periodo ?? turma.settings?.limite_redacoes_por_aluno) || 1))
+    document.getElementById('t-limite-periodicidade').value = turma.settings?.limite_redacoes_periodicidade || 'SEMANA'
+    document.getElementById('t-limite-dias').value = Math.max(1, Math.floor(Number(turma.settings?.limite_redacoes_periodo_dias) || 7))
+    const methods = turma.settings?.payment_methods || {}
+    document.getElementById('t-pay-pix').checked = methods.pix !== false
+    document.getElementById('t-pay-boleto').checked = methods.boleto === true
+    document.getElementById('t-pay-card').checked = methods.credit_card === true
+    document.getElementById('t-card-installments').value = Math.max(1, Math.min(12, Math.floor(Number(turma.settings?.credit_card_installments) || 1)))
+    document.getElementById('t-fee-payer').value = turma.settings?.payment_fee_payer || 'PROFESSOR'
+    document.getElementById('t-fee-percent').value = Number(turma.settings?.payment_fee_percent || 0)
+    toggleTurmaPeriodoCustom()
+    toggleTurmaCardPayment()
     document.getElementById('turma-modal-title').textContent = 'Editar Turma'
     document.getElementById('turma-submit').textContent = 'Salvar Turma'
   }
   updateTurmaPreview()
   openModal('modal-turma')
+}
+
+function toggleTurmaPeriodoCustom() {
+  const select = document.getElementById('t-limite-periodicidade')
+  const box = document.getElementById('t-limite-dias-box')
+  if (box && select) box.style.display = select.value === 'CUSTOM_DIAS' ? 'flex' : 'none'
+}
+
+function toggleTurmaCardPayment() {
+  const checkbox = document.getElementById('t-pay-card')
+  const box = document.getElementById('t-card-options')
+  if (box && checkbox) box.style.display = checkbox.checked ? 'grid' : 'none'
+}
+
+function turmaPaymentMethodsFromForm() {
+  const methods = {
+    pix: Boolean(document.getElementById('t-pay-pix')?.checked),
+    boleto: Boolean(document.getElementById('t-pay-boleto')?.checked),
+    credit_card: Boolean(document.getElementById('t-pay-card')?.checked)
+  }
+  if (!methods.pix && !methods.boleto && !methods.credit_card) methods.pix = true
+  return methods
 }
 
 function renderTurmaImagePreview() {
@@ -4590,6 +5069,15 @@ function updateTurmaPreview() {
     .map(line => line.trim())
     .filter(Boolean)
     .slice(0, 3)
+  const paymentMethods = turmaPaymentMethodsFromForm()
+  const paymentLabels = [
+    paymentMethods.pix ? 'Pix' : '',
+    paymentMethods.boleto ? 'Boleto' : '',
+    paymentMethods.credit_card ? 'Cartão' : ''
+  ].filter(Boolean)
+  const installments = Math.max(1, Math.min(12, Math.floor(Number(document.getElementById('t-card-installments')?.value) || 1)))
+  const feePayer = document.getElementById('t-fee-payer')?.value || 'PROFESSOR'
+  const feePercent = Number(document.getElementById('t-fee-percent')?.value || 0)
   const initials = nome.slice(0, 2).toUpperCase()
   box.innerHTML = `
     <article class="turma-preview-card">
@@ -4598,6 +5086,11 @@ function updateTurmaPreview() {
       <h3>${esc(nome)}</h3>
       <p>${esc(desc)}</p>
       ${benefits.length ? `<div class="turma-preview-benefits">${benefits.map(item => `<span>${esc(item)}</span>`).join('')}</div>` : ''}
+      <div class="turma-preview-benefits">
+        ${paymentLabels.map(item => `<span>${esc(item)}</span>`).join('')}
+        ${paymentMethods.credit_card ? `<span>${installments}x no cartão</span>` : ''}
+        ${paymentMethods.credit_card && feePayer === 'ALUNO' && feePercent > 0 ? `<span>Taxa embutida ${esc(feePercent.toLocaleString('pt-BR', { maximumFractionDigits: 2 }))}%</span>` : ''}
+      </div>
       <div class="turma-preview-price">${esc(price)}</div>
       <button type="button" class="turma-preview-cta">Ver detalhes</button>
     </article>`
@@ -4657,7 +5150,13 @@ async function saveTurmaSettings(id) {
     body: JSON.stringify({
       matriculas_abertas: document.getElementById('t-matriculas').checked,
       envios_abertos: document.getElementById('t-envios').checked,
-      limite_redacoes_por_aluno: Math.max(1, Math.floor(Number(document.getElementById('t-limite-redacoes').value) || 3)),
+      limite_redacoes_por_periodo: Math.max(1, Math.floor(Number(document.getElementById('t-limite-redacoes').value) || 1)),
+      limite_redacoes_periodicidade: document.getElementById('t-limite-periodicidade').value,
+      limite_redacoes_periodo_dias: Math.max(1, Math.floor(Number(document.getElementById('t-limite-dias').value) || 7)),
+      payment_methods: turmaPaymentMethodsFromForm(),
+      credit_card_installments: Math.max(1, Math.min(12, Math.floor(Number(document.getElementById('t-card-installments').value) || 1))),
+      payment_fee_payer: document.getElementById('t-fee-payer').value,
+      payment_fee_percent: Math.max(0, Math.min(30, Number(document.getElementById('t-fee-percent').value) || 0)),
       imagem_url: document.getElementById('t-imagem').value.trim(),
       destaque: document.getElementById('t-destaque').value.trim(),
       beneficios: document.getElementById('t-beneficios').value.trim(),
@@ -6459,9 +6958,6 @@ async function createMarcacao({ tipo, trecho = '', comentario = '', cor = '#EF44
   try {
     const data = await postAnnotationPayload(body)
     if (draft) draft.remove()
-    currentCorrecao.anotacoes = [...(currentCorrecao.anotacoes || []), data]
-    renderAnnotationOverlay(currentCorrecao.anotacoes)
-    renderAnnotationList(currentCorrecao.anotacoes)
     pushAnnotationHistory({ type: 'create', annotation: cloneAnnotation(data) })
   } catch (err) {
     const el = document.getElementById('alert-correcao')
@@ -7688,7 +8184,7 @@ function showPage(name, link) {
   document.body.classList.toggle('correcao-mode', name === 'correcao')
   document.querySelectorAll('.sb-item').forEach(i => i.classList.remove('on'))
   if (link) link.classList.add('on')
-  const titles = { dashboard:'Dashboard', site:'Meu site', conteudos:'Conteúdos/Postagens', pendentes:'Correções Pendentes', todas:'Todas as Correções', ganhos:'Meus Ganhos', financeiro:'Financeiro', turmas:'Turmas', alunos:'Alunos', professores:'Professores', temas:'Temas', relatorios:'Relatórios', corretor:'Corretor automático', correcao:'Corrigir redação' }
+  const titles = { dashboard:'Dashboard', site:'Meu site', conteudos:'Conteúdos/Postagens', cursosvideo:'Cursos em vídeo', pendentes:'Correções Pendentes', todas:'Todas as Correções', ganhos:'Meus Ganhos', financeiro:'Financeiro', turmas:'Turmas', alunos:'Alunos', professores:'Professores', temas:'Temas', relatorios:'Relatórios', corretor:'Corretor automático', correcao:'Corrigir redação' }
   document.getElementById('topbar-title').textContent = titles[name] || name
   if (isChildTeacherMode() && name !== 'correcao') {
     const sub = document.getElementById('topbar-sub')
@@ -7696,6 +8192,7 @@ function showPage(name, link) {
   }
   if (name === 'site') loadSite()
   if (name === 'conteudos') loadSite()
+  if (name === 'cursosvideo') loadSite()
   if (name === 'dashboard') { loadStats(); loadCorrecoes('recentes'); loadPagamentosRecentes(); loadNotifications() }
   if (name === 'ganhos') loadMeusGanhos()
   if (name === 'financeiro') loadFinanceiro()

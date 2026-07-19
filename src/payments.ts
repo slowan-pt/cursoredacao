@@ -11,12 +11,32 @@ export type PaymentStatus =
   | 'CHARGEBACK'
   | 'FAILED'
 
-export type CreatePixChargeInput = {
+export type CreateAsaasChargeInput = {
   customerId: string
   value: number
   dueDate: string
   description: string
   externalReference: string
+  billingType?: 'PIX' | 'BOLETO' | 'UNDEFINED' | 'CREDIT_CARD'
+  installmentCount?: number
+  totalValue?: number
+  creditCard?: {
+    holderName: string
+    number: string
+    expiryMonth: string
+    expiryYear: string
+    ccv: string
+  }
+  creditCardHolderInfo?: {
+    name: string
+    email: string
+    cpfCnpj: string
+    postalCode: string
+    addressNumber: string
+    phone?: string
+    mobilePhone?: string
+  }
+  remoteIp?: string
 }
 
 export type CreateCustomerInput = {
@@ -64,9 +84,11 @@ export type NormalizedPaymentWebhook = {
 
 export type PaymentGateway = {
   createCustomer(input: CreateCustomerInput): Promise<any>
-  createPixCharge(input: CreatePixChargeInput): Promise<unknown>
+  createCharge(input: CreateAsaasChargeInput): Promise<any>
+  createPixCharge(input: CreateAsaasChargeInput): Promise<any>
   getPayment(paymentId: string): Promise<any>
   getPixQrCode(paymentId: string): Promise<any>
+  getBoletoIdentificationField(paymentId: string): Promise<any>
   ensurePixKey(): Promise<{ created: boolean; status?: string }>
   payPixQrCode(input: { payload: string; value: number; description?: string }): Promise<any>
 }
@@ -146,6 +168,10 @@ class DisabledPaymentGateway implements PaymentGateway {
     throw new Error('Pagamentos temporariamente indisponíveis.')
   }
 
+  async createCharge(): Promise<unknown> {
+    throw new Error('Pagamentos temporariamente indisponíveis.')
+  }
+
   async createPixCharge(): Promise<unknown> {
     throw new Error('Pagamentos temporariamente indisponíveis.')
   }
@@ -155,6 +181,10 @@ class DisabledPaymentGateway implements PaymentGateway {
   }
 
   async getPayment(): Promise<unknown> {
+    throw new Error('Pagamentos temporariamente indisponíveis.')
+  }
+
+  async getBoletoIdentificationField(): Promise<unknown> {
     throw new Error('Pagamentos temporariamente indisponíveis.')
   }
 
@@ -189,18 +219,30 @@ class AsaasGateway implements PaymentGateway {
     return data
   }
 
-  async createPixCharge(input: CreatePixChargeInput) {
+  async createCharge(input: CreateAsaasChargeInput) {
+    const body: Record<string, unknown> = {
+      customer: input.customerId,
+      billingType: input.billingType || 'PIX',
+      value: input.value,
+      dueDate: input.dueDate,
+      description: input.description,
+      externalReference: input.externalReference
+    }
+    if (input.installmentCount && input.installmentCount > 1) {
+      body.installmentCount = input.installmentCount
+      body.totalValue = input.totalValue || input.value
+    }
+    if (input.creditCard) body.creditCard = input.creditCard
+    if (input.creditCardHolderInfo) body.creditCardHolderInfo = input.creditCardHolderInfo
+    if (input.remoteIp) body.remoteIp = input.remoteIp
     return this.request('/payments', {
       method: 'POST',
-      body: JSON.stringify({
-        customer: input.customerId,
-        billingType: 'PIX',
-        value: input.value,
-        dueDate: input.dueDate,
-        description: input.description,
-        externalReference: input.externalReference
-      })
+      body: JSON.stringify(body)
     })
+  }
+
+  async createPixCharge(input: CreateAsaasChargeInput) {
+    return this.createCharge({ ...input, billingType: 'PIX' })
   }
 
   async createCustomer(input: CreateCustomerInput) {
@@ -224,6 +266,12 @@ class AsaasGateway implements PaymentGateway {
 
   async getPixQrCode(paymentId: string) {
     return this.request(`/payments/${encodeURIComponent(paymentId)}/pixQrCode`, {
+      method: 'GET'
+    })
+  }
+
+  async getBoletoIdentificationField(paymentId: string) {
+    return this.request(`/payments/${encodeURIComponent(paymentId)}/identificationField`, {
       method: 'GET'
     })
   }

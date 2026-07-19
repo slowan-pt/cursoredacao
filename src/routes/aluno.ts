@@ -42,6 +42,7 @@ function defaultCms() {
     themes: [] as any[],
     student_credits: {} as Record<string, { creditos?: number; vence_em?: string | null; updated_at?: string }>,
     enrollments: {} as Record<string, Record<string, { ativo?: boolean; origem?: string; created_at?: string; updated_at?: string }>>,
+    video_courses: [] as any[],
     blocked_students: {} as Record<string, any>,
     deleted_students: {} as Record<string, any>
   }
@@ -57,6 +58,7 @@ function parseCms(site: any) {
       ...cms,
       turma_settings: cms.turma_settings && typeof cms.turma_settings === 'object' ? cms.turma_settings : {},
       themes: Array.isArray(cms.themes) ? cms.themes : [],
+      video_courses: Array.isArray(cms.video_courses) ? cms.video_courses : [],
       student_credits: cms.student_credits && typeof cms.student_credits === 'object' ? cms.student_credits : {},
       enrollments: cms.enrollments && typeof cms.enrollments === 'object' ? cms.enrollments : {},
       blocked_students: cms.blocked_students && typeof cms.blocked_students === 'object' ? cms.blocked_students : {},
@@ -78,12 +80,110 @@ function creditExpired(venceEm?: string | null) {
   return Number.isFinite(end.getTime()) && end.getTime() < Date.now()
 }
 
+function redacaoPeriodoDias(settings: any) {
+  const periodicidade = String(settings?.limite_redacoes_periodicidade || 'SEMANA')
+  if (periodicidade === 'DIA') return 1
+  if (periodicidade === 'CUSTOM_DIAS') return Math.max(1, Math.floor(Number(settings?.limite_redacoes_periodo_dias) || 7))
+  return 7
+}
+
+function redacaoPeriodoLabel(days: number) {
+  if (days === 1) return 'por dia'
+  if (days === 7) return 'por semana'
+  return `a cada ${days} dias`
+}
+
+function periodoInicioIso(days: number) {
+  const start = new Date()
+  start.setDate(start.getDate() - Math.max(1, days))
+  return start.toISOString()
+}
+
 function missingTurmaAlunos(error: any) {
   return /turma_alunos|relation .* does not exist|schema cache/i.test(String(error?.message || ''))
 }
 
 function missingStorageFiles(error: any) {
   return /storage_files|relation .* does not exist|schema cache/i.test(String(error?.message || ''))
+}
+
+function missingVideoTables(error: any) {
+  return /video_course_enrollments|video_lesson_progress|video_lesson_notes|relation .* does not exist|schema cache/i.test(String(error?.message || ''))
+}
+
+function videoCoursesEnabled(env: Env) {
+  return String(env.ENABLE_VIDEO_COURSES ?? 'true').toLowerCase() !== 'false'
+}
+
+function publicVideoCourses(cms: ReturnType<typeof parseCms>) {
+  return (cms.video_courses || [])
+    .filter((course: any) => course?.id && !['RASCUNHO', 'OCULTO'].includes(String(course.status || 'PUBLICADO').toUpperCase()))
+    .sort((a: any, b: any) => Number(Boolean(b.pinned)) - Number(Boolean(a.pinned)) || String(b.created_at || '').localeCompare(String(a.created_at || '')))
+}
+
+function sanitizeVideoCourse(course: any, enrollment: any = null, progress: any = null) {
+  return {
+    id: String(course.id || ''),
+    title: String(course.title || 'Curso em vídeo'),
+    summary: String(course.summary || course.description || ''),
+    description: String(course.description || ''),
+    cover_url: String(course.cover_url || ''),
+    price: Number(course.price || 0),
+    duration_hours: Number(course.duration_hours || 0),
+    lessons_count: Number(course.lessons_count || 0),
+    status: String(course.status || 'PUBLICADO'),
+    pinned: Boolean(course.pinned),
+    enrolled: Boolean(enrollment),
+    enrollment_status: enrollment?.status || null,
+    progress: progress ? {
+      lesson_id: progress.lesson_id || 'principal',
+      current_time_seconds: Number(progress.current_time_seconds || 0),
+      duration_seconds: Number(progress.duration_seconds || 0),
+      percent_watched: Number(progress.percent_watched || 0),
+      completed: Boolean(progress.completed)
+    } : null
+  }
+}
+
+async function streamPlayback(course: any, env: Env, enrolled: boolean) {
+  if (!enrolled) {
+    return { available: false, reason: 'Matricule-se neste curso para liberar as aulas.' }
+  }
+  if (String(env.ENABLE_CLOUDFLARE_STREAM || 'false').toLowerCase() !== 'true') {
+    return { available: false, reason: 'Player protegido ainda não está ativo para este ambiente.' }
+  }
+  if (!course?.stream_uid) {
+    return { available: false, reason: 'Este curso ainda não possui vídeo configurado.' }
+  }
+  if (!env.CLOUDFLARE_ACCOUNT_ID || !env.CLOUDFLARE_STREAM_TOKEN || !env.CLOUDFLARE_STREAM_CUSTOMER_CODE) {
+    return { available: false, reason: 'Cloudflare Stream ainda precisa ser configurado neste ambiente.' }
+  }
+  const ttl = Math.max(60, Math.min(3600, Number(env.CLOUDFLARE_STREAM_TOKEN_TTL_SECONDS || 900)))
+  const tokenRes = await fetch(`https://api.cloudflare.com/client/v4/accounts/${encodeURIComponent(env.CLOUDFLARE_ACCOUNT_ID)}/stream/${encodeURIComponent(String(course.stream_uid))}/token`, {
+    method: 'POST',
+    headers: {
+      Authorization: `Bearer ${env.CLOUDFLARE_STREAM_TOKEN}`,
+      'content-type': 'application/json;charset=UTF-8'
+    },
+    body: JSON.stringify({
+      exp: Math.floor(Date.now() / 1000) + ttl,
+      downloadable: false
+    })
+  })
+  if (!tokenRes.ok) {
+    return { available: false, reason: 'Não foi possível gerar o acesso temporário ao vídeo.' }
+  }
+  const tokenPayload: any = await tokenRes.json().catch(() => ({}))
+  const token = tokenPayload?.result?.token
+  if (!token) {
+    return { available: false, reason: 'Token temporário do vídeo não foi retornado pelo Stream.' }
+  }
+  return {
+    available: true,
+    provider: 'cloudflare_stream',
+    expires_in_seconds: ttl,
+    iframe_url: `https://customer-${encodeURIComponent(env.CLOUDFLARE_STREAM_CUSTOMER_CODE)}.cloudflarestream.com/${encodeURIComponent(token)}/iframe`
+  }
 }
 
 function exactArrayBuffer(bytes: Uint8Array) {
@@ -271,16 +371,18 @@ app.post('/correcoes', async (c) => {
   if (settings?.envios_abertos === false) {
     return c.json({ error: 'O envio de redações está fechado para esta turma.' }, 403)
   }
-  const limiteRedacoes = Math.max(1, Math.floor(Number(settings?.limite_redacoes_por_aluno) || 3))
+  const limiteRedacoes = Math.max(1, Math.floor(Number(settings?.limite_redacoes_por_periodo ?? settings?.limite_redacoes_por_aluno) || 1))
+  const periodoDias = redacaoPeriodoDias(settings)
   const { count: redacoesEnviadas, error: countErr } = await sb.from('correcoes')
     .select('id', { count: 'exact', head: true })
     .eq('site_id', profile.site_id)
     .eq('turma_id', turma_id)
     .eq('aluno_id', user.sub)
     .neq('status', 'EXCLUIDA_PELO_PROFESSOR')
+    .gte('created_at', periodoInicioIso(periodoDias))
   if (countErr) return c.json(dbError(), 500)
   if ((redacoesEnviadas ?? 0) >= limiteRedacoes) {
-    return c.json({ error: `Você já atingiu o limite de ${limiteRedacoes} redação(ões) nesta turma.` }, 403)
+    return c.json({ error: `Você já atingiu o limite de ${limiteRedacoes} redação(ões) ${redacaoPeriodoLabel(periodoDias)} nesta turma.` }, 403)
   }
   const credit = cms.student_credits?.[user.sub] || {}
   const creditosAtuais = Math.max(0, Number(credit.creditos) || 0)
@@ -647,6 +749,191 @@ app.post('/matriculas/pagar', async (c) => {
     total,
     creditos_adicionados: creditosAdicionados
   })
+})
+
+app.get('/video-courses', async (c) => {
+  if (!videoCoursesEnabled(c.env)) return c.json({ data: [], disabled: true })
+  const user = c.get('user')
+  const sb = getAdmin(c.env)
+  const { data: profile } = await sb.from('profiles').select('site_id').eq('id', user.sub).single()
+  if (!profile?.site_id) return c.json({ data: [] })
+
+  const { data: site } = await sb.from('sites').select('allowed_origins').eq('id', profile.site_id).maybeSingle()
+  const cms = parseCms(site)
+  const courses = publicVideoCourses(cms)
+  if (!courses.length) return c.json({ data: [] })
+
+  const courseIds = courses.map((course: any) => String(course.id))
+  const [{ data: enrollments, error: enrollmentErr }, { data: progress, error: progressErr }] = await Promise.all([
+    sb.from('video_course_enrollments')
+      .select('course_id, status, access_expires_at')
+      .eq('site_id', profile.site_id)
+      .eq('aluno_id', user.sub)
+      .in('course_id', courseIds),
+    sb.from('video_lesson_progress')
+      .select('course_id, lesson_id, current_time_seconds, duration_seconds, percent_watched, completed')
+      .eq('site_id', profile.site_id)
+      .eq('aluno_id', user.sub)
+      .in('course_id', courseIds)
+  ])
+
+  const enrollmentMap = new Map<string, any>()
+  if (!enrollmentErr) {
+    ;(enrollments || []).forEach((enrollment: any) => {
+      const expired = enrollment.access_expires_at && new Date(enrollment.access_expires_at).getTime() < Date.now()
+      if (enrollment.status === 'ACTIVE' && !expired) enrollmentMap.set(String(enrollment.course_id), enrollment)
+    })
+  } else if (!missingVideoTables(enrollmentErr)) {
+    return c.json(dbError(), 500)
+  }
+
+  const progressMap = new Map<string, any>()
+  if (!progressErr) {
+    ;(progress || []).forEach((item: any) => progressMap.set(String(item.course_id), item))
+  } else if (!missingVideoTables(progressErr)) {
+    return c.json(dbError(), 500)
+  }
+
+  return c.json({
+    data: courses.map((course: any) => sanitizeVideoCourse(course, enrollmentMap.get(String(course.id)), progressMap.get(String(course.id)))),
+    storage_ready: !missingVideoTables(enrollmentErr) && !missingVideoTables(progressErr)
+  })
+})
+
+app.get('/video-courses/:id', async (c) => {
+  if (!videoCoursesEnabled(c.env)) return c.json({ error: 'Cursos em vídeo temporariamente indisponíveis.' }, 503)
+  const courseId = c.req.param('id')
+  const user = c.get('user')
+  const sb = getAdmin(c.env)
+  const { data: profile } = await sb.from('profiles').select('site_id').eq('id', user.sub).single()
+  if (!profile?.site_id) return c.json({ error: 'Aluno sem site vinculado.' }, 400)
+
+  const { data: site } = await sb.from('sites').select('allowed_origins').eq('id', profile.site_id).maybeSingle()
+  const cms = parseCms(site)
+  const course = publicVideoCourses(cms).find((item: any) => String(item.id) === String(courseId))
+  if (!course) return c.json({ error: 'Curso não encontrado neste site.' }, 404)
+
+  const { data: enrollment, error: enrollmentErr } = await sb.from('video_course_enrollments')
+    .select('course_id, status, access_expires_at')
+    .eq('site_id', profile.site_id)
+    .eq('aluno_id', user.sub)
+    .eq('course_id', courseId)
+    .maybeSingle()
+  if (enrollmentErr && !missingVideoTables(enrollmentErr)) return c.json(dbError(), 500)
+
+  const expired = enrollment?.access_expires_at && new Date(enrollment.access_expires_at).getTime() < Date.now()
+  const enrolled = Boolean(enrollment && enrollment.status === 'ACTIVE' && !expired)
+  if (!enrolled) {
+    return c.json({
+      course: sanitizeVideoCourse(course),
+      stream: await streamPlayback(course, c.env, false),
+      notes: [],
+      locked: true
+    }, 403)
+  }
+
+  const [{ data: progress, error: progressErr }, { data: notes, error: notesErr }] = await Promise.all([
+    sb.from('video_lesson_progress')
+      .select('lesson_id, current_time_seconds, duration_seconds, percent_watched, completed')
+      .eq('site_id', profile.site_id)
+      .eq('aluno_id', user.sub)
+      .eq('course_id', courseId)
+      .eq('lesson_id', 'principal')
+      .maybeSingle(),
+    sb.from('video_lesson_notes')
+      .select('id, lesson_id, timestamp_seconds, note, created_at')
+      .eq('site_id', profile.site_id)
+      .eq('aluno_id', user.sub)
+      .eq('course_id', courseId)
+      .eq('lesson_id', 'principal')
+      .order('created_at', { ascending: false })
+  ])
+  if (progressErr && !missingVideoTables(progressErr)) return c.json(dbError(), 500)
+  if (notesErr && !missingVideoTables(notesErr)) return c.json(dbError(), 500)
+
+  return c.json({
+    course: sanitizeVideoCourse(course, enrollment, progress),
+    stream: await streamPlayback(course, c.env, true),
+    notes: notesErr ? [] : notes || []
+  })
+})
+
+app.post('/video-courses/:id/progress', async (c) => {
+  if (!videoCoursesEnabled(c.env)) return c.json({ error: 'Cursos em vídeo temporariamente indisponíveis.' }, 503)
+  const courseId = c.req.param('id')
+  const user = c.get('user')
+  const body = await c.req.json().catch(() => ({}))
+  const current = Math.max(0, Math.floor(Number(body.current_time_seconds) || 0))
+  const duration = Math.max(0, Math.floor(Number(body.duration_seconds) || 0))
+  const percent = duration > 0 ? Math.min(100, Math.round((current / duration) * 10000) / 100) : 0
+  const sb = getAdmin(c.env)
+  const { data: profile } = await sb.from('profiles').select('site_id').eq('id', user.sub).single()
+  if (!profile?.site_id) return c.json({ error: 'Aluno sem site vinculado.' }, 400)
+
+  const { data: enrollment, error: enrollmentErr } = await sb.from('video_course_enrollments')
+    .select('status, access_expires_at')
+    .eq('site_id', profile.site_id)
+    .eq('aluno_id', user.sub)
+    .eq('course_id', courseId)
+    .maybeSingle()
+  if (enrollmentErr) {
+    if (missingVideoTables(enrollmentErr)) return c.json({ error: 'Progresso indisponível até a migration de cursos ser aplicada.' }, 503)
+    return c.json(dbError(), 500)
+  }
+  const expired = enrollment?.access_expires_at && new Date(enrollment.access_expires_at).getTime() < Date.now()
+  if (!enrollment || enrollment.status !== 'ACTIVE' || expired) return c.json({ error: 'Curso bloqueado para este aluno.' }, 403)
+
+  const { error } = await sb.from('video_lesson_progress').upsert({
+    site_id: profile.site_id,
+    course_id: courseId,
+    lesson_id: 'principal',
+    aluno_id: user.sub,
+    current_time_seconds: current,
+    duration_seconds: duration,
+    percent_watched: percent,
+    completed: percent >= 90,
+    updated_at: new Date().toISOString()
+  }, { onConflict: 'site_id,course_id,lesson_id,aluno_id' })
+  if (error) return c.json(dbError(), 500)
+  return c.json({ ok: true, percent_watched: percent })
+})
+
+app.post('/video-courses/:id/notes', async (c) => {
+  if (!videoCoursesEnabled(c.env)) return c.json({ error: 'Cursos em vídeo temporariamente indisponíveis.' }, 503)
+  const courseId = c.req.param('id')
+  const user = c.get('user')
+  const body = await c.req.json().catch(() => ({}))
+  const note = String(body.note || '').trim()
+  if (!note) return c.json({ error: 'Escreva uma anotação.' }, 400)
+  if (note.length > 2000) return c.json({ error: 'A anotação deve ter até 2000 caracteres.' }, 400)
+  const timestamp = Math.max(0, Math.floor(Number(body.timestamp_seconds) || 0))
+  const sb = getAdmin(c.env)
+  const { data: profile } = await sb.from('profiles').select('site_id').eq('id', user.sub).single()
+  if (!profile?.site_id) return c.json({ error: 'Aluno sem site vinculado.' }, 400)
+
+  const { data: enrollment, error: enrollmentErr } = await sb.from('video_course_enrollments')
+    .select('status, access_expires_at')
+    .eq('site_id', profile.site_id)
+    .eq('aluno_id', user.sub)
+    .eq('course_id', courseId)
+    .maybeSingle()
+  if (enrollmentErr) {
+    if (missingVideoTables(enrollmentErr)) return c.json({ error: 'Anotações indisponíveis até a migration de cursos ser aplicada.' }, 503)
+    return c.json(dbError(), 500)
+  }
+  const expired = enrollment?.access_expires_at && new Date(enrollment.access_expires_at).getTime() < Date.now()
+  if (!enrollment || enrollment.status !== 'ACTIVE' || expired) return c.json({ error: 'Curso bloqueado para este aluno.' }, 403)
+
+  const { error } = await sb.from('video_lesson_notes').insert({
+    site_id: profile.site_id,
+    course_id: courseId,
+    lesson_id: 'principal',
+    aluno_id: user.sub,
+    timestamp_seconds: timestamp,
+    note
+  })
+  if (error) return c.json(dbError(), 500)
+  return c.json({ ok: true })
 })
 
 export { app as alunoRoutes }

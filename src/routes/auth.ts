@@ -5,6 +5,7 @@ import { getAdmin, getClient } from '../supabase'
 import { createToken } from '../auth'
 import { requireAuth } from '../middleware'
 import { expiredSessionCookieOptions, getConfig, sessionCookieOptions } from '../config'
+import { getEmailProvider, renderPasswordRecoveryEmail } from '../email'
 
 const auth = new Hono<{ Bindings: Env }>()
 const CMS_PREFIX = 'CMS:'
@@ -47,12 +48,48 @@ function missingTurmaAlunos(error: any) {
   return /turma_alunos|relation .* does not exist|schema cache/i.test(String(error?.message || ''))
 }
 
+function missingVideoTables(error: any) {
+  return /video_course_enrollments|relation .* does not exist|schema cache/i.test(String(error?.message || ''))
+}
+
 function isPaidStatus(status: unknown) {
   return ['CONFIRMED', 'RECEIVED'].includes(String(status || '').toUpperCase())
 }
 
-async function validateCheckoutCodeForRegistration(env: Env, siteId: string, email: string, turmaId?: string, checkoutCode?: string) {
-  if (!turmaId) return { ok: false, error: 'Escolha uma turma e finalize o pagamento antes de criar o cadastro.' }
+function onlyDigits(value: unknown) {
+  return String(value || '').replace(/\D/g, '')
+}
+
+function isValidCpf(value: unknown) {
+  const cpf = onlyDigits(value)
+  if (cpf.length !== 11 || /^(\d)\1{10}$/.test(cpf)) return false
+  const calc = (base: string, factor: number) => {
+    const sum = base.split('').reduce((total, digit) => total + Number(digit) * factor--, 0)
+    const rest = (sum * 10) % 11
+    return rest === 10 ? 0 : rest
+  }
+  return calc(cpf.slice(0, 9), 10) === Number(cpf[9]) && calc(cpf.slice(0, 10), 11) === Number(cpf[10])
+}
+
+function recoveryRedirectUrl(input: { redirect_to?: string; site_slug?: string }, baseUrl: string) {
+  const base = baseUrl || 'https://redacaocomestrategia.com.br'
+  if (input.redirect_to) {
+    const parsed = new URL(input.redirect_to, base)
+    return new URL(`${parsed.pathname}${parsed.search}`, base).toString()
+  }
+  return input.site_slug
+    ? new URL(`/redacao/${encodeURIComponent(input.site_slug)}/login`, base).toString()
+    : new URL('/login', base).toString()
+}
+
+async function validateCheckoutCodeForRegistration(env: Env, siteId: string, email: string, cpf: string, turmaId?: string, checkoutCode?: string, options: { product?: string; courseId?: string } = {}) {
+  const product = String(options.product || 'turma').toLowerCase()
+  const courseId = String(options.courseId || '').trim()
+  if (product === 'video') {
+    if (!courseId) return { ok: false, error: 'Escolha um curso em vídeo e finalize o pagamento antes de criar o cadastro.' }
+  } else if (!turmaId) {
+    return { ok: false, error: 'Escolha uma turma e finalize o pagamento antes de criar o cadastro.' }
+  }
   const code = String(checkoutCode || '').trim().toUpperCase()
   if (!code) return { ok: false, error: 'Informe o código do pagamento enviado para este e-mail.' }
 
@@ -60,21 +97,38 @@ async function validateCheckoutCodeForRegistration(env: Env, siteId: string, ema
   const { data: site, error } = await sb.from('sites').select('allowed_origins').eq('id', siteId).single()
   if (error || !site) return { ok: false, error: error?.message || 'Site não encontrado.' }
   const cms = parseCms(site)
+  const leadMatchesCpf = (lead: any) => !lead?.cpf || onlyDigits(lead.cpf) === cpf
   const cmsMatch = Object.values(cms.checkout_leads || {}).some((lead: any) =>
     String(lead?.email || '').toLowerCase() === email &&
-    String(lead?.turma_id || '') === String(turmaId) &&
+    (product === 'video' ? String(lead?.course_id || '') === courseId : String(lead?.turma_id || '') === String(turmaId)) &&
     lead?.status === 'PAGAMENTO_APROVADO_SIMULADO' &&
-    String(lead?.checkout_code || lead?.code || '').trim().toUpperCase() === code
+    String(lead?.checkout_code || lead?.code || '').trim().toUpperCase() === code &&
+    leadMatchesCpf(lead)
   )
   if (cmsMatch) return { ok: true }
-  const { data: payment, error: payErr } = await sb.from('payments')
-    .select('status')
+  const paymentQuery = sb.from('payments')
+    .select('status, raw_summary')
     .eq('site_id', siteId)
-    .eq('turma_id', turmaId)
     .eq('payer_email', email)
     .eq('checkout_code', code)
-    .maybeSingle()
+    .eq('product_type', product === 'video' ? 'VIDEO_COURSE' : 'TURMA')
+  if (product === 'video') {
+    paymentQuery.eq('course_id', courseId)
+  } else {
+    paymentQuery.eq('turma_id', turmaId)
+  }
+  const { data: paymentRows, error: payErr } = await paymentQuery
+    .order('created_at', { ascending: false })
+    .limit(1)
+  const payment = paymentRows?.[0] || null
   if (payErr) return { ok: false, error: payErr.message }
+  if (payment && product === 'video' && String((payment.raw_summary as any)?.course_id || '') !== courseId) {
+    return { ok: false, error: 'Curso do pagamento não corresponde ao link informado.' }
+  }
+  const paymentCpf = onlyDigits((payment?.raw_summary as any)?.cpf)
+  if (payment && paymentCpf && paymentCpf !== cpf) {
+    return { ok: false, error: 'CPF não corresponde ao pagamento informado.' }
+  }
   return payment && isPaidStatus(payment.status)
     ? { ok: true }
     : { ok: false, error: 'Código de pagamento inválido ou ainda não confirmado para este e-mail.' }
@@ -85,13 +139,68 @@ async function applyPaidCheckoutForStudent(
   siteId: string,
   userId: string,
   email: string,
-  options: { checkoutCode?: string; turmaId?: string; requireCode?: boolean } = {}
+  options: { checkoutCode?: string; turmaId?: string; courseId?: string; product?: string; requireCode?: boolean } = {}
 ) {
   const sb = getAdmin(env)
   const { data: site, error: siteErr } = await sb.from('sites').select('allowed_origins').eq('id', siteId).single()
   if (siteErr || !site) return { activated: false, error: siteErr }
   const cms = parseCms(site)
   const normalizedCode = String(options.checkoutCode || '').trim().toUpperCase()
+  const product = String(options.product || 'turma').toLowerCase()
+  const courseId = String(options.courseId || '').trim()
+  if (product === 'video') {
+    const paymentQuery = sb.from('payments')
+      .select('id, course_id, checkout_code, status')
+      .eq('site_id', siteId)
+      .eq('payer_email', email)
+      .eq('product_type', 'VIDEO_COURSE')
+      .in('status', ['CONFIRMED', 'RECEIVED'])
+    if (courseId) paymentQuery.eq('course_id', courseId)
+    const { data: realPaidRows, error: realPaidErr } = await paymentQuery
+    if (realPaidErr) return { activated: false, error: realPaidErr }
+    const realPaid = (realPaidRows || []).filter((payment: any) => {
+      if (!options.requireCode) return true
+      return String(payment.checkout_code || '').trim().toUpperCase() === normalizedCode
+    })
+    if (options.requireCode && !realPaid.length) {
+      return { activated: false, error: { message: 'Pagamento não encontrado para este e-mail e curso.' } }
+    }
+    const rows = realPaid.map((payment: any) => ({
+      site_id: siteId,
+      course_id: payment.course_id,
+      aluno_id: userId,
+      payment_id: payment.id,
+      status: 'ACTIVE',
+      updated_at: new Date().toISOString()
+    }))
+    const { error: videoErr } = rows.length
+      ? await sb.from('video_course_enrollments').upsert(rows, { onConflict: 'site_id,course_id,aluno_id' })
+      : { error: null }
+    if (videoErr) {
+      if (missingVideoTables(videoErr)) return { activated: false, error: { message: 'Tabelas de cursos em vídeo ainda não foram aplicadas.' } }
+      return { activated: false, error: videoErr }
+    }
+    if (realPaid.length) {
+      await sb.from('payments')
+        .update({ aluno_id: userId, updated_at: new Date().toISOString() })
+        .in('id', realPaid.map((payment: any) => payment.id))
+    }
+    for (const [key, lead] of Object.entries(cms.checkout_leads || {})) {
+      if (
+        String((lead as any)?.email || '').toLowerCase() === email &&
+        String((lead as any)?.product_type || '').toUpperCase() === 'VIDEO_COURSE' &&
+        realPaid.some((payment: any) => String(payment.course_id || '') === String((lead as any)?.course_id || ''))
+      ) {
+        cms.checkout_leads[key] = { ...(lead as any), user_id: userId, status: 'MATRICULA_ATIVADA', updated_at: new Date().toISOString() }
+      }
+    }
+    const { error: saveErr } = await sb.from('sites')
+      .update({ allowed_origins: withCmsOrigins(site.allowed_origins, cms) })
+      .eq('id', siteId)
+    if (saveErr) return { activated: false, error: saveErr }
+    await sb.from('profiles').update({ ativo: true }).eq('id', userId).eq('role', 'ALUNO')
+    return { activated: true, courseIds: realPaid.map((payment: any) => payment.course_id) }
+  }
   const allPaid = Object.values(cms.checkout_leads || {})
     .filter((lead: any) => String(lead?.email || '').toLowerCase() === email && lead?.status === 'PAGAMENTO_APROVADO_SIMULADO')
     .filter((lead: any) => !options.turmaId || String(lead?.turma_id || '') === String(options.turmaId))
@@ -257,7 +366,7 @@ auth.post('/login', async (c) => {
 })
 
 auth.post('/register', async (c) => {
-  let body: { email: string; password: string; nome: string; site_slug?: string; site_id?: string; turma_id?: string; checkout_code?: string }
+  let body: { email: string; password: string; nome: string; cpf?: string; site_slug?: string; site_id?: string; turma_id?: string; course_id?: string; course?: string; product?: string; checkout_code?: string }
   try {
     body = await c.req.json()
   } catch {
@@ -267,8 +376,10 @@ auth.post('/register', async (c) => {
   const email = body.email?.trim().toLowerCase()
   const password = body.password
   const nome = body.nome?.trim()
+  const cpf = onlyDigits(body.cpf)
   if (!email || !password || !nome) return c.json({ error: 'Nome, email e senha são obrigatórios' }, 400)
   if (String(password).length < 6) return c.json({ error: 'A senha deve ter pelo menos 6 caracteres.' }, 400)
+  if (!isValidCpf(cpf)) return c.json({ error: 'Informe um CPF válido para concluir o cadastro.' }, 400)
 
   const sb = getAdmin(c.env)
   let siteId = body.site_id || null
@@ -278,13 +389,28 @@ auth.post('/register', async (c) => {
   }
   if (!siteId) return c.json({ error: 'Site não encontrado' }, 404)
 
-  const checkoutValidation = await validateCheckoutCodeForRegistration(c.env, siteId, email, body.turma_id, body.checkout_code)
+  const product = String(body.product || 'turma').toLowerCase()
+  const courseId = body.course_id || body.course || undefined
+  const checkoutValidation = await validateCheckoutCodeForRegistration(c.env, siteId, email, cpf, body.turma_id, body.checkout_code, {
+    product,
+    courseId
+  })
   if (!checkoutValidation.ok) return c.json({ error: checkoutValidation.error }, 400)
+
+  const existingUsers = await sb.auth.admin.listUsers()
+  const cpfOwner = existingUsers.data.users.find((item) => onlyDigits((item.user_metadata as any)?.cpf) === cpf)
+  if (cpfOwner?.id) {
+    return c.json({
+      error: String(cpfOwner.email || '').toLowerCase() === email
+        ? 'Já existe cadastro para este CPF e e-mail. Faça login para acessar sua turma.'
+        : 'Este CPF já está vinculado a outro cadastro.'
+    }, 409)
+  }
 
   const { data, error } = await sb.auth.admin.createUser({
     email,
     password,
-    user_metadata: { nome, role: 'ALUNO' },
+    user_metadata: { nome, role: 'ALUNO', cpf },
     email_confirm: true
   })
   if (error) return c.json({ error: 'Não foi possível criar o cadastro com estes dados.' }, 400)
@@ -292,7 +418,9 @@ auth.post('/register', async (c) => {
   const paid = await applyPaidCheckoutForStudent(c.env, siteId, data.user.id, email, {
     checkoutCode: body.checkout_code,
     turmaId: body.turma_id,
-    requireCode: Boolean(body.turma_id)
+    product,
+    courseId,
+    requireCode: Boolean(body.turma_id || courseId)
   })
   if (paid.error) return c.json(dbError(), 500)
 
@@ -413,11 +541,7 @@ auth.post('/oauth-session', async (c) => {
 })
 
 auth.post('/forgot-password', async (c) => {
-  if (!getConfig(c.env).flags.emails) {
-    return c.json({ error: 'Recuperação de senha por e-mail temporariamente indisponível.' }, 503)
-  }
-
-  let body: { email: string }
+  let body: { email: string; site_slug?: string; redirect_to?: string }
   try {
     body = await c.req.json()
   } catch {
@@ -427,13 +551,84 @@ auth.post('/forgot-password', async (c) => {
   const email = body.email?.trim()
   if (!email) return c.json({ error: 'Informe seu email' }, 400)
 
+  const config = getConfig(c.env)
+  const redirectUrl = recoveryRedirectUrl(body, config.appUrl || new URL(c.req.url).origin)
+
+  if (config.flags.emails) {
+    const sb = getAdmin(c.env)
+    const { data, error } = await sb.auth.admin.generateLink({
+      type: 'recovery',
+      email,
+      options: { redirectTo: redirectUrl }
+    })
+    const actionLink = data?.properties?.action_link
+    if (error || !actionLink) {
+      return c.json({ ok: true, delivery: 'not_disclosed' })
+    }
+
+    let name = 'tudo bem'
+    let siteName = 'Redação com Estratégia'
+    let teacherName = ''
+    let profileSiteId: string | null = null
+    if (data.user?.id) {
+      const { data: profile } = await sb.from('profiles').select('nome, site_id').eq('id', data.user.id).maybeSingle()
+      name = profile?.nome || data.user.email || name
+      profileSiteId = profile?.site_id || null
+    }
+    if (body.site_slug || profileSiteId) {
+      const query = sb.from('sites').select('id, nome_prof').limit(1)
+      const { data: site } = body.site_slug
+        ? await query.eq('slug', body.site_slug).maybeSingle()
+        : await query.eq('id', profileSiteId).maybeSingle()
+      if (site?.nome_prof) {
+        siteName = site.nome_prof
+        teacherName = site.nome_prof
+      }
+    }
+
+    const provider = getEmailProvider(c.env)
+    const sent = await provider.send(renderPasswordRecoveryEmail({
+      to: email,
+      name,
+      recoveryUrl: actionLink,
+      siteName,
+      teacherName
+    }))
+    if (!sent.sent) {
+      const detail = sent.reason ? ` Código técnico: ${sent.reason}.` : ''
+      console.warn('password_recovery_email_failed', { provider: sent.provider, reason: sent.reason || 'unknown' })
+      return c.json({ error: `Envio de recuperação indisponível no momento.${detail} Tente novamente mais tarde ou fale com o suporte.` }, 503)
+    }
+
+    return c.json({ ok: true, delivery: sent.provider })
+  }
+
   const anonClient = getClient(c.env)
-  const { error } = await anonClient.auth.resetPasswordForEmail(email, {
-    redirectTo: new URL('/login.html', c.req.url).toString()
+  await anonClient.auth.resetPasswordForEmail(email, { redirectTo: redirectUrl })
+
+  return c.json({ ok: true, delivery: 'supabase' })
+})
+
+auth.post('/reset-password', async (c) => {
+  let body: { access_token: string; refresh_token: string; password: string }
+  try {
+    body = await c.req.json()
+  } catch {
+    return c.json({ error: 'Corpo inválido' }, 400)
+  }
+  const password = String(body.password || '')
+  if (!body.access_token || !body.refresh_token) return c.json({ error: 'Link de recuperação inválido ou expirado.' }, 400)
+  if (password.length < 6) return c.json({ error: 'A senha deve ter pelo menos 6 caracteres.' }, 400)
+
+  const anonClient = getClient(c.env)
+  const { error: sessionError } = await anonClient.auth.setSession({
+    access_token: body.access_token,
+    refresh_token: body.refresh_token
   })
+  if (sessionError) return c.json({ error: 'Link de recuperação inválido ou expirado.' }, 400)
 
-  if (error) return c.json({ error: 'Não foi possível enviar o email de recuperação' }, 400)
-
+  const { error } = await anonClient.auth.updateUser({ password })
+  if (error) return c.json({ error: 'Não foi possível redefinir a senha.' }, 400)
   return c.json({ ok: true })
 })
 

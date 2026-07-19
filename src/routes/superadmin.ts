@@ -4,6 +4,7 @@ import { getAdmin } from '../supabase'
 import { requireAuth, requireRole } from '../middleware'
 
 const app = new Hono<{ Bindings: Env }>()
+const CMS_PREFIX = 'CMS:'
 
 function dbError() {
   return { error: 'Erro ao acessar os dados.' }
@@ -33,14 +34,56 @@ async function uniqueSiteSlug(sb: ReturnType<typeof getAdmin>, base: string) {
 }
 
 function parseNotifications(site: any) {
+  const cms = parseCms(site)
+  return Array.isArray(cms.notifications) ? cms.notifications : []
+}
+
+function parseCms(site: any) {
   const raw = (site?.allowed_origins || []).find((item: string) => String(item).startsWith('CMS:'))
-  if (!raw) return []
+  if (!raw) return {}
   try {
-    const cms = JSON.parse(String(raw).slice(4))
-    return Array.isArray(cms.notifications) ? cms.notifications : []
+    return JSON.parse(String(raw).slice(4)) || {}
   } catch {
-    return []
+    return {}
   }
+}
+
+function withCmsOrigins(origins: string[] | null | undefined, cms: any) {
+  const clean = (origins || []).filter((item: string) => !String(item).startsWith(CMS_PREFIX))
+  return [...clean, `${CMS_PREFIX}${JSON.stringify(cms)}`]
+}
+
+function buildPlatformPlan(input: any, current: any = {}) {
+  const expiresAt = typeof input.plan_expires_at === 'string' && input.plan_expires_at.trim()
+    ? input.plan_expires_at.trim()
+    : current.expires_at || null
+  const status = typeof input.plan_status === 'string' && input.plan_status.trim()
+    ? input.plan_status.trim().toUpperCase()
+    : current.status || 'ACTIVE'
+  return {
+    ...current,
+    name: typeof input.plan_name === 'string' && input.plan_name.trim() ? input.plan_name.trim() : current.name || 'Manual',
+    status,
+    active: status !== 'INACTIVE' && status !== 'EXPIRED',
+    expires_at: expiresAt,
+    source: current.source || 'SUPERADMIN_MANUAL',
+    updated_at: new Date().toISOString()
+  }
+}
+
+function normalizeProfessorRole(value: unknown) {
+  return value === 'CORRETOR' ? 'CORRETOR' : 'ADMIN'
+}
+
+function normalizeProfessorGender(value: unknown, fallback = 'FEMININO') {
+  const normalized = String(value || fallback || '').trim().toUpperCase()
+  if (['M', 'MASCULINO', 'HOMEM'].includes(normalized)) return 'MASCULINO'
+  if (['F', 'FEMININO', 'MULHER'].includes(normalized)) return 'FEMININO'
+  return fallback === 'MASCULINO' ? 'MASCULINO' : 'FEMININO'
+}
+
+function parseOptionalBoolean(value: unknown) {
+  return typeof value === 'boolean' ? value : undefined
 }
 
 async function safeCount(query: any) {
@@ -181,15 +224,94 @@ app.get('/sites', async (c) => {
   const sb = getAdmin(c.env)
   const { data, error } = await sb.from('sites').select('*').order('created_at', { ascending: false })
   if (error) return c.json(dbError(), 500)
-  return c.json({ data })
+  const siteIds = (data || []).map((site: any) => site.id)
+  const { data: profiles } = siteIds.length
+    ? await sb.from('profiles')
+      .select('id, nome, role, site_id, ativo')
+      .in('site_id', siteIds)
+      .in('role', ['ADMIN', 'CORRETOR'])
+    : { data: [] as any[] }
+  const { data: authUsers } = await sb.auth.admin.listUsers({ page: 1, perPage: 1000 })
+  const authById = new Map((authUsers?.users || []).map((user) => [user.id, user]))
+  const emailById = new Map((authUsers?.users || []).map((user) => [user.id, user.email || '']))
+  const ownersBySite = new Map<string, any>()
+  for (const profile of profiles || []) {
+    if (!ownersBySite.has(profile.site_id) || profile.role === 'ADMIN') ownersBySite.set(profile.site_id, profile)
+  }
+  return c.json({
+    data: (data || []).map((site: any) => {
+      const cms = parseCms(site)
+      const owner = ownersBySite.get(site.id)
+      const authOwner = owner ? authById.get(owner.id) : null
+      const ownerGender = cms.owner_gender || authOwner?.user_metadata?.sexo || authOwner?.user_metadata?.gender || null
+      return {
+        ...site,
+        cms,
+        platform_plan: cms.platform_plan || null,
+        owner_user: owner ? { ...owner, email: emailById.get(owner.id) || '', sexo: ownerGender } : null
+      }
+    })
+  })
 })
 
 app.post('/sites', async (c) => {
   const body = await c.req.json()
   const sb = getAdmin(c.env)
-  const { data, error } = await sb.from('sites').insert(body).select().single()
+  const professorGender = normalizeProfessorGender(body.professor_gender || body.professor_sexo)
+  const cms = {
+    owner_gender: professorGender,
+    platform_plan: buildPlatformPlan(body, {
+      activated_at: new Date().toISOString()
+    })
+  }
+  const siteBody = {
+    slug: body.slug,
+    nome_prof: body.nome_prof,
+    bio_prof: body.bio_prof || '',
+    cor_primaria: body.cor_primaria || '#1A3A2A',
+    cor_accent: body.cor_accent || '#C5F135',
+    logo_url: body.logo_url || null,
+    foto_url: body.foto_url || null,
+    domain_custom: body.domain_custom || null,
+    ativo: body.ativo !== false,
+    allowed_origins: withCmsOrigins(body.allowed_origins, cms)
+  }
+  const { data, error } = await sb.from('sites').insert(siteBody).select().single()
   if (error) return c.json(dbError(), 500)
-  return c.json(data, 201)
+  let ownerUser = null
+  if (body.professor_email || body.professor_password) {
+    const email = String(body.professor_email || '').trim().toLowerCase()
+    const password = String(body.professor_password || '').trim()
+    const professorRole = normalizeProfessorRole(body.professor_role)
+    const professorAtivo = parseOptionalBoolean(body.professor_ativo) ?? true
+    const professorNome = body.professor_nome || body.nome_prof
+    if (!email || !password) {
+      await sb.from('sites').delete().eq('id', data.id)
+      return c.json({ error: 'Informe email e senha do professor para criar o acesso.' }, 400)
+    }
+    if (password.length < 6) {
+      await sb.from('sites').delete().eq('id', data.id)
+      return c.json({ error: 'A senha do professor deve ter pelo menos 6 caracteres.' }, 400)
+    }
+    const { data: authData, error: authError } = await sb.auth.admin.createUser({
+      email,
+      password,
+      user_metadata: { nome: professorNome, role: professorRole, sexo: professorGender },
+      email_confirm: true
+    })
+    if (authError || !authData?.user) {
+      await sb.from('sites').delete().eq('id', data.id)
+      return c.json({ error: 'Não foi possível criar o login do professor.' }, 500)
+    }
+    await sb.from('profiles').update({
+      nome: professorNome,
+      role: professorRole,
+      site_id: data.id,
+      ativo: professorAtivo
+    }).eq('id', authData.user.id)
+    ownerUser = { id: authData.user.id, email, nome: professorNome, role: professorRole, site_id: data.id, ativo: professorAtivo, sexo: professorGender }
+  }
+  return c.json({ ...data, cms, platform_plan: cms.platform_plan, owner_user: ownerUser }, 201)
 })
 
 app.patch('/sites/:id', async (c) => {
@@ -197,17 +319,128 @@ app.patch('/sites/:id', async (c) => {
   const sb = getAdmin(c.env)
   const allowed = ['slug', 'nome_prof', 'bio_prof', 'cor_primaria', 'cor_accent', 'logo_url', 'foto_url', 'domain_custom', 'ativo']
   const update = Object.fromEntries(Object.entries(body).filter(([key]) => allowed.includes(key)))
+  const { data: current, error: currentError } = await sb.from('sites').select('*').eq('id', c.req.param('id')).single()
+  if (currentError || !current) return c.json({ error: 'Site não encontrado.' }, 404)
+  const cms = parseCms(current)
+  if ('plan_expires_at' in body || 'plan_name' in body || 'plan_status' in body) {
+    cms.platform_plan = buildPlatformPlan(body, cms.platform_plan || {})
+    update.allowed_origins = withCmsOrigins(current.allowed_origins, cms)
+  }
+  const hasProfessorGender = 'professor_gender' in body || 'professor_sexo' in body
+  const professorGender = hasProfessorGender
+    ? normalizeProfessorGender(body.professor_gender || body.professor_sexo, cms.owner_gender || 'FEMININO')
+    : null
+  if (hasProfessorGender) {
+    cms.owner_gender = professorGender
+    update.allowed_origins = withCmsOrigins(current.allowed_origins, cms)
+  }
 
-  if (!Object.keys(update).length) return c.json({ error: 'Nada para atualizar' }, 400)
+  const ownerId = String(body.owner_user_id || '').trim()
+  const professorEmail = typeof body.professor_email === 'string' ? body.professor_email.trim().toLowerCase() : ''
+  const professorPassword = typeof body.professor_password === 'string' ? body.professor_password.trim() : ''
+  const professorNome = typeof body.professor_nome === 'string' ? body.professor_nome.trim() : ''
+  const professorRole = normalizeProfessorRole(body.professor_role)
+  const professorAtivo = parseOptionalBoolean(body.professor_ativo)
+  const hasProfessorRole = 'professor_role' in body
+  const hasProfessorAtivo = typeof professorAtivo === 'boolean'
+  if (!Object.keys(update).length && !ownerId && !professorEmail && !professorPassword && !professorNome && !hasProfessorRole && !hasProfessorAtivo && !hasProfessorGender) {
+    return c.json({ error: 'Nada para atualizar' }, 400)
+  }
 
-  const { data, error } = await sb.from('sites')
-    .update(update)
-    .eq('id', c.req.param('id'))
-    .select()
-    .single()
+  let data = current
+  if (Object.keys(update).length) {
+    const result = await sb.from('sites')
+      .update(update)
+      .eq('id', c.req.param('id'))
+      .select()
+      .single()
+    if (result.error) return c.json(dbError(), 500)
+    data = result.data
+  }
 
+  if (ownerId) {
+    const authUpdate: Record<string, unknown> = {}
+    const profileUpdate: Record<string, unknown> = {}
+    if (professorEmail) authUpdate.email = professorEmail
+    if (professorPassword) {
+      if (professorPassword.length < 6) return c.json({ error: 'A senha do professor deve ter pelo menos 6 caracteres.' }, 400)
+      authUpdate.password = professorPassword
+    }
+    if (professorNome) {
+      profileUpdate.nome = professorNome
+    }
+    if (hasProfessorRole) profileUpdate.role = professorRole
+    if (hasProfessorAtivo) profileUpdate.ativo = professorAtivo
+    if (professorNome || hasProfessorRole || hasProfessorGender) {
+      authUpdate.user_metadata = {
+        ...(professorNome ? { nome: professorNome } : {}),
+        ...(hasProfessorRole ? { role: professorRole } : {}),
+        ...(hasProfessorGender ? { sexo: professorGender } : {})
+      }
+    }
+    if (Object.keys(authUpdate).length) {
+      const { error: authError } = await sb.auth.admin.updateUserById(ownerId, authUpdate)
+      if (authError) return c.json({ error: 'Não foi possível atualizar o login do professor.' }, 500)
+    }
+    if (Object.keys(profileUpdate).length) {
+      await sb.from('profiles').update({
+        ...profileUpdate,
+        site_id: c.req.param('id')
+      }).eq('id', ownerId)
+    }
+  } else if (professorEmail || professorPassword || professorNome || hasProfessorRole || hasProfessorAtivo || hasProfessorGender) {
+    if (!professorEmail || !professorPassword) {
+      return c.json({ error: 'Este site ainda não tem professor dono. Informe email e senha para criar o login.' }, 400)
+    }
+    if (professorPassword.length < 6) return c.json({ error: 'A senha do professor deve ter pelo menos 6 caracteres.' }, 400)
+    const { data: authData, error: authError } = await sb.auth.admin.createUser({
+      email: professorEmail,
+      password: professorPassword,
+      user_metadata: { nome: professorNome || data.nome_prof, role: professorRole, sexo: professorGender || 'FEMININO' },
+      email_confirm: true
+    })
+    if (authError || !authData?.user) return c.json({ error: 'Não foi possível criar o login do professor.' }, 500)
+    await sb.from('profiles').update({
+      nome: professorNome || data.nome_prof,
+      role: professorRole,
+      site_id: c.req.param('id'),
+      ativo: professorAtivo ?? true
+    }).eq('id', authData.user.id)
+  }
+  return c.json({ ...data, cms: parseCms(data), platform_plan: parseCms(data).platform_plan || null })
+})
+
+app.delete('/sites/:id', async (c) => {
+  const siteId = c.req.param('id')
+  const sb = getAdmin(c.env)
+  const { data: site, error: siteError } = await sb.from('sites')
+    .select('id, nome_prof, slug')
+    .eq('id', siteId)
+    .maybeSingle()
+  if (siteError) return c.json(dbError(), 500)
+  if (!site) return c.json({ error: 'Site não encontrado.' }, 404)
+
+  const [profiles, turmas, payments, correcoes] = await Promise.all([
+    safeCount(sb.from('profiles').select('id', { count: 'exact', head: true }).eq('site_id', siteId)),
+    safeCount(sb.from('turmas').select('id', { count: 'exact', head: true }).eq('site_id', siteId)),
+    safeCount(sb.from('payments').select('id', { count: 'exact', head: true }).eq('site_id', siteId)),
+    safeCount(sb.from('correcoes').select('id', { count: 'exact', head: true }).eq('site_id', siteId))
+  ])
+  const blockers = [
+    profiles ? `${profiles} usuário(s)` : '',
+    turmas ? `${turmas} turma(s)` : '',
+    payments ? `${payments} pagamento(s)` : '',
+    correcoes ? `${correcoes} redação(ões)` : ''
+  ].filter(Boolean)
+  if (blockers.length) {
+    return c.json({
+      error: `Este site ainda possui ${blockers.join(', ')} vinculados. Inative o site ou remova/desvincule esses dados antes de excluir.`
+    }, 409)
+  }
+
+  const { error } = await sb.from('sites').delete().eq('id', siteId)
   if (error) return c.json(dbError(), 500)
-  return c.json(data)
+  return c.json({ ok: true })
 })
 
 app.get('/users', async (c) => {
@@ -218,18 +451,26 @@ app.get('/users', async (c) => {
     .order('created_at', { ascending: false })
   if (error) return c.json(dbError(), 500)
   const { data: authUsers } = await sb.auth.admin.listUsers({ page: 1, perPage: 1000 })
+  const authById = new Map((authUsers?.users || []).map((user) => [user.id, user]))
   const emailById = new Map((authUsers?.users || []).map((user) => [user.id, user.email || '']))
-  return c.json({ data: (data || []).map((profile) => ({ ...profile, email: emailById.get(profile.id) || '' })) })
+  return c.json({
+    data: (data || []).map((profile) => ({
+      ...profile,
+      email: emailById.get(profile.id) || '',
+      sexo: authById.get(profile.id)?.user_metadata?.sexo || null
+    }))
+  })
 })
 
 app.post('/users', async (c) => {
-  const { email, password, nome, role, site_id } = await c.req.json()
+  const { email, password, nome, role, site_id, sexo } = await c.req.json()
   const sb = getAdmin(c.env)
+  const professorGender = normalizeProfessorGender(sexo, 'FEMININO')
 
   const { data, error } = await sb.auth.admin.createUser({
     email,
     password,
-    user_metadata: { nome, role },
+    user_metadata: { nome, role, sexo: professorGender },
     email_confirm: true
   })
   if (error) return c.json(dbError(), 500)
@@ -256,15 +497,19 @@ app.post('/users/:id/approve-professor', async (c) => {
   if (!siteId) {
     const nome = profile.nome || 'Professor'
     const slug = await uniqueSiteSlug(sb, nome)
+    const { data: authUser } = await sb.auth.admin.getUserById(id)
+    const professorGender = normalizeProfessorGender(authUser?.user?.user_metadata?.sexo, 'FEMININO')
+    const cms = { owner_gender: professorGender }
     const { data: site, error: siteError } = await sb
       .from('sites')
       .insert({
         slug,
         nome_prof: nome,
-        bio_prof: 'Site independente do professor.',
+        bio_prof: professorGender === 'MASCULINO' ? 'Site independente do professor.' : 'Site independente da professora.',
         cor_primaria: '#1A3A2A',
         cor_accent: '#C5F135',
-        ativo: true
+        ativo: true,
+        allowed_origins: withCmsOrigins([], cms)
       })
       .select('id, slug')
       .single()
@@ -298,8 +543,10 @@ app.patch('/users/:id', async (c) => {
   if (typeof body.site_id === 'string' || body.site_id === null) update.site_id = body.role === 'SUPERADMIN' ? null : body.site_id
   if (typeof body.email === 'string' && body.email.trim()) authUpdate.email = body.email.trim().toLowerCase()
   if (typeof body.password === 'string' && body.password.trim()) authUpdate.password = body.password.trim()
-  if (update.nome || update.role) {
-    authUpdate.user_metadata = Object.fromEntries(Object.entries({ nome: update.nome, role: update.role }).filter(([, value]) => value !== undefined))
+  const hasGender = 'sexo' in body || 'gender' in body || 'professor_gender' in body
+  const professorGender = hasGender ? normalizeProfessorGender(body.sexo || body.gender || body.professor_gender, 'FEMININO') : null
+  if (update.nome || update.role || hasGender) {
+    authUpdate.user_metadata = Object.fromEntries(Object.entries({ nome: update.nome, role: update.role, sexo: professorGender }).filter(([, value]) => value !== undefined && value !== null))
   }
   if (!Object.keys(update).length && !Object.keys(authUpdate).length) return c.json({ error: 'Nada para atualizar' }, 400)
 

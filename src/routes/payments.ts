@@ -12,7 +12,8 @@ function defaultCms() {
     checkout_leads: {} as Record<string, any>,
     notifications: [] as any[],
     student_credits: {} as Record<string, { creditos?: number; vence_em?: string | null; updated_at?: string }>,
-    enrollments: {} as Record<string, Record<string, { ativo?: boolean; origem?: string; created_at?: string; updated_at?: string }>>
+    enrollments: {} as Record<string, Record<string, { ativo?: boolean; origem?: string; created_at?: string; updated_at?: string }>>,
+    video_courses: [] as any[]
   }
 }
 
@@ -25,6 +26,7 @@ function parseCms(site: any) {
       ...cms,
       checkout_leads: cms.checkout_leads && typeof cms.checkout_leads === 'object' ? cms.checkout_leads : {},
       notifications: Array.isArray(cms.notifications) ? cms.notifications : [],
+      video_courses: Array.isArray(cms.video_courses) ? cms.video_courses : [],
       student_credits: cms.student_credits && typeof cms.student_credits === 'object' ? cms.student_credits : {},
       enrollments: cms.enrollments && typeof cms.enrollments === 'object' ? cms.enrollments : {}
     }
@@ -44,6 +46,10 @@ function missingPaymentTables(error: any) {
 
 function missingTurmaAlunos(error: any) {
   return /turma_alunos|relation .* does not exist|schema cache/i.test(String(error?.message || ''))
+}
+
+function missingVideoTables(error: any) {
+  return /video_course_enrollments|relation .* does not exist|schema cache/i.test(String(error?.message || ''))
 }
 
 function isPaidStatus(status: string) {
@@ -114,6 +120,29 @@ async function grantPaidEnrollment(sb: ReturnType<typeof getAdmin>, payment: any
   return { granted: true }
 }
 
+async function grantPaidVideoCourseEnrollment(sb: ReturnType<typeof getAdmin>, payment: any) {
+  const courseId = String(payment?.course_id || payment?.raw_summary?.course_id || '').trim()
+  if (!payment?.site_id || !courseId || !payment?.aluno_id) {
+    return { granted: false, reason: 'missing_video_enrollment_target' }
+  }
+  const row = {
+    site_id: payment.site_id,
+    course_id: courseId,
+    aluno_id: payment.aluno_id,
+    payment_id: payment.id,
+    status: 'ACTIVE',
+    updated_at: new Date().toISOString()
+  }
+  const { error } = await sb.from('video_course_enrollments')
+    .upsert(row, { onConflict: 'site_id,course_id,aluno_id' })
+  if (error) {
+    if (missingVideoTables(error)) return { granted: false, reason: 'video_tables_missing' }
+    return { granted: false, reason: error.message }
+  }
+  await sb.from('profiles').update({ ativo: true }).eq('id', payment.aluno_id).eq('role', 'ALUNO')
+  return { granted: true }
+}
+
 async function markCheckoutPaidAndNotify(sb: ReturnType<typeof getAdmin>, payment: any, origin = 'ASAAS_WEBHOOK') {
   if (!payment?.site_id) return { ok: false, reason: 'missing_site' }
   const { data: site, error: siteErr } = await sb.from('sites')
@@ -123,9 +152,13 @@ async function markCheckoutPaidAndNotify(sb: ReturnType<typeof getAdmin>, paymen
   if (siteErr || !site) return { ok: false, reason: siteErr?.message || 'site_not_found' }
   const cms = parseCms(site)
   const now = new Date().toISOString()
-  const leadKey = `${String(payment.payer_email || '').toLowerCase()}:${payment.turma_id}`
+  const productType = String(payment.product_type || payment.raw_summary?.product_type || 'TURMA')
+  const courseId = String(payment.course_id || payment.raw_summary?.course_id || '')
+  const leadKey = productType === 'VIDEO_COURSE'
+    ? `${String(payment.payer_email || '').toLowerCase()}:video:${courseId}`
+    : `${String(payment.payer_email || '').toLowerCase()}:${payment.turma_id}`
   const lead = cms.checkout_leads?.[leadKey] || {}
-  if (payment.payer_email && payment.turma_id) {
+  if (payment.payer_email && (payment.turma_id || courseId)) {
     cms.checkout_leads = {
       ...(cms.checkout_leads || {}),
       [leadKey]: {
@@ -133,6 +166,8 @@ async function markCheckoutPaidAndNotify(sb: ReturnType<typeof getAdmin>, paymen
         email: payment.payer_email,
         nome: payment.payer_name || lead.nome || '',
         turma_id: payment.turma_id,
+        course_id: courseId || lead.course_id || null,
+        product_type: productType,
         site_id: payment.site_id,
         status: 'PAGAMENTO_CONFIRMADO_ASAAS',
         checkout_code: payment.checkout_code || lead.checkout_code || lead.code || '',
@@ -149,18 +184,23 @@ async function markCheckoutPaidAndNotify(sb: ReturnType<typeof getAdmin>, paymen
   const { data: turma } = payment.turma_id
     ? await sb.from('turmas').select('nome').eq('id', payment.turma_id).maybeSingle()
     : { data: null }
+  const course = courseId ? (cms.video_courses || []).find((item: any) => String(item.id || '') === courseId) : null
+  const productName = productType === 'VIDEO_COURSE' ? (course?.title || 'um curso em vídeo') : (turma?.nome || 'uma turma')
   const key = `payment:${payment.provider_payment_id || payment.id}`
   const notifications = Array.isArray(cms.notifications) ? cms.notifications.filter((n: any) => n?.key !== key) : []
   notifications.unshift({
     id: crypto.randomUUID(),
     key,
     type: 'PAYMENT_RECEIVED',
-    title: 'Aluno pagou uma turma',
-    message: `${payment.payer_name || payment.payer_email || 'Aluno'} pagou ${turma?.nome || 'uma turma'}.`,
+    title: productType === 'VIDEO_COURSE' ? 'Aluno pagou um curso em vídeo' : 'Aluno pagou uma turma',
+    message: `${payment.payer_name || payment.payer_email || 'Aluno'} pagou ${productName}.`,
     aluno_email: payment.payer_email,
     aluno_nome: payment.payer_name,
     turma_id: payment.turma_id,
     turma_nome: turma?.nome || null,
+    course_id: courseId || null,
+    course_title: course?.title || null,
+    product_type: productType,
     amount_cents: payment.amount_cents,
     provider_payment_id: payment.provider_payment_id,
     origin,
@@ -193,12 +233,14 @@ async function applyProviderPaymentStatus(sb: ReturnType<typeof getAdmin>, payme
   const { data: updated, error } = await sb.from('payments')
     .update(patch)
     .eq('id', payment.id)
-    .select('id, site_id, turma_id, aluno_id, payer_email, payer_name, provider_payment_id, amount_cents, billing_type, checkout_code, paid_at, status')
+    .select('id, site_id, turma_id, course_id, product_type, aluno_id, payer_email, payer_name, provider_payment_id, amount_cents, billing_type, checkout_code, paid_at, status, raw_summary')
     .single()
   if (error || !updated) return { synced: false, granted: false, status, reason: error?.message || 'payment_update_failed' }
   if (!paid) return { synced: true, granted: false, status, reason: 'not_paid' }
   await markCheckoutPaidAndNotify(sb, updated, origin)
-  const grant = await grantPaidEnrollment(sb, updated, origin)
+  const grant = String(updated.product_type || updated.raw_summary?.product_type || 'TURMA') === 'VIDEO_COURSE'
+    ? await grantPaidVideoCourseEnrollment(sb, updated)
+    : await grantPaidEnrollment(sb, updated, origin)
   return { synced: true, granted: grant.granted, status, reason: grant.reason || null }
 }
 
@@ -229,7 +271,7 @@ async function runSandboxReconciliation(c: any) {
   }
 
   let query = sb.from('payments')
-    .select('id, site_id, turma_id, aluno_id, payer_email, payer_name, provider_payment_id, amount_cents, billing_type, checkout_code, paid_at, status, raw_summary, updated_at')
+    .select('id, site_id, turma_id, course_id, product_type, aluno_id, payer_email, payer_name, provider_payment_id, amount_cents, billing_type, checkout_code, paid_at, status, raw_summary, updated_at')
     .eq('provider', 'ASAAS')
     .eq('status', 'PENDING')
     .not('provider_payment_id', 'is', null)
@@ -336,13 +378,13 @@ app.post('/asaas/webhook', async (c) => {
   let paymentResult = await sb.from('payments')
     .update(patch)
     .eq('provider_payment_id', normalized.providerPaymentId)
-    .select('id, site_id, turma_id, aluno_id, payer_email, payer_name, provider_payment_id, amount_cents, billing_type, checkout_code, paid_at, status')
+    .select('id, site_id, turma_id, course_id, product_type, aluno_id, payer_email, payer_name, provider_payment_id, amount_cents, billing_type, checkout_code, paid_at, status, raw_summary')
     .maybeSingle()
   if (!paymentResult.data && normalized.externalReference) {
     paymentResult = await sb.from('payments')
       .update(patch)
       .eq('external_reference', normalized.externalReference)
-      .select('id, site_id, turma_id, aluno_id, payer_email, payer_name, provider_payment_id, amount_cents, billing_type, checkout_code, paid_at, status')
+      .select('id, site_id, turma_id, course_id, product_type, aluno_id, payer_email, payer_name, provider_payment_id, amount_cents, billing_type, checkout_code, paid_at, status, raw_summary')
       .maybeSingle()
   }
 
@@ -365,7 +407,9 @@ app.post('/asaas/webhook', async (c) => {
         .eq('id', inserted.id)
       return c.json({ ok: true, processed: true, enrollment_pending: true, reason: 'student_signup_pending' })
     }
-    grantResult = await grantPaidEnrollment(sb, paymentResult.data)
+    grantResult = String(paymentResult.data.product_type || paymentResult.data.raw_summary?.product_type || 'TURMA') === 'VIDEO_COURSE'
+      ? await grantPaidVideoCourseEnrollment(sb, paymentResult.data)
+      : await grantPaidEnrollment(sb, paymentResult.data)
     if (!grantResult.granted) {
       return c.json({ ok: true, processed: false, reason: grantResult.reason || 'enrollment_not_granted' })
     }
@@ -538,7 +582,7 @@ app.post('/asaas/sandbox-homologation/:id/sync', requireAuth, async (c) => {
 
   const sb = getAdmin(c.env)
   const { data: payment, error: paymentErr } = await sb.from('payments')
-    .select('id, site_id, turma_id, aluno_id, status, paid_at, billing_type, provider_payment_id, raw_summary')
+    .select('id, site_id, turma_id, course_id, product_type, aluno_id, status, paid_at, billing_type, provider_payment_id, raw_summary')
     .eq('id', c.req.param('id'))
     .eq('provider', 'ASAAS')
     .single()

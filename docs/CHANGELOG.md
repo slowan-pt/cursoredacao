@@ -6,6 +6,16 @@ Todas as mudanças relevantes deste projeto devem ser registradas aqui.
 
 ### Adicionado
 
+- Módulo inicial de cursos em vídeo:
+  - seção pública "Cursos em vídeo" nos sites dos professores;
+  - menu "Cursos em vídeo" no painel do professor para cadastrar, editar, ocultar e excluir cursos;
+  - página pública individual de curso em vídeo com checkout Asaas Sandbox no próprio site do professor;
+  - menu "Cursos em vídeo" no painel do aluno, com player protegido, progresso e anotações;
+  - migrations `010_video_courses.sql` e `011_video_course_payments.sql`;
+  - pagamentos de curso em vídeo com `product_type=VIDEO_COURSE` e `course_id`;
+  - liberação de matrícula de curso em vídeo via webhook Asaas confirmado/recebido;
+  - preparação para Cloudflare Stream com token temporário e player autenticado;
+  - ajustes mobile para cards, player, anotações e checkout de curso.
 - Home pública de marketplace/SaaS para a raiz `/`:
   - hero da plataforma Redação com Estratégia;
   - vitrine de professores ativos com dados vindos de `/api/marketplace/professores`;

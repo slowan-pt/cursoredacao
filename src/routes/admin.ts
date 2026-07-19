@@ -63,6 +63,7 @@ const PENDING_CORRECAO_STATUSES = ['AGUARDANDO', 'EM_ANDAMENTO', 'EM_CORRECAO']
 
 function defaultCms() {
   return {
+    owner_gender: '',
     layout: {
       header_label: 'Redação',
       eyebrow: 'Site independente do professor',
@@ -74,7 +75,7 @@ function defaultCms() {
       posts_title: 'Dicas e materiais',
       posts_intro: 'Publicações, notícias e matérias do professor.',
       profile_side: 'right',
-      block_order: ['hero', 'turmas', 'conteudos', 'aluno'],
+      block_order: ['hero', 'turmas', 'video_courses', 'conteudos', 'aluno'],
       avatar_text: 'PR',
       avatar_image: '',
       hidden_elements: [],
@@ -105,6 +106,7 @@ function defaultCms() {
       info: '#1565C0'
     },
     posts: [],
+    video_courses: [],
     child_teachers: [],
     notifications: [],
     turma_settings: {},
@@ -113,6 +115,13 @@ function defaultCms() {
     blocked_students: {},
     deleted_students: {}
   }
+}
+
+function normalizeProfessorGender(value: unknown, fallback = 'FEMININO') {
+  const normalized = String(value || fallback || '').trim().toUpperCase()
+  if (['M', 'MASCULINO', 'HOMEM'].includes(normalized)) return 'MASCULINO'
+  if (['F', 'FEMININO', 'MULHER'].includes(normalized)) return 'FEMININO'
+  return fallback === 'MASCULINO' ? 'MASCULINO' : 'FEMININO'
 }
 
 function parseCms(site: any) {
@@ -127,6 +136,7 @@ function parseCms(site: any) {
       contact: { ...defaultCms().contact, ...(cms.contact || {}) },
       theme: { ...defaultCms().theme, ...(cms.theme || {}) },
       posts: Array.isArray(cms.posts) ? cms.posts : [],
+      video_courses: Array.isArray(cms.video_courses) ? cms.video_courses : [],
       child_teachers: Array.isArray(cms.child_teachers) ? cms.child_teachers : [],
       notifications: Array.isArray(cms.notifications) ? cms.notifications : [],
       turma_settings: cms.turma_settings && typeof cms.turma_settings === 'object' ? cms.turma_settings : {},
@@ -137,6 +147,30 @@ function parseCms(site: any) {
     }
   } catch {
     return defaultCms()
+  }
+}
+
+function normalizeTurmaSettings(settings: any = {}) {
+  const periodicidade = ['DIA', 'SEMANA', 'CUSTOM_DIAS'].includes(String(settings?.limite_redacoes_periodicidade))
+    ? String(settings.limite_redacoes_periodicidade)
+    : 'SEMANA'
+  const methods = settings?.payment_methods && typeof settings.payment_methods === 'object' ? settings.payment_methods : {}
+  const paymentMethods = {
+    pix: methods.pix !== false,
+    boleto: methods.boleto === true,
+    credit_card: methods.credit_card === true
+  }
+  if (!paymentMethods.pix && !paymentMethods.boleto && !paymentMethods.credit_card) paymentMethods.pix = true
+  const feePayer = String(settings?.payment_fee_payer || 'PROFESSOR').toUpperCase() === 'ALUNO' ? 'ALUNO' : 'PROFESSOR'
+  return {
+    limite_redacoes_por_aluno: Math.max(1, Number(settings?.limite_redacoes_por_aluno) || 3),
+    limite_redacoes_por_periodo: Math.max(1, Number(settings?.limite_redacoes_por_periodo ?? settings?.limite_redacoes_por_aluno) || 1),
+    limite_redacoes_periodicidade: periodicidade,
+    limite_redacoes_periodo_dias: Math.max(1, Number(settings?.limite_redacoes_periodo_dias) || 7),
+    payment_methods: paymentMethods,
+    credit_card_installments: Math.max(1, Math.min(12, Math.floor(Number(settings?.credit_card_installments) || 1))),
+    payment_fee_payer: feePayer,
+    payment_fee_percent: Math.max(0, Math.min(30, Number(settings?.payment_fee_percent) || 0))
   }
 }
 
@@ -894,6 +928,7 @@ app.post('/professores-filhos', async (c) => {
   const nome = String(body.nome || '').trim()
   const email = String(body.email || '').trim().toLowerCase()
   const password = String(body.password || body.senha || '').trim()
+  const sexo = normalizeProfessorGender(body.sexo || body.gender || body.professor_gender)
   if (!nome || !email || !password) return c.json({ error: 'Nome, email e senha são obrigatórios.' }, 400)
   if (password.length < 6) return c.json({ error: 'A senha precisa ter pelo menos 6 caracteres.' }, 400)
 
@@ -901,7 +936,7 @@ app.post('/professores-filhos', async (c) => {
     email,
     password,
     email_confirm: true,
-    user_metadata: { nome, site_id: siteId, role: 'CORRETOR' }
+    user_metadata: { nome, site_id: siteId, role: 'CORRETOR', sexo }
   })
   if (authErr || !authData.user) return c.json({ error: authErr?.message || 'Não foi possível criar o usuário.' }, 400)
 
@@ -919,6 +954,7 @@ app.post('/professores-filhos', async (c) => {
     user_id: authData.user.id,
     nome,
     email,
+    sexo,
     telefone: String(body.telefone || '').trim(),
     ativo: true,
     valor_correcao: Number(body.valor_correcao || 0),
@@ -984,6 +1020,9 @@ app.patch('/professores-filhos/:id', async (c) => {
   const updated = {
     ...current,
     nome: typeof body.nome === 'string' && body.nome.trim() ? body.nome.trim() : current.nome,
+    sexo: ('sexo' in body || 'gender' in body || 'professor_gender' in body)
+      ? normalizeProfessorGender(body.sexo || body.gender || body.professor_gender, current.sexo || 'FEMININO')
+      : current.sexo,
     telefone: typeof body.telefone === 'string' ? body.telefone.trim() : current.telefone,
     ativo: typeof body.ativo === 'boolean' ? body.ativo : current.ativo,
     valor_correcao: 'valor_correcao' in body ? Number(body.valor_correcao || 0) : current.valor_correcao,
@@ -997,6 +1036,9 @@ app.patch('/professores-filhos/:id', async (c) => {
 
   if (current.user_id) {
     await sb.from('profiles').update({ nome: updated.nome, ativo: updated.ativo }).eq('id', current.user_id).eq('site_id', siteId)
+    await sb.auth.admin.updateUserById(current.user_id, {
+      user_metadata: { nome: updated.nome, site_id: siteId, role: 'CORRETOR', sexo: updated.sexo }
+    })
   }
 
   const { error: saveErr } = await sb.from('sites')
@@ -1216,7 +1258,7 @@ app.get('/turmas', async (c) => {
         settings: {
           matriculas_abertas: cms.turma_settings?.[t.id]?.matriculas_abertas !== false,
           envios_abertos: cms.turma_settings?.[t.id]?.envios_abertos !== false,
-          limite_redacoes_por_aluno: Math.max(1, Number(cms.turma_settings?.[t.id]?.limite_redacoes_por_aluno) || 3),
+          ...normalizeTurmaSettings(cms.turma_settings?.[t.id]),
           imagem_url: cms.turma_settings?.[t.id]?.imagem_url || '',
           beneficios: cms.turma_settings?.[t.id]?.beneficios || '',
           roteiro: cms.turma_settings?.[t.id]?.roteiro || '',
@@ -1248,7 +1290,7 @@ app.get('/turmas', async (c) => {
       settings: {
         matriculas_abertas: cms.turma_settings?.[t.id]?.matriculas_abertas !== false,
         envios_abertos: cms.turma_settings?.[t.id]?.envios_abertos !== false,
-        limite_redacoes_por_aluno: Math.max(1, Number(cms.turma_settings?.[t.id]?.limite_redacoes_por_aluno) || 3),
+        ...normalizeTurmaSettings(cms.turma_settings?.[t.id]),
         imagem_url: cms.turma_settings?.[t.id]?.imagem_url || '',
         beneficios: cms.turma_settings?.[t.id]?.beneficios || '',
         roteiro: cms.turma_settings?.[t.id]?.roteiro || '',
@@ -1277,13 +1319,31 @@ app.patch('/turmas/:id/settings', async (c) => {
 
   const cms = parseCms(site)
   const current = cms.turma_settings?.[turmaId] || {}
+  const currentNormalized = normalizeTurmaSettings(current)
+  const periodicidade = ['DIA', 'SEMANA', 'CUSTOM_DIAS'].includes(String(body.limite_redacoes_periodicidade))
+    ? String(body.limite_redacoes_periodicidade)
+    : currentNormalized.limite_redacoes_periodicidade
+  const limitePorPeriodo = Math.max(1, Math.floor(
+    Number(body.limite_redacoes_por_periodo) ||
+    Number(body.limite_redacoes_por_aluno) ||
+    Number(current.limite_redacoes_por_periodo) ||
+    Number(current.limite_redacoes_por_aluno) ||
+    1
+  ))
   cms.turma_settings = {
     ...(cms.turma_settings || {}),
     [turmaId]: {
       ...current,
       matriculas_abertas: typeof body.matriculas_abertas === 'boolean' ? body.matriculas_abertas : current.matriculas_abertas !== false,
       envios_abertos: typeof body.envios_abertos === 'boolean' ? body.envios_abertos : current.envios_abertos !== false,
-      limite_redacoes_por_aluno: Math.max(1, Math.floor(Number(body.limite_redacoes_por_aluno) || Number(current.limite_redacoes_por_aluno) || 3)),
+      limite_redacoes_por_aluno: limitePorPeriodo,
+      limite_redacoes_por_periodo: limitePorPeriodo,
+      limite_redacoes_periodicidade: periodicidade,
+      limite_redacoes_periodo_dias: Math.max(1, Math.floor(Number(body.limite_redacoes_periodo_dias) || Number(current.limite_redacoes_periodo_dias) || 7)),
+      payment_methods: normalizeTurmaSettings({ payment_methods: body.payment_methods ?? current.payment_methods }).payment_methods,
+      credit_card_installments: Math.max(1, Math.min(12, Math.floor(Number(body.credit_card_installments) || Number(current.credit_card_installments) || 1))),
+      payment_fee_payer: String(body.payment_fee_payer || current.payment_fee_payer || 'PROFESSOR').toUpperCase() === 'ALUNO' ? 'ALUNO' : 'PROFESSOR',
+      payment_fee_percent: Math.max(0, Math.min(30, Number(body.payment_fee_percent ?? current.payment_fee_percent) || 0)),
       imagem_url: typeof body.imagem_url === 'string' ? body.imagem_url.trim() : current.imagem_url || '',
       beneficios: typeof body.beneficios === 'string' ? body.beneficios.trim() : current.beneficios || '',
       roteiro: typeof body.roteiro === 'string' ? body.roteiro.trim() : current.roteiro || '',
@@ -2121,7 +2181,7 @@ app.get('/payments', async (c) => {
   const statusFilter = new URL(c.req.url).searchParams.get('status')?.trim().toUpperCase()
   const limit = Math.max(1, Math.min(100, Number(new URL(c.req.url).searchParams.get('limit') || 100)))
   let query = sb.from('payments')
-    .select('id, site_id, turma_id, aluno_id, payer_email, payer_name, provider, provider_payment_id, status, amount_cents, billing_type, checkout_code, created_at, paid_at, updated_at')
+    .select('id, site_id, turma_id, course_id, product_type, aluno_id, payer_email, payer_name, provider, provider_payment_id, status, amount_cents, billing_type, checkout_code, created_at, paid_at, updated_at, raw_summary')
     .eq('site_id', siteId)
     .order('created_at', { ascending: false })
     .limit(limit)
@@ -2133,12 +2193,15 @@ app.get('/payments', async (c) => {
 
   const turmaIds = Array.from(new Set((dataRows || []).map((p: any) => p.turma_id).filter(Boolean)))
   const alunoIds = Array.from(new Set((dataRows || []).map((p: any) => p.aluno_id).filter(Boolean)))
-  const [{ data: turmas }, { data: alunos }] = await Promise.all([
+  const [{ data: turmas }, { data: alunos }, { data: site }] = await Promise.all([
     turmaIds.length ? sb.from('turmas').select('id, nome').eq('site_id', siteId).in('id', turmaIds) : Promise.resolve({ data: [] as any[] }),
-    alunoIds.length ? sb.from('profiles').select('id, nome, ativo').eq('site_id', siteId).in('id', alunoIds) : Promise.resolve({ data: [] as any[] })
+    alunoIds.length ? sb.from('profiles').select('id, nome, ativo').eq('site_id', siteId).in('id', alunoIds) : Promise.resolve({ data: [] as any[] }),
+    sb.from('sites').select('allowed_origins').eq('id', siteId).maybeSingle()
   ])
+  const cms = parseCms(site)
   const turmaById = new Map((turmas || []).map((t: any) => [t.id, t]))
   const alunoById = new Map((alunos || []).map((a: any) => [a.id, a]))
+  const courseById = new Map<string, any>((cms.video_courses || []).map((course: any) => [String(course.id || ''), course]))
 
   return c.json({
     sandbox: c.env.ASAAS_ENV === 'sandbox',
@@ -2148,6 +2211,11 @@ app.get('/payments', async (c) => {
       provider_payment_ref: p.provider_payment_id ? `...${String(p.provider_payment_id).slice(-6)}` : null,
       amount: Number(p.amount_cents || 0) / 100,
       turma_nome: turmaById.get(p.turma_id)?.nome || null,
+      course_nome: courseById.get(String(p.course_id || ''))?.title || p.raw_summary?.course_title || null,
+      produto_tipo: String(p.product_type || p.raw_summary?.product_type || 'TURMA'),
+      produto_nome: String(p.product_type || p.raw_summary?.product_type || 'TURMA') === 'VIDEO_COURSE'
+        ? (courseById.get(String(p.course_id || ''))?.title || p.raw_summary?.course_title || 'Curso em vídeo')
+        : (turmaById.get(p.turma_id)?.nome || 'Turma'),
       aluno_nome: alunoById.get(p.aluno_id)?.nome || p.payer_name || null,
       aluno_ativo: p.aluno_id ? alunoById.get(p.aluno_id)?.ativo !== false : null
     }))

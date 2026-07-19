@@ -16,7 +16,9 @@
     "ENABLE_PAYMENTS": "true",
     "ASAAS_ENV": "sandbox",
     "ENABLE_R2_UPLOADS": "true",
-    "ENABLE_EMAILS": "false",
+    "ENABLE_EMAILS": "true",
+    "EMAIL_PROVIDER": "brevo",
+    "EMAIL_FROM": "Redação com Estratégia <no-reply@redacaocomestrategia.com.br>",
     "ENABLE_OAUTH": "false",
     "ENABLE_PUBLIC_CHECKOUT_SIMULATED": "false",
     "ENABLE_APP_RATE_LIMITING": "false",
@@ -24,6 +26,9 @@
     "ENABLE_TEACHER_COMPENSATION": "true",
     "ENABLE_FINANCIAL_EXPORTS": "true",
     "ENABLE_FINANCIAL_CHARTS": "true",
+    "ENABLE_VIDEO_COURSES": "true",
+    "ENABLE_CLOUDFLARE_STREAM": "false",
+    "CLOUDFLARE_STREAM_TOKEN_TTL_SECONDS": "900",
     "MAX_UPLOAD_BYTES": "8388608"
   },
   "assets": {

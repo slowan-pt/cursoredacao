@@ -15,6 +15,8 @@ export type CheckoutReceiptEmailInput = {
   checkoutCode: string
   transactionId: string
   loginUrl: string
+  signupUrl?: string
+  paymentUrl?: string
 }
 
 export type CorrectionReadyEmailInput = {
@@ -46,11 +48,13 @@ export type PasswordRecoveryEmailInput = {
   to: string
   name: string
   recoveryUrl: string
+  siteName?: string
+  teacherName?: string
 }
 
 export type EmailResult = {
   sent: boolean
-  provider: 'disabled' | 'mock' | 'resend'
+  provider: 'disabled' | 'mock' | 'resend' | 'brevo'
   id?: string
   reason?: string
 }
@@ -104,9 +108,47 @@ class ResendEmailProvider implements EmailProvider {
   }
 }
 
+function parseEmailFrom(value: string) {
+  const match = value.match(/^\s*(.*?)\s*<([^>]+)>\s*$/)
+  if (match) return { name: match[1].trim().replace(/^"|"$/g, ''), email: match[2].trim() }
+  return { email: value.trim() }
+}
+
+class BrevoEmailProvider implements EmailProvider {
+  constructor(private readonly env: Env) {}
+
+  async send(message: EmailMessage): Promise<EmailResult> {
+    if (!this.env.BREVO_API_KEY) {
+      return { sent: false, provider: 'brevo', reason: 'missing_api_key' }
+    }
+    const from = parseEmailFrom(this.env.EMAIL_FROM || 'Redação com Estratégia <no-reply@redacaocomestrategia.com.br>')
+    const response = await fetch('https://api.brevo.com/v3/smtp/email', {
+      method: 'POST',
+      headers: {
+        'api-key': this.env.BREVO_API_KEY,
+        'content-type': 'application/json',
+        accept: 'application/json'
+      },
+      body: JSON.stringify({
+        sender: from,
+        to: [{ email: message.to }],
+        subject: message.subject,
+        htmlContent: message.html,
+        textContent: message.text
+      })
+    })
+    const data = await response.json().catch(() => null) as { messageId?: string } | null
+    if (!response.ok) {
+      return { sent: false, provider: 'brevo', reason: `brevo_${response.status}` }
+    }
+    return { sent: true, provider: 'brevo', id: data?.messageId }
+  }
+}
+
 export function getEmailProvider(env: Env): EmailProvider {
   const config = getConfig(env)
   if (!config.flags.emails) return new DisabledEmailProvider()
+  if (String(env.EMAIL_PROVIDER || '').trim().toLowerCase() === 'brevo') return new BrevoEmailProvider(env)
   return new ResendEmailProvider(env)
 }
 
@@ -123,18 +165,21 @@ export function renderCheckoutReceiptEmail(input: CheckoutReceiptEmailInput): Em
   const body = [
     `Olá, ${input.studentName}.`,
     '',
-    `Recebemos a simulação de pagamento da turma "${input.courseName}".`,
+    `Recebemos sua solicitação de matrícula da turma "${input.courseName}".`,
     `Código único: ${input.checkoutCode}`,
     `Transação: ${input.transactionId}`,
     '',
-    'Guarde esse código. Ele vincula sua matrícula caso você crie o cadastro depois.'
+    'Guarde esse código. Ele vincula sua matrícula caso você crie o cadastro depois.',
+    '',
+    input.signupUrl ? `Link para criar cadastro: ${input.signupUrl}` : '',
+    input.paymentUrl ? `Link do pagamento: ${input.paymentUrl}` : ''
   ].join('\n')
 
   return {
     to: input.to,
-    subject: `Matrícula recebida — ${input.courseName}`,
+    subject: `Crie seu cadastro — ${input.courseName}`,
     text: body,
-    html: renderBasicEmail('Matrícula recebida', body, { label: 'Acessar plataforma', url: input.loginUrl })
+    html: renderBasicEmail('Matrícula recebida', body, { label: 'Criar cadastro', url: input.signupUrl || input.loginUrl })
   }
 }
 
@@ -228,19 +273,24 @@ export function renderTeacherNewPaidStudentEmail(input: TeacherPaymentEmailInput
 }
 
 export function renderPasswordRecoveryEmail(input: PasswordRecoveryEmailInput): EmailMessage {
+  const siteName = input.siteName || 'Redação com Estratégia'
+  const teacherLine = input.teacherName ? `Site/professor: ${input.teacherName}` : `Site: ${siteName}`
   const body = [
     `Olá, ${input.name}.`,
     '',
-    'Recebemos uma solicitação de recuperação de senha.',
+    `Recebemos uma solicitação de recuperação de senha no ${siteName}.`,
+    teacherLine,
     '',
-    'Use o link abaixo para continuar pelo fluxo seguro de autenticação.'
+    'Use o botão abaixo para criar uma nova senha com segurança.',
+    '',
+    'Se você não solicitou essa recuperação, ignore este e-mail.'
   ].join('\n')
 
   return {
     to: input.to,
-    subject: 'Recuperação de senha',
+    subject: `Recuperação de senha — ${siteName}`,
     text: `${body}\n\n${input.recoveryUrl}`,
-    html: renderBasicEmail('Recuperação de senha', body, { label: 'Redefinir senha', url: input.recoveryUrl })
+    html: renderBasicEmail(`Recuperação de senha — ${siteName}`, body, { label: 'Redefinir senha', url: input.recoveryUrl })
   }
 }
 

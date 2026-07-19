@@ -6,8 +6,9 @@ Atualizado em: 2026-07-13.
 
 - Camada local preparada.
 - Feature flag padrão: `ENABLE_EMAILS=false`.
-- Provedor preparado: Resend via REST API.
-- `RESEND_API_KEY` ainda não existe localmente nem no Worker.
+- Provedores preparados: Brevo e Resend via REST API.
+- Provedor recomendado para o início: Brevo, por causa do plano gratuito com maior limite diário.
+- `BREVO_API_KEY`/`RESEND_API_KEY` ainda devem ser configuradas como secrets no Worker conforme o provedor escolhido.
 - Nenhum e-mail real foi enviado neste ciclo.
 - Nenhuma chave real foi adicionada.
 - Nenhum e-mail real foi enviado nesta sessão.
@@ -22,10 +23,24 @@ Atualizado em: 2026-07-13.
 
 ## Arquivos Preparados
 
-- `src/email.ts`: provider abstrato, provider desativado e provider Resend.
+- `src/email.ts`: provider abstrato, provider desativado, provider Brevo e provider Resend.
 - `src/email.ts`: templates puros para recibo de checkout e correção disponível.
-- `src/types.ts`: `RESEND_API_KEY` e `EMAIL_FROM`.
+- `src/types.ts`: `BREVO_API_KEY`, `RESEND_API_KEY`, `EMAIL_PROVIDER` e `EMAIL_FROM`.
 - `.env.example`: variáveis sem valores reais.
+
+## Brevo
+
+A documentação oficial da Brevo informa:
+
+- Envio transacional por API: `POST https://api.brevo.com/v3/smtp/email`
+- Autenticação: header `api-key`
+- Antes de enviar, é necessário criar a API key e registrar/verificar o remetente.
+
+Referências:
+
+- https://developers.brevo.com/docs/send-a-transactional-email
+- https://developers.brevo.com/reference/send-transac-email
+- https://help.brevo.com/hc/en-us/articles/209467485-Create-and-manage-your-API-keys
 
 ## Resend
 
@@ -42,11 +57,13 @@ Referências:
 
 ## Ativação Manual Futura
 
-1. Verificar domínio/remetente no Resend.
+1. Verificar domínio/remetente no provedor escolhido.
 2. Criar API key com menor permissão possível para envio.
 3. Definir secrets no ambiente correto:
 
 ```bash
+npx wrangler secret put BREVO_API_KEY
+# ou, se escolher Resend:
 npx wrangler secret put RESEND_API_KEY
 ```
 
@@ -54,6 +71,7 @@ npx wrangler secret put RESEND_API_KEY
 
 ```text
 ENABLE_EMAILS=true
+EMAIL_PROVIDER=brevo
 EMAIL_FROM="Redação com Estratégia <no-reply@redacaocomestrategia.com.br>"
 ```
 

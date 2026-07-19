@@ -3,6 +3,7 @@ import type { Env } from '../types'
 import { getAdmin } from '../supabase'
 import { getConfig } from '../config'
 import { getPaymentGateway } from '../payments'
+import { getEmailProvider, renderCheckoutReceiptEmail } from '../email'
 
 const app = new Hono<{ Bindings: Env }>()
 
@@ -68,6 +69,80 @@ function makeCheckoutCode() {
   return `PG-${crypto.randomUUID().replaceAll('-', '').slice(0, 10).toUpperCase()}`
 }
 
+function normalizeCheckoutPaymentChoice(value: unknown) {
+  const raw = String(value || 'PIX').trim().toUpperCase()
+  if (raw === 'BOLETO') return 'BOLETO'
+  if (raw === 'CREDIT_CARD' || raw === 'CARTAO' || raw === 'CARD' || raw === 'UNDEFINED') return 'CREDIT_CARD'
+  return 'PIX'
+}
+
+function asaasBillingType(choice: unknown) {
+  const type = normalizeCheckoutPaymentChoice(choice)
+  return type === 'CREDIT_CARD' ? 'CREDIT_CARD' : type
+}
+
+function checkoutBillingLabel(value: unknown) {
+  const type = normalizeCheckoutPaymentChoice(value)
+  if (type === 'BOLETO') return 'Boleto'
+  if (type === 'CREDIT_CARD') return 'Cartão'
+  return 'Pix'
+}
+
+function normalizePaymentSettings(settings: any = {}) {
+  const methods = settings?.payment_methods && typeof settings.payment_methods === 'object' ? settings.payment_methods : {}
+  const paymentMethods = {
+    pix: methods.pix !== false,
+    boleto: methods.boleto === true,
+    credit_card: methods.credit_card === true
+  }
+  if (!paymentMethods.pix && !paymentMethods.boleto && !paymentMethods.credit_card) paymentMethods.pix = true
+  return {
+    methods: paymentMethods,
+    creditCardInstallments: Math.max(1, Math.min(12, Math.floor(Number(settings?.credit_card_installments) || 1))),
+    feePayer: String(settings?.payment_fee_payer || 'PROFESSOR').toUpperCase() === 'ALUNO' ? 'ALUNO' : 'PROFESSOR',
+    feePercent: Math.max(0, Math.min(30, Number(settings?.payment_fee_percent) || 0))
+  }
+}
+
+function isPaymentChoiceAllowed(choice: string, settings: ReturnType<typeof normalizePaymentSettings>) {
+  if (choice === 'BOLETO') return settings.methods.boleto
+  if (choice === 'CREDIT_CARD') return settings.methods.credit_card
+  return settings.methods.pix
+}
+
+function checkoutChargeAmount(baseAmount: number, choice: string, settings: ReturnType<typeof normalizePaymentSettings>) {
+  if (choice !== 'CREDIT_CARD') return baseAmount
+  if (settings.feePayer !== 'ALUNO' || settings.feePercent <= 0) return baseAmount
+  return Math.round(baseAmount * (1 + settings.feePercent / 100) * 100) / 100
+}
+
+function maxCreditCardInstallmentsFor(amount: number, settings: ReturnType<typeof normalizePaymentSettings>) {
+  const chargedAmount = checkoutChargeAmount(amount, 'CREDIT_CARD', settings)
+  const byAmount = Math.max(1, Math.floor(chargedAmount / 5))
+  return Math.max(1, Math.min(settings.creditCardInstallments, byAmount))
+}
+
+function onlyDigits(value: unknown) {
+  return String(value || '').replace(/\D/g, '')
+}
+
+function normalizeCardYear(value: unknown) {
+  const digits = onlyDigits(value)
+  if (digits.length === 2) return `20${digits}`
+  return digits.slice(0, 4)
+}
+
+function isValidCpf(value: unknown) {
+  const cpf = onlyDigits(value)
+  if (cpf.length !== 11 || /^(\d)\1{10}$/.test(cpf)) return false
+  const calc = (base: string, factor: number) => {
+    const sum = base.split('').reduce((total, digit) => total + Number(digit) * factor--, 0)
+    const rest = (sum * 10) % 11
+    return rest === 10 ? 0 : rest
+  }
+  return calc(cpf.slice(0, 9), 10) === Number(cpf[9]) && calc(cpf.slice(0, 10), 11) === Number(cpf[10])
+}
+
 function tomorrowIsoDate() {
   const date = new Date()
   date.setDate(date.getDate() + 1)
@@ -78,16 +153,59 @@ async function sendCheckoutReceipt(env: Env, lead: any, turma: any, site: any) {
   if (!getConfig(env).flags.emails) {
     return { sent: false, reason: 'emails-disabled' }
   }
-
-  // Placeholder seguro para o provedor de e-mail real. Enquanto Resend nao estiver
-  // configurado no ambiente, mantemos o recibo persistido no checkout_leads.
-  return {
-    sent: false,
-    reason: 'email-provider-not-configured',
-    subject: `Inscricao confirmada - ${String(turma?.nome || 'Turma')}`,
+  const appUrl = String(env.APP_URL || 'https://redacaocomestrategia.com.br').replace(/\/+$/, '')
+  const sitePath = `${appUrl}/redacao/${encodeURIComponent(String(site?.slug || ''))}`
+  const query = new URLSearchParams({
+    signup: '1',
+    paid: '1',
+    turma: String(turma?.id || lead?.turma_id || ''),
+    email: String(lead?.email || ''),
+    nome: String(lead?.nome || ''),
+    checkout_code: String(lead?.checkout_code || lead?.code || '')
+  })
+  if (lead?.cpf) query.set('cpf', String(lead.cpf))
+  const signupUrl = `${sitePath}/login?${query.toString()}`
+  const message = renderCheckoutReceiptEmail({
     to: String(lead?.email || ''),
-    site: String(site?.slug || '')
+    studentName: String(lead?.nome || 'aluno'),
+    courseName: String(turma?.nome || 'Turma'),
+    checkoutCode: String(lead?.checkout_code || lead?.code || ''),
+    transactionId: String(lead?.transaction_id || ''),
+    loginUrl: `${sitePath}/login`,
+    signupUrl,
+    paymentUrl: lead?.payment_url || undefined
+  })
+  return getEmailProvider(env).send(message)
+}
+
+async function sendVideoCheckoutReceipt(env: Env, lead: any, course: any, site: any) {
+  if (!getConfig(env).flags.emails) {
+    return { sent: false, reason: 'emails-disabled' }
   }
+  const appUrl = String(env.APP_URL || 'https://redacaocomestrategia.com.br').replace(/\/+$/, '')
+  const sitePath = `${appUrl}/redacao/${encodeURIComponent(String(site?.slug || ''))}`
+  const query = new URLSearchParams({
+    signup: '1',
+    paid: '1',
+    product: 'video',
+    course: String(course?.id || lead?.course_id || ''),
+    email: String(lead?.email || ''),
+    nome: String(lead?.nome || ''),
+    checkout_code: String(lead?.checkout_code || lead?.code || '')
+  })
+  if (lead?.cpf) query.set('cpf', String(lead.cpf))
+  const signupUrl = `${sitePath}/login?${query.toString()}`
+  const message = renderCheckoutReceiptEmail({
+    to: String(lead?.email || ''),
+    studentName: String(lead?.nome || 'aluno'),
+    courseName: String(course?.title || 'Curso em vídeo'),
+    checkoutCode: String(lead?.checkout_code || lead?.code || ''),
+    transactionId: String(lead?.transaction_id || ''),
+    loginUrl: `${sitePath}/login`,
+    signupUrl,
+    paymentUrl: lead?.payment_url || undefined
+  })
+  return getEmailProvider(env).send(message)
 }
 
 function parseHex(value: unknown) {
@@ -165,6 +283,7 @@ const CMS_PREFIX = 'CMS:'
 
 function defaultCms() {
   return {
+    owner_gender: '',
     layout: {
       header_label: 'Redação',
       eyebrow: 'Site independente do professor',
@@ -176,7 +295,7 @@ function defaultCms() {
       posts_title: 'Dicas e materiais',
       posts_intro: 'Publicações, notícias e matérias do professor.',
       profile_side: 'right',
-      block_order: ['hero', 'turmas', 'conteudos', 'aluno'],
+      block_order: ['hero', 'turmas', 'video_courses', 'conteudos', 'aluno'],
       avatar_text: 'PR',
       avatar_image: '',
       profile_display_mode: 'text',
@@ -194,11 +313,43 @@ function defaultCms() {
     },
     theme: defaultTheme(),
     posts: [] as any[],
+    video_courses: [] as any[],
     turma_settings: {} as Record<string, any>,
     student_credits: {} as Record<string, any>,
     enrollments: {} as Record<string, any>,
     checkout_leads: {} as Record<string, any>
   }
+}
+
+function professorWords(gender: unknown) {
+  const normalized = String(gender || '').trim().toUpperCase()
+  if (normalized === 'MASCULINO') {
+    return {
+      singular: 'Professor',
+      singularLower: 'professor',
+      plural: 'professores',
+      independentSite: 'Site independente do professor'
+    }
+  }
+  if (normalized === 'FEMININO') {
+    return {
+      singular: 'Professora',
+      singularLower: 'professora',
+      plural: 'professoras',
+      independentSite: 'Site independente da professora'
+    }
+  }
+  return {
+    singular: 'Professor(a)',
+    singularLower: 'professor(a)',
+    plural: 'professores',
+    independentSite: 'Site independente do professor'
+  }
+}
+
+function genderedDefaultProfileText(gender: unknown) {
+  const words = professorWords(gender)
+  return `Este site tem turmas, alunos e correções separados dos demais ${words.plural} da plataforma.`
 }
 
 function parseCms(site: any) {
@@ -213,6 +364,7 @@ function parseCms(site: any) {
       contact: { ...defaultCms().contact, ...(cms.contact || {}) },
       theme: { ...defaultCms().theme, ...(cms.theme || {}) },
       posts: Array.isArray(cms.posts) ? cms.posts : [],
+      video_courses: Array.isArray(cms.video_courses) ? cms.video_courses : [],
       turma_settings: cms.turma_settings && typeof cms.turma_settings === 'object' ? cms.turma_settings : {},
       student_credits: cms.student_credits && typeof cms.student_credits === 'object' ? cms.student_credits : {},
       enrollments: cms.enrollments && typeof cms.enrollments === 'object' ? cms.enrollments : {},
@@ -288,6 +440,10 @@ function initialsFromName(name: unknown) {
 function sitePackageActive(site: any, cms: any) {
   const plan = cms?.platform_plan || cms?.subscription || cms?.billing || {}
   if (plan?.active === false || plan?.status === 'INACTIVE' || plan?.status === 'EXPIRED') return false
+  if (plan?.expires_at) {
+    const expires = new Date(`${String(plan.expires_at).slice(0, 10)}T23:59:59.999Z`).getTime()
+    if (Number.isFinite(expires) && expires < Date.now()) return false
+  }
   return site?.ativo !== false
 }
 
@@ -314,8 +470,15 @@ function renderSitePage(data: { site: any; turmas: any[] }) {
   const { site, turmas } = data
   const cms = parseCms(site)
   const layout = cms.layout
+  const words = professorWords(cms.owner_gender)
+  const defaultLayout = defaultCms().layout
+  const heroEyebrow = layout.eyebrow === defaultLayout.eyebrow ? words.independentSite : layout.eyebrow
+  const profileText = layout.profile_text === defaultLayout.profile_text ? genderedDefaultProfileText(cms.owner_gender) : layout.profile_text
   const posts = (cms.posts || [])
     .filter((post: any) => post.status !== 'RASCUNHO')
+    .sort((a: any, b: any) => Number(Boolean(b.pinned)) - Number(Boolean(a.pinned)) || String(b.created_at || '').localeCompare(String(a.created_at || '')))
+  const videoCourses = (cms.video_courses || [])
+    .filter((course: any) => course.status !== 'RASCUNHO' && course.status !== 'OCULTO')
     .sort((a: any, b: any) => Number(Boolean(b.pinned)) - Number(Boolean(a.pinned)) || String(b.created_at || '').localeCompare(String(a.created_at || '')))
   const theme = normalizeTheme(cms.theme, site.cor_primaria, site.cor_accent)
   const brand = theme.primary
@@ -335,7 +498,7 @@ function renderSitePage(data: { site: any; turmas: any[] }) {
   const profilePhotoMode = layout.profile_display_mode === 'photo' && profilePhoto
   const turmaSettings = cms.turma_settings && typeof cms.turma_settings === 'object' ? cms.turma_settings : {}
   const turmaUrl = (id: string) => `${sitePath}/turmas/${encodeURIComponent(id)}`
-  const validBlocks = ['hero', 'turmas', 'conteudos', 'aluno']
+  const validBlocks = ['hero', 'turmas', 'video_courses', 'conteudos', 'aluno']
   const savedOrder = Array.isArray(layout.block_order) ? layout.block_order.filter((id: string) => validBlocks.includes(id)) : []
   const blockOrder = [...savedOrder, ...validBlocks.filter(id => !savedOrder.includes(id))]
   const blockOrderCss = blockOrder.map((id, index) => `[data-block="${id}"]{order:${index + 1}}`).join('')
@@ -443,10 +606,10 @@ function renderSitePage(data: { site: any; turmas: any[] }) {
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <title>${esc(site.nome_prof)} — Redação</title>
-<meta name="description" content="${esc(site.bio_prof || layout.profile_text || 'Site público de professor na plataforma Redação com Estratégia.')}">
+<meta name="description" content="${esc(site.bio_prof || profileText || `Site público de ${words.singularLower} na plataforma Redação com Estratégia.`)}">
 <meta property="og:type" content="website">
 <meta property="og:title" content="${esc(site.nome_prof)} — Redação">
-<meta property="og:description" content="${esc(site.bio_prof || layout.profile_text || 'Turmas, conteúdos e correções em um site próprio de professor.')}">
+<meta property="og:description" content="${esc(site.bio_prof || profileText || `Turmas, conteúdos e correções em um site próprio de ${words.singularLower}.`)}">
 <meta property="og:url" content="https://redacaocomestrategia.com.br${esc(sitePath)}">
 <link rel="icon" href="/favicon-writing.svg" type="image/svg+xml">
 <meta name="theme-color" content="${esc(brand)}">
@@ -502,6 +665,11 @@ h1{font-size:clamp(36px,5vw,62px);line-height:1.02;letter-spacing:-1px;font-weig
 .course-card-link{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-top:auto}
 .course-arrow{width:38px;height:38px;border-radius:50%;background:var(--accent);color:var(--accent-text);display:inline-flex;align-items:center;justify-content:center;font-size:24px;font-weight:900;transition:transform .25s ease}
 .card:hover .course-arrow{transform:translate(3px,-3px)}
+.video-badge{display:inline-flex;align-items:center;gap:6px;width:max-content;border-radius:999px;background:var(--brand-tint);border:1px solid var(--brand-border);color:var(--brand);font-size:11px;font-weight:900;text-transform:uppercase;padding:6px 10px}
+.video-course-card .course-cover{background:#0d0d0d}
+.video-course-card .desc{min-height:66px}
+.video-meta{display:flex;gap:8px;flex-wrap:wrap;font-size:11px;color:var(--ink3);font-weight:700}
+.video-meta span{background:rgba(0,0,0,.04);border:1px solid var(--border);border-radius:999px;padding:5px 9px}
 .card h3{font-size:17px}
 .meta{font-size:12px;color:var(--ink3)}
 .desc{font-size:13px;color:var(--ink2);line-height:1.6;min-height:42px}
@@ -575,6 +743,7 @@ ${blockOrderCss}
   <a class="brand" href="${sitePath}"><span class="mark">${esc(layout.header_label || defaultCms().layout.header_label)}</span><span>${esc(site.nome_prof)}</span></a>
   <div class="nav-actions">
     <a class="nav-link" href="#turmas">Turmas</a>
+    ${isHidden('block:video_courses') ? '' : '<a class="nav-link" href="#cursos-video">Cursos em vídeo</a>'}
     ${isHidden('block:conteudos') ? '' : '<a class="nav-link" href="#conteudos">Conteúdos</a>'}
     <a class="btn btn-light" href="${loginUrl}">Entrar</a>
   </div>
@@ -584,7 +753,7 @@ ${blockOrderCss}
 <section class="hero ${profileSide} edit-block reveal" id="hero" data-block="hero" data-move-key="block:hero"${moveStyle('block:hero')}>
   ${blockTools('hero')}
   <div class="hero-copy" data-move-key="hero:text"${moveStyle('hero:text')}>
-    <div class="eyebrow" data-edit="layout.eyebrow"${editableStyle('layout.eyebrow')}>${esc(layout.eyebrow)}</div>
+    <div class="eyebrow" data-edit="layout.eyebrow"${editableStyle('layout.eyebrow')}>${esc(heroEyebrow)}</div>
     <h1 data-edit="layout.hero_title"${editableStyle('layout.hero_title')}>${esc(layout.hero_title)}</h1>
     <p data-edit="site.bio_prof"${editableStyle('site.bio_prof')}>${esc(site.bio_prof || 'Turmas, materiais e correções organizadas em uma área própria para alunos.')}</p>
     <div class="hero-actions">
@@ -597,7 +766,7 @@ ${blockOrderCss}
   </aside>` : `<aside class="profile" data-move-key="hero:profile"${moveStyle('hero:profile')}>
     ${!isHidden('hero:avatar') ? `<div class="avatar" data-move-key="hero:avatar"${moveStyle('hero:avatar')}>${layout.avatar_image ? `<img src="${esc(layout.avatar_image)}" alt="Avatar">` : esc(layout.avatar_text || (site.nome_prof || 'PR').slice(0, 2).toUpperCase())}</div>` : ''}
     <h2 data-edit="site.nome_prof"${editableStyle('site.nome_prof')}>${esc(site.nome_prof)}</h2>
-    <p data-edit="layout.profile_text"${editableStyle('layout.profile_text')}>${esc(layout.profile_text)}</p>
+    <p data-edit="layout.profile_text"${editableStyle('layout.profile_text')}>${esc(profileText)}</p>
   </aside>`}
 </section>
 
@@ -639,6 +808,49 @@ ${blockOrderCss}
       </article>
     `}
   ${carouselEnd(turmas.length > 3)}
+</section>
+
+<section class="section edit-block reveal" id="cursos-video" data-block="video_courses" data-move-key="block:video_courses"${moveStyle('block:video_courses')}>
+  ${blockTools('video_courses')}
+  <div class="section-head">
+    <div>
+      <div class="tag">Cursos em vídeo</div>
+      <div class="title">${esc(layout.video_courses_title || 'Cursos em vídeo')}</div>
+      <div class="sub">${esc(layout.video_courses_intro || 'Aulas gravadas, materiais de apoio e acompanhamento dentro da plataforma.')}</div>
+    </div>
+    <a class="btn btn-dark" href="${loginUrl}">Entrar na plataforma</a>
+  </div>
+  <div class="site-extra-slot" data-extra-slot="video_courses">${extraHtml('video_courses')}</div>
+  ${carouselStart('video_courses', videoCourses.length > 3)}
+    ${videoCourses.length ? videoCourses.map((course: any) => {
+      const cover = String(course.cover_url || '')
+      const duration = Number(course.duration_hours || 0)
+      const lessons = Number(course.lessons_count || 0)
+      return `
+      <article class="card video-course-card reveal" data-move-key="video:${esc(course.id || course.title)}"${moveStyle(`video:${course.id || course.title}`)}>
+        <a class="course-cover" href="${sitePath}/videos/${encodeURIComponent(String(course.id || ''))}" aria-label="Acessar ${esc(course.title || 'Curso em vídeo')}">
+          ${cover ? `<img src="${esc(cover)}" alt="${esc(course.title || 'Curso em vídeo')}">` : `<div class="course-cover-placeholder">▶</div>`}
+        </a>
+        <span class="video-badge">▶ Curso protegido</span>
+        <h3>${esc(course.title || 'Curso em vídeo')}</h3>
+        <div class="desc">${esc(truncateText(course.summary || course.description || 'Aulas em vídeo com acesso restrito aos alunos matriculados.', 155))}</div>
+        <div class="video-meta">
+          ${duration > 0 ? `<span>${esc(String(duration).replace('.', ','))}h de aulas</span>` : ''}
+          ${lessons > 0 ? `<span>${lessons} aula(s)</span>` : ''}
+          <span>continua de onde parou</span>
+        </div>
+        <div class="price">${moneyBR(Number(course.price || 0))}</div>
+        <a class="course-card-link" href="${sitePath}/videos/${encodeURIComponent(String(course.id || ''))}"><span>Acessar curso</span><span class="course-arrow">↗</span></a>
+      </article>
+    `}).join('') : `
+      <article class="card video-course-card" data-move-key="video:empty"${moveStyle('video:empty')}>
+        <span class="video-badge">▶ Em preparação</span>
+        <h3>Cursos em vídeo em breve</h3>
+        <div class="desc">O professor ainda está preparando as primeiras aulas gravadas deste site.</div>
+        <a class="btn btn-accent" href="${whatsapp}" data-whatsapp-link target="_blank" rel="noopener">Perguntar no WhatsApp</a>
+      </article>
+    `}
+  ${carouselEnd(videoCourses.length > 3)}
 </section>
 
 <section class="section edit-block reveal" id="conteudos" data-block="conteudos" data-move-key="block:conteudos"${moveStyle('block:conteudos')}>
@@ -1213,7 +1425,7 @@ function editWhatsappNumber() {
 
 function applySavedBlockOrder() {
   const wrap = document.getElementById('site-blocks')
-  const order = Array.isArray(inlineCms.layout?.block_order) ? inlineCms.layout.block_order : ['hero','turmas','conteudos','aluno']
+  const order = Array.isArray(inlineCms.layout?.block_order) ? inlineCms.layout.block_order : ['hero','turmas','video_courses','conteudos','aluno']
   order.forEach(id => {
     const block = document.querySelector('[data-block="' + id + '"]')
     if (wrap && block) wrap.appendChild(block)
@@ -2011,9 +2223,24 @@ function renderCheckoutPage(data: { site: any; turmas: any[] }, turma: any) {
   const layout = cms.layout
   const theme = normalizeTheme(cms.theme, site.cor_primaria, site.cor_accent)
   const settings = cms.turma_settings?.[turma.id] || {}
+  const paymentSettings = normalizePaymentSettings(settings)
+  const defaultPaymentChoice = paymentSettings.methods.pix ? 'PIX' : (paymentSettings.methods.boleto ? 'BOLETO' : 'CREDIT_CARD')
+  const priceNumber = Number(turma.preco || 0)
+  const maxCardInstallments = maxCreditCardInstallmentsFor(priceNumber, paymentSettings)
+  const methodCards = [
+    paymentSettings.methods.pix ? '<label class="pay-method"><input type="radio" name="billing-type" value="PIX" checked><strong>Pix</strong><span>QR Code e copia-e-cola com confirmação rápida.</span></label>' : '',
+    paymentSettings.methods.boleto ? `<label class="pay-method"><input type="radio" name="billing-type" value="BOLETO" ${defaultPaymentChoice === 'BOLETO' ? 'checked' : ''}><strong>Boleto</strong><span>Gera cobrança com vencimento para pagamento bancário.</span></label>` : '',
+    paymentSettings.methods.credit_card ? `<label class="pay-method"><input type="radio" name="billing-type" value="CREDIT_CARD" ${defaultPaymentChoice === 'CREDIT_CARD' ? 'checked' : ''}><strong>Cartão</strong><span>Pague com cartão sem sair deste site.</span></label>` : ''
+  ].filter(Boolean).join('')
+  const installmentOptions = Array.from({ length: maxCardInstallments }, (_, index) => {
+    const value = index + 1
+    return `<option value="${value}">${value}x</option>`
+  }).join('')
+  const feeNote = paymentSettings.feePayer === 'ALUNO' && paymentSettings.feePercent > 0
+    ? `Taxa de ${paymentSettings.feePercent.toLocaleString('pt-BR', { maximumFractionDigits: 2 })}% embutida quando o pagamento for no cartão.`
+    : 'As taxas do cartão são absorvidas pelo professor.'
   const sitePath = `/redacao/${encodeURIComponent(site.slug)}`
   const loginUrl = `${sitePath}/login`
-  const priceNumber = Number(turma.preco || 0)
   const price = moneyBR(priceNumber)
   const image = String(settings.imagem_url || '')
   const benefits = String(settings.beneficios || '')
@@ -2042,12 +2269,13 @@ a{text-decoration:none;color:inherit}.wrap{max-width:1080px;margin:0 auto}.top{d
 .cover{width:min(100%,320px);aspect-ratio:2/3;height:auto;border-radius:18px;overflow:hidden;background:#050505;display:flex;align-items:center;justify-content:center;color:var(--brand-text);font-weight:900;font-size:48px;margin:0 auto 22px}.cover img{width:100%;height:100%;object-fit:contain;background:#050505}
 .eyebrow{font-size:11px;text-transform:uppercase;letter-spacing:.08em;color:var(--ink3);font-weight:900;margin-bottom:8px}h1{font-size:clamp(30px,5vw,56px);line-height:1;font-weight:900;margin-bottom:14px}.desc{color:var(--ink2);line-height:1.65;font-size:15px}.benefits{display:grid;gap:10px;margin-top:22px}.benefits li{list-style:none;color:var(--ink2)}.benefits li:before{content:'✓';display:inline-flex;width:22px;height:22px;border-radius:50%;background:var(--accent);color:var(--accent-text);align-items:center;justify-content:center;margin-right:8px;font-size:12px;font-weight:900}
 .summary h2{font-size:22px;font-weight:900;margin-bottom:14px}.price-row{display:flex;align-items:center;justify-content:space-between;padding:16px 0;border-top:1px solid var(--border);border-bottom:1px solid var(--border);margin:18px 0}.price{font-size:28px;font-weight:900;background:var(--accent);color:var(--accent-text);padding:4px 10px;border-radius:8px}
-.form-group{display:flex;flex-direction:column;gap:7px;margin-bottom:14px}label{font-size:12px;font-weight:800;color:var(--ink2)}input{width:100%;padding:12px 14px;border:1.5px solid var(--border);border-radius:10px;font:inherit;outline:none}input:focus{border-color:var(--brand);box-shadow:0 0 0 3px rgba(0,0,0,.08)}
+.form-group{display:flex;flex-direction:column;gap:7px;margin-bottom:14px}label{font-size:12px;font-weight:800;color:var(--ink2)}input{width:100%;padding:12px 14px;border:1.5px solid var(--border);border-radius:10px;font:inherit;outline:none}input:focus{border-color:var(--brand);box-shadow:0 0 0 3px rgba(0,0,0,.08)}input.is-invalid{border-color:var(--danger);box-shadow:0 0 0 3px rgba(200,64,64,.12)}input.is-valid{border-color:var(--success);box-shadow:0 0 0 3px rgba(45,122,77,.1)}.cpf-status{display:none;font-size:11px;font-weight:800}.cpf-status.invalid{display:block;color:var(--danger)}.cpf-status.valid{display:block;color:var(--success)}
+.pay-methods{display:grid;grid-template-columns:repeat(auto-fit,minmax(126px,1fr));gap:10px;margin:8px 0 16px}.pay-method{border:1.5px solid var(--border);border-radius:14px;padding:12px;background:rgba(0,0,0,.025);cursor:pointer;display:flex;flex-direction:column;gap:5px;min-height:96px}.pay-method input{width:auto;align-self:flex-start}.pay-method strong{font-size:14px}.pay-method span{font-size:11px;color:var(--ink3);line-height:1.35}.pay-method:has(input:checked){border-color:var(--brand);box-shadow:0 0 0 3px rgba(0,0,0,.08);background:rgba(0,0,0,.045)}.installment-box,.card-box{border:1px solid var(--border);border-radius:14px;padding:12px;margin:-4px 0 16px;background:rgba(0,0,0,.025)}.installment-box.hidden,.card-box.hidden{display:none}.installment-box select{width:100%;padding:12px 14px;border:1.5px solid var(--border);border-radius:10px;font:inherit;background:#fff}.installment-box small,.card-box small{display:block;margin-top:7px;color:var(--ink3);font-size:11px;line-height:1.4}.card-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}.card-grid .full{grid-column:1/-1}
 .btn{width:100%;border:0;border-radius:10px;padding:14px 16px;font:inherit;font-weight:900;cursor:pointer;transition:.22s}.btn:hover{transform:translateY(-2px)}.btn-accent{background:var(--accent);color:var(--accent-text)}.btn-sec{background:transparent;border:1px solid var(--border);color:var(--ink)}
 .alert{display:none;border-radius:10px;padding:12px 14px;font-size:13px;margin-bottom:14px}.alert-ok{background:#EEF8F1;color:var(--success);border:1px solid #BFE8CD}.alert-err{background:#FEF0F0;color:var(--danger);border:1px solid #F5C6C6}.postpay{display:none;margin-top:18px}.postpay.open{display:block}.action-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px}.note{font-size:12px;color:var(--ink3);line-height:1.5;margin-top:12px}
-.payment-modal{position:fixed;inset:0;background:rgba(0,0,0,.64);display:none;align-items:center;justify-content:center;padding:24px;z-index:50}.payment-modal.open{display:flex}.payment-box{width:min(860px,100%);max-height:94vh;overflow:auto;background:var(--card);color:var(--ink);border:1px solid var(--border);border-radius:24px;padding:28px;box-shadow:0 30px 90px rgba(0,0,0,.42)}.payment-badge{display:inline-flex;background:var(--accent);color:var(--accent-text);border-radius:999px;padding:7px 12px;font-size:12px;font-weight:900;margin-bottom:14px}.payment-box h2{font-size:28px;font-weight:900;margin-bottom:10px}.payment-details{background:rgba(0,0,0,.04);border:1px solid var(--border);border-radius:14px;padding:14px;margin:16px 0;display:grid;gap:7px;font-size:13px;color:var(--ink2)}.payment-code{font-weight:900;color:var(--ink);letter-spacing:.08em}.pix-grid{display:grid;grid-template-columns:220px minmax(0,1fr);gap:14px;align-items:start}.pix-qr{width:220px;height:220px;border:1px solid var(--border);border-radius:14px;background:#fff;display:flex;align-items:center;justify-content:center;overflow:hidden}.pix-qr img{width:100%;height:100%;object-fit:contain}.pix-copy{width:100%;min-height:120px;resize:vertical;border:1px solid var(--border);border-radius:12px;padding:10px;font:12px ui-monospace,monospace;color:var(--ink2)}.modal-actions{display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-top:18px}.modal-actions .btn{font-size:17px;padding:20px 16px;border-radius:16px}.modal-note{font-size:12px;color:var(--ink3);line-height:1.55;margin-top:14px}
+.payment-modal{position:fixed;inset:0;background:rgba(0,0,0,.64);display:none;align-items:center;justify-content:center;padding:24px;z-index:50}.payment-modal.open{display:flex}.payment-box{width:min(860px,100%);max-height:94vh;overflow:auto;background:var(--card);color:var(--ink);border:1px solid var(--border);border-radius:24px;padding:28px;box-shadow:0 30px 90px rgba(0,0,0,.42)}.payment-badge{display:inline-flex;background:var(--accent);color:var(--accent-text);border-radius:999px;padding:7px 12px;font-size:12px;font-weight:900;margin-bottom:14px}.payment-box h2{font-size:28px;font-weight:900;margin-bottom:10px}.payment-details{background:rgba(0,0,0,.04);border:1px solid var(--border);border-radius:14px;padding:14px;margin:16px 0;display:grid;gap:7px;font-size:13px;color:var(--ink2)}.payment-code{font-weight:900;color:var(--ink);letter-spacing:.08em}.pix-grid{display:grid;grid-template-columns:220px minmax(0,1fr);gap:14px;align-items:start}.pix-grid.hidden{display:none}.pix-qr{width:220px;height:220px;border:1px solid var(--border);border-radius:14px;background:#fff;display:flex;align-items:center;justify-content:center;overflow:hidden}.pix-qr img{width:100%;height:100%;object-fit:contain}.pix-copy{width:100%;min-height:120px;resize:vertical;border:1px solid var(--border);border-radius:12px;padding:10px;font:12px ui-monospace,monospace;color:var(--ink2)}.payment-link-box{display:none;border:1px solid var(--border);border-radius:16px;padding:16px;background:rgba(0,0,0,.04);margin:16px 0}.payment-link-box.open{display:block}.payment-link-box p{font-size:13px;color:var(--ink2);line-height:1.55;margin-bottom:12px}.modal-actions{display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-top:18px}.modal-actions .btn{font-size:17px;padding:20px 16px;border-radius:16px}.modal-note{font-size:12px;color:var(--ink3);line-height:1.55;margin-top:14px}
 @media(max-width:860px){body{padding:18px}.checkout{grid-template-columns:1fr}.action-grid{grid-template-columns:1fr}.cover{width:min(100%,280px)}}
-@media(max-width:620px){.modal-actions{grid-template-columns:1fr}.payment-box{padding:22px}.payment-box h2{font-size:24px}}
+@media(max-width:620px){.modal-actions,.pay-methods{grid-template-columns:1fr}.payment-box{padding:22px}.payment-box h2{font-size:24px}}
 </style>
 </head>
 <body>
@@ -2063,8 +2291,8 @@ a{text-decoration:none;color:inherit}.wrap{max-width:1080px;margin:0 auto}.top{d
     </section>
     <aside class="panel summary">
       <h2>Pagamento da inscrição</h2>
-      <p class="desc">Informe nome e e-mail antes de finalizar. O e-mail será o vínculo da matrícula com seu cadastro.</p>
-      <div class="price-row"><span>Total</span><strong class="price">${price}</strong></div>
+      <p class="desc">Informe nome, e-mail e CPF antes de finalizar. Esses dados serão o vínculo da matrícula com seu cadastro.</p>
+      <div class="price-row"><span>Total</span><strong class="price" id="checkout-total" data-base="${priceNumber}">${price}</strong></div>
       <div id="alert-err" class="alert alert-err"></div>
       <div id="alert-ok" class="alert alert-ok"></div>
       <form id="pay-form" onsubmit="simulatePayment(event)">
@@ -2075,6 +2303,34 @@ a{text-decoration:none;color:inherit}.wrap{max-width:1080px;margin:0 auto}.top{d
         <div class="form-group">
           <label for="payer-email">E-mail obrigatório</label>
           <input id="payer-email" type="email" placeholder="seu@email.com" required autocomplete="email">
+        </div>
+        <div class="form-group">
+          <label for="payer-cpf">CPF do aluno</label>
+          <input id="payer-cpf" data-mask="cpf" placeholder="000.000.000-00" required inputmode="numeric" maxlength="14" autocomplete="off">
+          <small>O CPF evita duplicidade e valida o cadastro após o pagamento.</small>
+          <small id="payer-cpf-status" class="cpf-status" aria-live="polite"></small>
+        </div>
+        <label>Forma de pagamento</label>
+        <div class="pay-methods" role="radiogroup" aria-label="Forma de pagamento">
+          ${methodCards || '<label class="pay-method"><input type="radio" name="billing-type" value="PIX" checked><strong>Pix</strong><span>QR Code e copia-e-cola com confirmação rápida.</span></label>'}
+        </div>
+        <div class="installment-box ${defaultPaymentChoice === 'CREDIT_CARD' ? '' : 'hidden'}" id="installment-box">
+          <label for="payer-installments">Parcelas no cartão</label>
+          <select id="payer-installments">${installmentOptions || '<option value="1">1x</option>'}</select>
+          <small>${esc(feeNote)}</small>
+        </div>
+        <div class="card-box ${defaultPaymentChoice === 'CREDIT_CARD' ? '' : 'hidden'}" id="card-box">
+          <div class="card-grid">
+            <div class="form-group full"><label for="card-number">Número do cartão</label><input id="card-number" inputmode="numeric" maxlength="23" autocomplete="cc-number" placeholder="0000 0000 0000 0000"></div>
+            <div class="form-group full"><label for="card-holder">Nome impresso no cartão</label><input id="card-holder" autocomplete="cc-name" placeholder="Nome do titular"></div>
+            <div class="form-group"><label for="card-month">Mês</label><input id="card-month" inputmode="numeric" maxlength="2" autocomplete="cc-exp-month" placeholder="MM"></div>
+            <div class="form-group"><label for="card-year">Ano</label><input id="card-year" inputmode="numeric" maxlength="4" autocomplete="cc-exp-year" placeholder="AAAA"></div>
+            <div class="form-group"><label for="card-ccv">CVV</label><input id="card-ccv" inputmode="numeric" maxlength="4" autocomplete="cc-csc" placeholder="000"></div>
+            <div class="form-group"><label for="card-phone">Telefone</label><input id="card-phone" inputmode="tel" autocomplete="tel" placeholder="DDD + número"></div>
+            <div class="form-group"><label for="card-postal">CEP</label><input id="card-postal" inputmode="numeric" maxlength="9" autocomplete="postal-code" placeholder="00000-000"></div>
+            <div class="form-group"><label for="card-address-number">Número</label><input id="card-address-number" inputmode="numeric" autocomplete="address-line2" placeholder="Número"></div>
+          </div>
+          <small>Os dados do cartão são enviados somente para criar a cobrança no Asaas e não são salvos na plataforma.</small>
         </div>
         <button type="submit" class="btn btn-accent" id="btn-pay">Finalizar pagamento</button>
       </form>
@@ -2098,16 +2354,26 @@ a{text-decoration:none;color:inherit}.wrap{max-width:1080px;margin:0 auto}.top{d
       <div><strong>E-mail:</strong> <span id="modal-email">-</span></div>
       <div><strong>Turma:</strong> <span id="modal-course">-</span></div>
       <div><strong>Valor:</strong> <span id="modal-total">-</span></div>
+      <div><strong>Forma de pagamento:</strong> <span id="modal-billing">-</span></div>
       <div><strong>Transação:</strong> <span id="modal-transaction">-</span></div>
       <div><strong>Código único:</strong> <span class="payment-code" id="modal-code">-</span></div>
     </div>
-    <div class="pix-grid">
+    <div class="pix-grid" id="pix-grid">
       <div class="pix-qr" id="pix-qr">QR</div>
       <div>
         <label for="pix-payload">Pix copia-e-cola</label>
         <textarea id="pix-payload" class="pix-copy" readonly></textarea>
         <button class="btn btn-sec" style="margin-top:10px" onclick="copyPix()" type="button">Copiar Pix</button>
       </div>
+    </div>
+    <div class="payment-link-box" id="payment-link-box">
+      <p id="payment-link-text">Abra a página segura do Asaas para concluir o pagamento.</p>
+      <a class="btn btn-accent" id="payment-url" target="_blank" rel="noopener">Abrir pagamento</a>
+    </div>
+    <div class="payment-link-box" id="boleto-box">
+      <p>Boleto gerado. Copie a linha digitável abaixo para pagar no banco ou aplicativo.</p>
+      <textarea id="boleto-line" class="pix-copy" readonly></textarea>
+      <button class="btn btn-sec" style="margin-top:10px" onclick="copyBoleto()" type="button">Copiar linha digitável</button>
     </div>
     <div class="modal-actions">
       <a class="btn btn-sec" id="modal-login-link" href="${loginUrl}">Fazer login</a>
@@ -2119,42 +2385,148 @@ a{text-decoration:none;color:inherit}.wrap{max-width:1080px;margin:0 auto}.top{d
 <script>
 const siteSlug=${jsonForScript(site.slug)}
 const turmaId=${jsonForScript(turma.id)}
+const paymentSettings=${jsonForScript(paymentSettings)}
 function show(id,msg){const el=document.getElementById(id);el.textContent=msg;el.style.display='block'}
 function hideAlerts(){document.getElementById('alert-err').style.display='none';document.getElementById('alert-ok').style.display='none'}
 function copyPix(){const el=document.getElementById('pix-payload');el.select();document.execCommand('copy')}
+function copyBoleto(){const el=document.getElementById('boleto-line');el.select();document.execCommand('copy')}
+function formatMoneyBR(value){return 'R$ '+Number(value||0).toLocaleString('pt-BR',{minimumFractionDigits:2,maximumFractionDigits:2})}
+function onlyDigits(value){return String(value||'').replace(/\D/g,'')}
+function maskCardNumber(value){return onlyDigits(value).slice(0,19).replace(/(\d{4})(?=\d)/g,'$1 ').trim()}
+function maskCep(value){const d=onlyDigits(value).slice(0,8);return d.replace(/(\d{5})(\d)/,'$1-$2')}
+function formatCpf(value){
+  const digits=onlyDigits(value).slice(0,11)
+  return digits.replace(/(\d{3})(\d)/,'$1.$2').replace(/(\d{3})(\d)/,'$1.$2').replace(/(\d{3})(\d{1,2})$/,'$1-$2')
+}
+function maskCpfInput(input){input.value=formatCpf(input.value)}
+function isValidCpf(value){
+  const cpf=onlyDigits(value)
+  if(cpf.length!==11||/^(\\d)\\1{10}$/.test(cpf)) return false
+  const calc=(base,factor)=>{
+    let sum=0
+    for(const digit of base) sum+=Number(digit)*factor--
+    const rest=(sum*10)%11
+    return rest===10?0:rest
+  }
+  return calc(cpf.slice(0,9),10)===Number(cpf[9])&&calc(cpf.slice(0,10),11)===Number(cpf[10])
+}
+function validateCpfField(input){
+  const status=document.getElementById(input.id+'-status')
+  const cpf=onlyDigits(input.value)
+  maskCpfInput(input)
+  input.classList.remove('is-valid','is-invalid')
+  status?.classList.remove('valid','invalid')
+  if(!cpf){if(status)status.textContent='';input.setCustomValidity('');return false}
+  if(cpf.length<11){if(status){status.textContent='Digite os 11 números do CPF.';status.classList.add('invalid')}input.classList.add('is-invalid');input.setCustomValidity('Digite os 11 números do CPF.');return false}
+  if(!isValidCpf(cpf)){if(status){status.textContent='CPF inválido. Confira os números digitados.';status.classList.add('invalid')}input.classList.add('is-invalid');input.setCustomValidity('CPF inválido.');return false}
+  if(status){status.textContent='CPF válido.';status.classList.add('valid')}
+  input.classList.add('is-valid')
+  input.setCustomValidity('')
+  return true
+}
+document.querySelectorAll('input[data-mask="cpf"], input[id*="cpf"]').forEach((input)=>{
+  input.addEventListener('input',(event)=>validateCpfField(event.target))
+  input.addEventListener('blur',(event)=>validateCpfField(event.target))
+  if(input.value) maskCpfInput(input)
+})
+document.getElementById('card-number')?.addEventListener('input',(event)=>{event.target.value=maskCardNumber(event.target.value)})
+document.getElementById('card-postal')?.addEventListener('input',(event)=>{event.target.value=maskCep(event.target.value)})
+document.getElementById('card-month')?.addEventListener('input',(event)=>{event.target.value=onlyDigits(event.target.value).slice(0,2)})
+document.getElementById('card-year')?.addEventListener('input',(event)=>{event.target.value=onlyDigits(event.target.value).slice(0,4)})
+document.getElementById('card-ccv')?.addEventListener('input',(event)=>{event.target.value=onlyDigits(event.target.value).slice(0,4)})
+function updatePaymentUi(){
+  const billingType=document.querySelector('input[name="billing-type"]:checked')?.value||'PIX'
+  const box=document.getElementById('installment-box')
+  if(box) box.classList.toggle('hidden', billingType!=='CREDIT_CARD')
+  const cardBox=document.getElementById('card-box')
+  if(cardBox) cardBox.classList.toggle('hidden', billingType!=='CREDIT_CARD')
+  const total=document.getElementById('checkout-total')
+  const base=Number(total?.dataset.base||0)
+  const fee=paymentSettings.feePayer==='ALUNO'&&billingType==='CREDIT_CARD'?Number(paymentSettings.feePercent||0):0
+  if(total) total.textContent=formatMoneyBR(Math.round(base*(1+fee/100)*100)/100)
+}
+document.querySelectorAll('input[name="billing-type"]').forEach(input=>input.addEventListener('change',updatePaymentUi))
+updatePaymentUi()
+function collectCardData(){
+  const number=onlyDigits(document.getElementById('card-number')?.value)
+  const holderName=document.getElementById('card-holder')?.value.trim()||''
+  const expiryMonth=onlyDigits(document.getElementById('card-month')?.value).padStart(2,'0')
+  const expiryYear=onlyDigits(document.getElementById('card-year')?.value)
+  const ccv=onlyDigits(document.getElementById('card-ccv')?.value)
+  const postalCode=onlyDigits(document.getElementById('card-postal')?.value)
+  const addressNumber=onlyDigits(document.getElementById('card-address-number')?.value)
+  const phone=onlyDigits(document.getElementById('card-phone')?.value)
+  if(number.length<13||!holderName||expiryMonth.length!==2||expiryYear.length<2||ccv.length<3||postalCode.length!==8||!addressNumber){
+    show('alert-err','Preencha os dados do cartão, CEP e número do endereço.')
+    return null
+  }
+  return {holderName,number,expiryMonth,expiryYear,ccv,holderPostalCode:postalCode,holderAddressNumber:addressNumber,holderPhone:phone}
+}
 async function simulatePayment(event){
   event.preventDefault();hideAlerts()
   const btn=document.getElementById('btn-pay')
   const email=document.getElementById('payer-email').value.trim().toLowerCase()
   const nome=document.getElementById('payer-name').value.trim()
+  const cpf=onlyDigits(document.getElementById('payer-cpf').value)
+  const billingType=document.querySelector('input[name="billing-type"]:checked')?.value||'PIX'
+  const installments=Number(document.getElementById('payer-installments')?.value||1)
+  const billingLabel=billingType==='BOLETO'?'Boleto':(billingType==='CREDIT_CARD'?'Cartão':'Pix')
   if(!nome){show('alert-err','Informe seu nome para registrar a matrícula.');return}
   if(!email){show('alert-err','Informe o e-mail para vincular a matrícula.');return}
-  btn.disabled=true;btn.textContent='Gerando Pix...'
+  if(!validateCpfField(document.getElementById('payer-cpf'))){show('alert-err','Informe um CPF válido para vincular a matrícula.');return}
+  const card=billingType==='CREDIT_CARD'?collectCardData():null
+  if(billingType==='CREDIT_CARD'&&!card)return
+  btn.disabled=true;btn.textContent=billingType==='PIX'?'Gerando Pix...':'Gerando cobrança...'
   try{
-    const res=await fetch('/api/site/'+encodeURIComponent(siteSlug)+'/checkout',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({turma_id:turmaId,email,nome})})
+    const res=await fetch('/api/site/'+encodeURIComponent(siteSlug)+'/checkout',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({turma_id:turmaId,email,nome,cpf,billing_type:billingType,installments,card})})
     const data=await res.json()
     if(!res.ok){show('alert-err',data.error||'Não foi possível finalizar o pagamento.');return}
     const code=data.checkout_code||''
     const transactionId=data.transaction_id||''
-    show('alert-ok','Pix gerado. A matrícula será liberada após confirmação do pagamento.')
+    const returnedBilling=data.billing_label||billingLabel
+    show('alert-ok',returnedBilling+' gerado. A matrícula será liberada após confirmação do pagamento.')
     document.getElementById('pay-form').style.display='none'
     document.getElementById('postpay').classList.add('open')
     const loginHref='${loginUrl}?paid=1&turma='+encodeURIComponent(turmaId)+'&email='+encodeURIComponent(email)
-    const signupHref='${loginUrl}?signup=1&paid=1&turma='+encodeURIComponent(turmaId)+'&email='+encodeURIComponent(email)+'&nome='+encodeURIComponent(nome)+'&checkout_code='+encodeURIComponent(code)
+    const signupHref='${loginUrl}?signup=1&paid=1&turma='+encodeURIComponent(turmaId)+'&email='+encodeURIComponent(email)+'&nome='+encodeURIComponent(nome)+'&cpf='+encodeURIComponent(cpf)+'&checkout_code='+encodeURIComponent(code)
     document.getElementById('login-link').href=loginHref
     document.getElementById('signup-link').href=signupHref
     document.getElementById('modal-login-link').href=loginHref
     document.getElementById('modal-signup-link').href=signupHref
+    document.getElementById('payment-title').textContent=data.billing_type==='PIX'?'Pague com Pix para liberar a turma':'Conclua o pagamento para liberar a turma'
     document.getElementById('modal-name').textContent=nome
     document.getElementById('modal-email').textContent=email
     document.getElementById('modal-course').textContent=data.turma_nome||'${esc(turma.nome)}'
     document.getElementById('modal-total').textContent=data.total?('R$ '+Number(data.total).toLocaleString('pt-BR',{minimumFractionDigits:2,maximumFractionDigits:2})):'${price}'
+    document.getElementById('modal-billing').textContent=returnedBilling
     document.getElementById('modal-transaction').textContent=transactionId||'-'
     document.getElementById('modal-code').textContent=code||'-'
     const img=data.pix&&data.pix.encodedImage
-    document.getElementById('pix-qr').innerHTML=img?'<img alt="QR Code Pix" src="data:image/png;base64,'+img+'">':'QR Code indisponível'
-    document.getElementById('pix-payload').value=(data.pix&&data.pix.payload)||''
-    try{localStorage.setItem('checkout:'+siteSlug+':'+turmaId,JSON.stringify({nome,email,checkout_code:code,transaction_id:transactionId,created_at:new Date().toISOString()}))}catch{}
+    const pixGrid=document.getElementById('pix-grid')
+    const linkBox=document.getElementById('payment-link-box')
+    const boletoBox=document.getElementById('boleto-box')
+    const paymentUrl=data.payment_url||''
+    if(data.billing_type==='PIX'){
+      pixGrid.classList.remove('hidden')
+      document.getElementById('pix-qr').innerHTML=img?'<img alt="QR Code Pix" src="data:image/png;base64,'+img+'">':'QR Code indisponível'
+      document.getElementById('pix-payload').value=(data.pix&&data.pix.payload)||''
+      linkBox.classList.remove('open')
+      boletoBox.classList.remove('open')
+    }else if(data.billing_type==='BOLETO'){
+      pixGrid.classList.add('hidden')
+      linkBox.classList.remove('open')
+      boletoBox.classList.add('open')
+      document.getElementById('boleto-line').value=(data.boleto&&data.boleto.identificationField)||''
+    }else{
+      pixGrid.classList.add('hidden')
+      boletoBox.classList.remove('open')
+      linkBox.classList.toggle('open',Boolean(paymentUrl))
+    }
+    document.getElementById('payment-link-text').textContent='Pagamento por cartão enviado. A liberação acontece após confirmação do Asaas.'
+    document.getElementById('payment-url').href=paymentUrl||'#'
+    document.getElementById('payment-url').style.pointerEvents=paymentUrl?'auto':'none'
+    document.getElementById('payment-url').textContent='Ver cobrança'
+    try{localStorage.setItem('checkout:'+siteSlug+':'+turmaId,JSON.stringify({nome,email,cpf,checkout_code:code,transaction_id:transactionId,created_at:new Date().toISOString()}))}catch{}
     document.getElementById('payment-modal').classList.add('open')
   }catch{show('alert-err','Erro de conexão. Tente novamente.')}
   finally{btn.disabled=false;btn.textContent='Finalizar pagamento'}
@@ -2234,6 +2606,173 @@ h1{font-size:clamp(34px,5vw,58px);line-height:1.04;font-weight:900;max-width:900
 </html>`
 }
 
+function renderVideoCoursePage(data: { site: any; turmas: any[] }, course: any) {
+  const { site } = data
+  const cms = parseCms(site)
+  const layout = cms.layout
+  const theme = normalizeTheme(cms.theme, site.cor_primaria, site.cor_accent)
+  const sitePath = `/redacao/${encodeURIComponent(site.slug)}`
+  const loginUrl = `${sitePath}/login`
+  const cover = String(course.cover_url || '')
+  const duration = Number(course.duration_hours || 0)
+  const lessons = Number(course.lessons_count || 0)
+  const summary = String(course.summary || course.description || 'Aulas gravadas com acesso protegido para alunos matriculados.')
+  const description = String(course.description || summary)
+  return `<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>${esc(course.title || 'Curso em vídeo')} — ${esc(site.nome_prof)}</title>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800;900&display=swap" rel="stylesheet">
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+:root{--brand:${esc(theme.primary)};--brand-text:${esc(theme.primaryText)};--accent:${esc(theme.accent)};--accent-text:${esc(theme.accentText)};--surface:${esc(theme.background)};--card:${esc(theme.card)};--ink:${esc(theme.text)};--ink2:${esc(theme.textSoft)};--ink3:${esc(theme.textMuted)};--border:${esc(theme.border)}}
+body{font-family:'Inter',system-ui,sans-serif;background:var(--surface);color:var(--ink);max-width:100%;overflow-x:hidden}
+a{text-decoration:none;color:inherit}.nav{height:64px;background:var(--brand);color:var(--brand-text);display:flex;align-items:center;justify-content:space-between;padding:0 6%;position:sticky;top:0;z-index:10}
+.brand{display:flex;align-items:center;gap:10px;font-weight:900}.mark{background:var(--accent);color:var(--accent-text);font-size:10px;font-weight:900;padding:4px 9px;border-radius:6px;text-transform:uppercase}
+.nav-actions{display:flex;gap:10px;align-items:center}.nav-link{font-size:13px;opacity:.78}.btn{display:inline-flex;align-items:center;justify-content:center;border:0;border-radius:9px;padding:13px 18px;font-size:13px;font-weight:900;cursor:pointer}.btn-accent{background:var(--accent);color:var(--accent-text)}.btn-light{background:#fff;color:var(--brand)}
+.hero{background:var(--brand);color:var(--brand-text);padding:70px 6%;display:grid;grid-template-columns:minmax(0,1.1fr) minmax(280px,.7fr);gap:44px;align-items:center}.eyebrow{display:inline-flex;background:rgba(255,255,255,.12);border:1px solid rgba(255,255,255,.18);padding:7px 12px;border-radius:999px;font-size:11px;font-weight:900;text-transform:uppercase;margin-bottom:18px}
+h1{font-size:clamp(36px,6vw,66px);line-height:1.02;font-weight:900;max-width:850px}.desc{font-size:17px;line-height:1.65;opacity:.82;max-width:760px;margin-top:18px}.hero-actions{display:flex;gap:12px;flex-wrap:wrap;margin-top:28px}
+.cover{aspect-ratio:4/3;border-radius:20px;overflow:hidden;background:#111;box-shadow:0 30px 70px rgba(0,0,0,.28);display:flex;align-items:center;justify-content:center;font-size:54px}.cover img{width:100%;height:100%;object-fit:cover;display:block}
+.details{padding:42px 6% 74px;display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:16px}.info-card{border:1px solid var(--border);border-radius:14px;background:var(--card);padding:20px}.info-card strong{display:block;font-size:15px;margin-bottom:8px}.info-card p{font-size:13px;line-height:1.6;color:var(--ink3)}
+.full{grid-column:1/-1}.price{font-size:28px;font-weight:900;color:var(--brand);margin-top:6px}.lesson-meta{display:flex;gap:8px;flex-wrap:wrap;margin-top:14px}.lesson-meta span{background:var(--surface);border:1px solid var(--border);border-radius:999px;padding:7px 10px;font-size:12px;font-weight:800;color:var(--ink2)}
+.checkout-box{grid-column:1/-1;border:1px solid var(--border);border-radius:18px;background:var(--card);padding:22px;min-width:0}.checkout-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px;margin-top:16px}.field{display:flex;flex-direction:column;gap:6px;min-width:0}.field label{font-size:12px;font-weight:900;color:var(--ink2)}input,select,textarea{font:inherit;border:1px solid var(--border);border-radius:10px;padding:12px;background:#fff;color:var(--ink);width:100%;min-width:0}.pay-methods{display:flex;gap:8px;flex-wrap:wrap;margin:14px 0}.pay-methods label{border:1px solid var(--border);border-radius:999px;padding:9px 12px;font-size:12px;font-weight:900;cursor:pointer}.card-fields{display:none;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px;margin-top:10px}.card-fields.open{display:grid}.checkout-alert{display:none;border-radius:10px;padding:12px;margin-top:12px;font-size:13px;font-weight:700}.checkout-alert.err{display:block;background:#fff0f0;color:#b42318;border:1px solid #ffd2d2}.payment-result{display:none;margin-top:16px;border:1px solid var(--border);border-radius:14px;padding:16px;background:var(--surface);min-width:0}.payment-result.open{display:block}.qr-row{display:grid;grid-template-columns:180px minmax(0,1fr);gap:14px;align-items:start}.qr-row img{width:180px;max-width:100%;border:1px solid var(--border);border-radius:12px;background:#fff;justify-self:center}.payment-code{font-weight:900}.login-actions{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:14px}
+@media(max-width:780px){.hero{grid-template-columns:1fr;padding:48px 22px}.details{grid-template-columns:1fr;padding:26px 16px 52px}.nav-actions .nav-link{display:none}.btn{width:100%}.hero-actions{flex-direction:column}}
+@media(max-width:780px){.nav{padding:0 16px}.brand span:last-child{max-width:170px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.checkout-grid,.card-fields,.login-actions,.qr-row{grid-template-columns:1fr}.pay-methods{display:grid;grid-template-columns:1fr}.pay-methods label{text-align:center}.cover{max-width:360px;width:100%;justify-self:center}.payment-result{padding:14px}.qr-row textarea{min-height:150px}}
+</style>
+</head>
+<body>
+<nav class="nav">
+  <a class="brand" href="${sitePath}"><span class="mark">${esc(layout.header_label || 'Redação')}</span><span>${esc(site.nome_prof)}</span></a>
+  <div class="nav-actions">
+    <a class="nav-link" href="${sitePath}#turmas">Turmas</a>
+    <a class="nav-link" href="${sitePath}#cursos-video">Cursos em vídeo</a>
+    <a class="btn btn-light" href="${loginUrl}">Entrar</a>
+  </div>
+</nav>
+<header class="hero">
+  <div>
+    <span class="eyebrow">Curso em vídeo protegido</span>
+    <h1>${esc(course.title || 'Curso em vídeo')}</h1>
+    <p class="desc">${esc(summary)}</p>
+    <div class="lesson-meta">
+      ${duration > 0 ? `<span>${esc(String(duration).replace('.', ','))}h de aulas</span>` : ''}
+      ${lessons > 0 ? `<span>${lessons} aula(s)</span>` : ''}
+      <span>continua de onde parou</span>
+      <span>anotações do aluno</span>
+    </div>
+    <div class="hero-actions">
+      <a class="btn btn-accent" href="${loginUrl}">Entrar para acessar</a>
+      <a class="btn btn-light" href="${sitePath}#cursos-video">Ver outros cursos</a>
+    </div>
+  </div>
+  <div class="cover">${cover ? `<img src="${esc(cover)}" alt="${esc(course.title || 'Curso em vídeo')}">` : '▶'}</div>
+</header>
+<main class="details">
+  <section class="info-card">
+    <strong>O que você recebe</strong>
+    <p>${esc(description)}</p>
+  </section>
+  <section class="info-card">
+    <strong>Acesso do aluno</strong>
+    <p>As aulas ficam disponíveis dentro do painel do aluno, com progresso salvo e área de anotações.</p>
+  </section>
+  <section class="info-card">
+    <strong>Proteção do vídeo</strong>
+    <p>O player foi preparado para usar Cloudflare Stream com acesso temporário quando a integração for ativada.</p>
+  </section>
+  <section class="info-card full">
+    <strong>Investimento</strong>
+    <div class="price">${moneyBR(Number(course.price || 0))}</div>
+    <p>Finalize o pagamento por aqui. O acesso ao curso é liberado automaticamente após confirmação do Asaas.</p>
+  </section>
+  <section class="checkout-box" id="checkout-video">
+    <strong>Comprar este curso</strong>
+    <p style="font-size:13px;color:var(--ink3);line-height:1.6;margin-top:6px">Finalize pelo ambiente sandbox. O acesso só é liberado após confirmação do webhook do Asaas.</p>
+    <div id="video-checkout-error" class="checkout-alert"></div>
+    <form onsubmit="startVideoCheckout(event)">
+      <div class="checkout-grid">
+        <div class="field"><label>Nome completo</label><input id="vc-nome" required autocomplete="name"></div>
+        <div class="field"><label>E-mail</label><input id="vc-email" type="email" required autocomplete="email"></div>
+        <div class="field"><label>CPF</label><input id="vc-cpf" required inputmode="numeric" maxlength="14" autocomplete="off" oninput="this.value=formatCpf(this.value)"></div>
+      </div>
+      <div class="pay-methods">
+        <label><input type="radio" name="vc-pay" value="PIX" checked onchange="updateVideoPayFields()"> Pix</label>
+        <label><input type="radio" name="vc-pay" value="BOLETO" onchange="updateVideoPayFields()"> Boleto</label>
+        <label><input type="radio" name="vc-pay" value="CREDIT_CARD" onchange="updateVideoPayFields()"> Cartão</label>
+      </div>
+      <div class="field" id="vc-installments-wrap" style="display:none;max-width:220px"><label>Parcelas</label><select id="vc-installments">${Array.from({ length: Math.max(1, Math.min(12, Math.floor(Number(course.price || 0) / 5) || 1)) }, (_, i) => `<option value="${i + 1}">${i + 1}x</option>`).join('')}</select></div>
+      <div class="card-fields" id="vc-card-fields">
+        <div class="field"><label>Número do cartão</label><input id="vc-card-number" inputmode="numeric" autocomplete="off"></div>
+        <div class="field"><label>Nome no cartão</label><input id="vc-card-holder" autocomplete="cc-name"></div>
+        <div class="field"><label>CVV</label><input id="vc-card-ccv" inputmode="numeric" autocomplete="off"></div>
+        <div class="field"><label>Mês</label><input id="vc-card-month" inputmode="numeric" placeholder="MM" maxlength="2"></div>
+        <div class="field"><label>Ano</label><input id="vc-card-year" inputmode="numeric" placeholder="AAAA" maxlength="4"></div>
+        <div class="field"><label>CEP</label><input id="vc-card-cep" inputmode="numeric" maxlength="9"></div>
+        <div class="field"><label>Número do endereço</label><input id="vc-card-address" inputmode="numeric"></div>
+        <div class="field"><label>Telefone</label><input id="vc-card-phone" inputmode="numeric"></div>
+      </div>
+      <button class="btn btn-accent" id="vc-submit" style="margin-top:16px">Finalizar pagamento</button>
+    </form>
+    <div class="payment-result" id="video-payment-result">
+      <strong id="video-payment-title">Pagamento iniciado</strong>
+      <p style="font-size:13px;color:var(--ink3);margin-top:6px">Código único: <span class="payment-code" id="video-payment-code">-</span></p>
+      <div id="video-payment-body" style="margin-top:12px"></div>
+      <div class="login-actions">
+        <a class="btn btn-light" id="video-login-link" href="${loginUrl}">Fazer login</a>
+        <a class="btn btn-accent" id="video-signup-link" href="${loginUrl}">Criar cadastro</a>
+      </div>
+    </div>
+  </section>
+</main>
+<script>
+const videoCourseId=${jsonForScript(String(course.id || ''))}
+const videoLoginBase=${jsonForScript(loginUrl)}
+function onlyDigits(v){return String(v||'').replace(/\\D/g,'')}
+function formatCpf(v){const d=onlyDigits(v).slice(0,11);return d.replace(/(\\d{3})(\\d)/,'$1.$2').replace(/(\\d{3})(\\d)/,'$1.$2').replace(/(\\d{3})(\\d{1,2})$/,'$1-$2')}
+function payChoice(){return document.querySelector('input[name="vc-pay"]:checked')?.value||'PIX'}
+function updateVideoPayFields(){const card=payChoice()==='CREDIT_CARD';document.getElementById('vc-card-fields').classList.toggle('open',card);document.getElementById('vc-installments-wrap').style.display=card?'flex':'none'}
+function showVideoError(msg){const el=document.getElementById('video-checkout-error');el.textContent=msg;el.className='checkout-alert err'}
+function clearVideoError(){const el=document.getElementById('video-checkout-error');el.textContent='';el.className='checkout-alert'}
+async function startVideoCheckout(e){
+  e.preventDefault();clearVideoError()
+  const nome=document.getElementById('vc-nome').value.trim()
+  const email=document.getElementById('vc-email').value.trim()
+  const cpf=onlyDigits(document.getElementById('vc-cpf').value)
+  const billing_type=payChoice()
+  const payload={course_id:videoCourseId,nome,email,cpf,billing_type,installments:Number(document.getElementById('vc-installments').value||1)}
+  if(billing_type==='CREDIT_CARD')payload.card={holderName:document.getElementById('vc-card-holder').value.trim(),number:onlyDigits(document.getElementById('vc-card-number').value),expiryMonth:onlyDigits(document.getElementById('vc-card-month').value),expiryYear:onlyDigits(document.getElementById('vc-card-year').value),ccv:onlyDigits(document.getElementById('vc-card-ccv').value),holderPostalCode:onlyDigits(document.getElementById('vc-card-cep').value),holderAddressNumber:onlyDigits(document.getElementById('vc-card-address').value),holderPhone:onlyDigits(document.getElementById('vc-card-phone').value)}
+  const btn=document.getElementById('vc-submit');btn.disabled=true;btn.textContent='Processando...'
+  try{
+    const res=await fetch('/api/site/${encodeURIComponent(site.slug)}/video-checkout',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(payload)})
+    const data=await res.json().catch(()=>({}))
+    if(!res.ok){showVideoError(data.error||'Não foi possível iniciar o pagamento.');return}
+    const code=data.checkout_code||''
+    document.getElementById('video-payment-result').classList.add('open')
+    document.getElementById('video-payment-code').textContent=code||'-'
+    document.getElementById('video-payment-title').textContent=data.billing_type==='PIX'?'Pague com Pix para liberar o curso':data.billing_type==='BOLETO'?'Boleto gerado para liberar o curso':'Pagamento por cartão enviado'
+    const loginHref=videoLoginBase+'?paid=1&product=video&course='+encodeURIComponent(videoCourseId)+'&email='+encodeURIComponent(email)
+    const signupHref=videoLoginBase+'?signup=1&paid=1&product=video&course='+encodeURIComponent(videoCourseId)+'&email='+encodeURIComponent(email)+'&nome='+encodeURIComponent(nome)+'&cpf='+encodeURIComponent(cpf)+'&checkout_code='+encodeURIComponent(code)
+    document.getElementById('video-login-link').href=loginHref
+    document.getElementById('video-signup-link').href=signupHref
+    const body=document.getElementById('video-payment-body')
+    if(data.pix?.encodedImage||data.pix?.payload){
+      body.innerHTML='<div class="qr-row">'+(data.pix.encodedImage?'<img src="data:image/png;base64,'+data.pix.encodedImage+'" alt="QR Code Pix">':'')+'<textarea readonly rows="8">'+(data.pix.payload||'')+'</textarea></div>'
+    }else if(data.boleto?.identificationField){
+      body.innerHTML='<textarea readonly rows="4">'+data.boleto.identificationField+'</textarea>'
+    }else{
+      body.innerHTML='<p style="font-size:13px;color:var(--ink3)">Aguarde a confirmação do pagamento pelo Asaas. Você também recebeu o link de cadastro por e-mail.</p>'
+    }
+  }catch{showVideoError('Erro de conexão. Tente novamente.')}
+  finally{btn.disabled=false;btn.textContent='Finalizar pagamento'}
+}
+updateVideoPayFields()
+</script>
+</body>
+</html>`
+}
+
 function renderAssetLoader(assetPath: string) {
   return `<!DOCTYPE html>
 <html lang="pt-BR">
@@ -2291,7 +2830,25 @@ app.post('/api/site/:slug/checkout', async (c) => {
     return c.json({ error: 'Checkout público real ainda está liberado apenas no sandbox.' }, 503)
   }
 
-  let body: { turma_id?: string; email?: string; nome?: string }
+  let body: {
+    turma_id?: string
+    email?: string
+    nome?: string
+    cpf?: string
+    cpf_cnpj?: string
+    billing_type?: string
+    installments?: number
+    card?: {
+      holderName?: string
+      number?: string
+      expiryMonth?: string
+      expiryYear?: string
+      ccv?: string
+      holderPostalCode?: string
+      holderAddressNumber?: string
+      holderPhone?: string
+    }
+  }
   try {
     body = await c.req.json()
   } catch {
@@ -2299,10 +2856,29 @@ app.post('/api/site/:slug/checkout', async (c) => {
   }
   const email = String(body.email || '').trim().toLowerCase()
   const nome = String(body.nome || '').trim()
+  const cpf = onlyDigits(body.cpf || body.cpf_cnpj)
   const turmaId = String(body.turma_id || '').trim()
+  const paymentChoice = normalizeCheckoutPaymentChoice(body.billing_type)
+  const billingType = asaasBillingType(paymentChoice)
+  const billingLabel = checkoutBillingLabel(paymentChoice)
+  const card = body.card || {}
   if (!nome) return c.json({ error: 'Informe o nome para registrar a matrícula.' }, 400)
   if (!email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) return c.json({ error: 'Informe um e-mail válido.' }, 400)
+  if (!isValidCpf(cpf)) return c.json({ error: 'Informe um CPF válido para vincular a matrícula.' }, 400)
   if (!turmaId) return c.json({ error: 'Turma obrigatória.' }, 400)
+  if (paymentChoice === 'CREDIT_CARD') {
+    if (
+      onlyDigits(card.number).length < 13 ||
+      !String(card.holderName || '').trim() ||
+      onlyDigits(card.expiryMonth).length !== 2 ||
+      normalizeCardYear(card.expiryYear).length !== 4 ||
+      onlyDigits(card.ccv).length < 3 ||
+      onlyDigits(card.holderPostalCode).length !== 8 ||
+      !onlyDigits(card.holderAddressNumber)
+    ) {
+      return c.json({ error: 'Informe os dados completos do cartão.' }, 400)
+    }
+  }
 
   const sb = getAdmin(c.env)
   const { data: site, error: siteErr } = await sb.from('sites')
@@ -2322,9 +2898,19 @@ app.post('/api/site/:slug/checkout', async (c) => {
   if (!Number.isFinite(amount) || amount <= 0) return c.json({ error: 'Esta turma não possui preço válido para checkout.' }, 400)
 
   const cms = parseCms(site)
-  if (cms.turma_settings?.[turmaId]?.matriculas_abertas === false) {
+  const turmaSettings = cms.turma_settings?.[turmaId] || {}
+  if (turmaSettings?.matriculas_abertas === false) {
     return c.json({ error: 'As matrículas desta turma estão fechadas.' }, 403)
   }
+  const paymentSettings = normalizePaymentSettings(turmaSettings)
+  if (!isPaymentChoiceAllowed(paymentChoice, paymentSettings)) {
+    return c.json({ error: 'Forma de pagamento indisponível para esta turma.' }, 400)
+  }
+  const maxCardInstallments = maxCreditCardInstallmentsFor(amount, paymentSettings)
+  const installments = paymentChoice === 'CREDIT_CARD'
+    ? Math.max(1, Math.min(maxCardInstallments, Math.floor(Number(body.installments) || 1)))
+    : 1
+  const chargedAmount = checkoutChargeAmount(amount, paymentChoice, paymentSettings)
 
   const key = `${email}:${turmaId}`
   const previous = cms.checkout_leads?.[key] || {}
@@ -2338,25 +2924,33 @@ app.post('/api/site/:slug/checkout', async (c) => {
     .eq('turma_id', turma.id)
     .eq('payer_email', email)
     .eq('status', 'PENDING')
+    .eq('billing_type', billingType)
     .not('provider_payment_id', 'is', null)
     .order('created_at', { ascending: false })
     .limit(1)
     .maybeSingle()
   if (pendingPayment?.provider_payment_id) {
-    let qrCode: any
+    let qrCode: any = null
+    let providerPayment: any = null
+    let boleto: any = null
     try {
-      qrCode = await gateway.getPixQrCode(String(pendingPayment.provider_payment_id))
+      providerPayment = await gateway.getPayment(String(pendingPayment.provider_payment_id))
+      if (billingType === 'PIX') qrCode = await gateway.getPixQrCode(String(pendingPayment.provider_payment_id))
+      if (billingType === 'BOLETO') boleto = await gateway.getBoletoIdentificationField(String(pendingPayment.provider_payment_id))
     } catch {
       qrCode = null
+      boleto = null
     }
     const lead = {
       ...previous,
       email,
       nome,
+      cpf,
       turma_id: turmaId,
       site_id: site.id,
       status: 'PENDING',
       total: amount,
+      charged_total: Number(pendingPayment.amount_cents || 0) / 100 || chargedAmount,
       checkout_code: pendingPayment.checkout_code || checkoutCode,
       code: pendingPayment.checkout_code || checkoutCode,
       transaction_id: pendingPayment.provider_payment_id,
@@ -2364,11 +2958,19 @@ app.post('/api/site/:slug/checkout', async (c) => {
       provider_payment_id: pendingPayment.provider_payment_id,
       external_reference: pendingPayment.external_reference,
       payment_provider: 'ASAAS',
+      billing_type: billingType,
+      payment_choice: paymentChoice,
+      installments,
+      payment_url: providerPayment?.invoiceUrl || providerPayment?.bankSlipUrl || null,
       receipt: {
         aluno: nome,
         email,
+        cpf,
         turma: turma.nome,
-        total: amount,
+        total: Number(pendingPayment.amount_cents || 0) / 100 || chargedAmount,
+        base_total: amount,
+        billing_type: billingLabel,
+        installments,
         transaction_id: pendingPayment.provider_payment_id,
         checkout_code: pendingPayment.checkout_code || checkoutCode
       },
@@ -2397,13 +2999,21 @@ app.post('/api/site/:slug/checkout', async (c) => {
       payment_id: pendingPayment.id,
       provider_payment_id: pendingPayment.provider_payment_id,
       external_reference: pendingPayment.external_reference,
-      total: amount,
+      total: Number(pendingPayment.amount_cents || 0) / 100 || chargedAmount,
+      base_total: amount,
       turma_nome: turma.nome,
-      billing_type: pendingPayment.billing_type || 'PIX',
+      billing_type: pendingPayment.billing_type || billingType,
+      payment_choice: paymentChoice,
+      installments,
+      billing_label: billingLabel,
+      payment_url: providerPayment?.invoiceUrl || providerPayment?.bankSlipUrl || null,
       pix: {
         encodedImage: qrCode?.encodedImage || null,
         payload: qrCode?.payload || null,
         expirationDate: qrCode?.expirationDate || null
+      },
+      boleto: {
+        identificationField: boleto?.identificationField || boleto?.barCode || null
       },
       email_sent: false
     })
@@ -2412,6 +3022,10 @@ app.post('/api/site/:slug/checkout', async (c) => {
   const externalReference = `ASAAS-PUB-${crypto.randomUUID()}`
   const authUsers = await sb.auth.admin.listUsers()
   const authUser = authUsers.data.users.find((item) => String(item.email || '').toLowerCase() === email)
+  const cpfOwner = authUsers.data.users.find((item) => onlyDigits((item.user_metadata as any)?.cpf) === cpf)
+  if (cpfOwner?.id && cpfOwner.email && String(cpfOwner.email).toLowerCase() !== email) {
+    return c.json({ error: 'Este CPF já está vinculado a outro e-mail cadastrado.' }, 409)
+  }
   if (authUser?.id) {
     await sb.from('profiles').upsert({
       id: authUser.id,
@@ -2431,8 +3045,8 @@ app.post('/api/site/:slug/checkout', async (c) => {
       provider: 'ASAAS',
       external_reference: externalReference,
       status: 'PENDING',
-      amount_cents: Math.round(amount * 100),
-      billing_type: 'PIX',
+      amount_cents: Math.round(chargedAmount * 100),
+      billing_type: billingType,
       checkout_code: checkoutCode
     })
     .select('id')
@@ -2446,19 +3060,42 @@ app.post('/api/site/:slug/checkout', async (c) => {
     customer = await gateway.createCustomer({
       name: nome,
       email,
-      cpfCnpj: String((body as any).cpf_cnpj || '11144477735'),
+      cpfCnpj: cpf,
       externalReference: authUser?.id ? `ALUNO:${authUser.id}` : `LEAD:${checkoutCode}`,
       notificationDisabled: true
     })
-    await gateway.ensurePixKey()
-    charge = await gateway.createPixCharge({
+    if (billingType === 'PIX') await gateway.ensurePixKey()
+    charge = await gateway.createCharge({
       customerId: String(customer.id),
-      value: amount,
+      billingType,
+      value: chargedAmount,
       dueDate: tomorrowIsoDate(),
       description: `${turma.nome} - ${site.nome_prof}`,
-      externalReference
+      externalReference,
+      installmentCount: paymentChoice === 'CREDIT_CARD' ? installments : undefined,
+      totalValue: paymentChoice === 'CREDIT_CARD' && installments > 1 ? chargedAmount : undefined,
+      creditCard: paymentChoice === 'CREDIT_CARD' ? {
+        holderName: String(card.holderName || '').trim(),
+        number: onlyDigits(card.number),
+        expiryMonth: onlyDigits(card.expiryMonth).padStart(2, '0'),
+        expiryYear: normalizeCardYear(card.expiryYear),
+        ccv: onlyDigits(card.ccv)
+      } : undefined,
+      creditCardHolderInfo: paymentChoice === 'CREDIT_CARD' ? {
+        name: nome,
+        email,
+        cpfCnpj: cpf,
+        postalCode: onlyDigits(card.holderPostalCode),
+        addressNumber: onlyDigits(card.holderAddressNumber),
+        phone: onlyDigits(card.holderPhone) || undefined,
+        mobilePhone: onlyDigits(card.holderPhone) || undefined
+      } : undefined,
+      remoteIp: paymentChoice === 'CREDIT_CARD'
+        ? (c.req.header('cf-connecting-ip') || c.req.header('x-forwarded-for')?.split(',')[0]?.trim() || '127.0.0.1')
+        : undefined
     })
-    qrCode = await gateway.getPixQrCode(String(charge.id))
+    if (billingType === 'PIX') qrCode = await gateway.getPixQrCode(String(charge.id))
+    if (billingType === 'BOLETO') qrCode = await gateway.getBoletoIdentificationField(String(charge.id))
   } catch (err: any) {
     await sb.from('payments').update({
       status: 'FAILED',
@@ -2477,7 +3114,16 @@ app.post('/api/site/:slug/checkout', async (c) => {
       payment_id: charge.id,
       customer_id: customer.id,
       external_reference: externalReference,
-      checkout_code: checkoutCode
+      checkout_code: checkoutCode,
+      cpf,
+      billing_type: billingType,
+      payment_choice: paymentChoice,
+      installments,
+      base_amount: amount,
+      charged_amount: chargedAmount,
+      fee_payer: paymentSettings.feePayer,
+      fee_percent: paymentSettings.feePercent,
+      payment_url: charge.invoiceUrl || charge.bankSlipUrl || null
     },
     updated_at: new Date().toISOString()
   }).eq('id', payment.id)
@@ -2486,10 +3132,12 @@ app.post('/api/site/:slug/checkout', async (c) => {
     ...previous,
     email,
     nome,
+    cpf,
     turma_id: turmaId,
     site_id: site.id,
     status: 'PENDING',
-    total: amount,
+    total: chargedAmount,
+    base_total: amount,
     checkout_code: checkoutCode,
     code: checkoutCode,
     transaction_id: charge.id,
@@ -2497,11 +3145,19 @@ app.post('/api/site/:slug/checkout', async (c) => {
     provider_payment_id: charge.id,
     external_reference: externalReference,
     payment_provider: 'ASAAS',
+    billing_type: billingType,
+    payment_choice: paymentChoice,
+    installments,
+    payment_url: charge.invoiceUrl || charge.bankSlipUrl || null,
     receipt: {
       aluno: nome,
       email,
+      cpf,
       turma: turma.nome,
-      total: amount,
+      total: chargedAmount,
+      base_total: amount,
+      billing_type: billingLabel,
+      installments,
       transaction_id: charge.id,
       checkout_code: checkoutCode
     },
@@ -2532,13 +3188,310 @@ app.post('/api/site/:slug/checkout', async (c) => {
     payment_id: payment.id,
     provider_payment_id: charge.id,
     external_reference: externalReference,
-    total: amount,
+    total: chargedAmount,
+    base_total: amount,
     turma_nome: turma.nome,
-    billing_type: 'PIX',
+    billing_type: billingType,
+    payment_choice: paymentChoice,
+    installments,
+    billing_label: billingLabel,
+    payment_url: charge.invoiceUrl || charge.bankSlipUrl || null,
     pix: {
       encodedImage: qrCode?.encodedImage || null,
       payload: qrCode?.payload || null,
       expirationDate: qrCode?.expirationDate || null
+    },
+    boleto: {
+      identificationField: billingType === 'BOLETO' ? (qrCode?.identificationField || qrCode?.barCode || null) : null
+    },
+    email_sent: emailResult.sent
+  })
+})
+
+app.post('/api/site/:slug/video-checkout', async (c) => {
+  if (!getConfig(c.env).flags.payments) {
+    return c.json({ error: 'Pagamentos temporariamente indisponíveis.' }, 503)
+  }
+  if (c.env.ASAAS_ENV !== 'sandbox') {
+    return c.json({ error: 'Checkout público real ainda está liberado apenas no sandbox.' }, 503)
+  }
+  let body: {
+    course_id?: string
+    email?: string
+    nome?: string
+    cpf?: string
+    cpf_cnpj?: string
+    billing_type?: string
+    installments?: number
+    card?: {
+      holderName?: string
+      number?: string
+      expiryMonth?: string
+      expiryYear?: string
+      ccv?: string
+      holderPostalCode?: string
+      holderAddressNumber?: string
+      holderPhone?: string
+    }
+  }
+  try {
+    body = await c.req.json()
+  } catch {
+    return c.json({ error: 'Corpo inválido' }, 400)
+  }
+  const email = String(body.email || '').trim().toLowerCase()
+  const nome = String(body.nome || '').trim()
+  const cpf = onlyDigits(body.cpf || body.cpf_cnpj)
+  const courseId = String(body.course_id || '').trim()
+  const paymentChoice = normalizeCheckoutPaymentChoice(body.billing_type)
+  const billingType = asaasBillingType(paymentChoice)
+  const billingLabel = checkoutBillingLabel(paymentChoice)
+  const card = body.card || {}
+  if (!nome) return c.json({ error: 'Informe o nome para registrar o acesso.' }, 400)
+  if (!email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) return c.json({ error: 'Informe um e-mail válido.' }, 400)
+  if (!isValidCpf(cpf)) return c.json({ error: 'Informe um CPF válido para vincular o acesso.' }, 400)
+  if (!courseId) return c.json({ error: 'Curso obrigatório.' }, 400)
+  if (paymentChoice === 'CREDIT_CARD') {
+    if (
+      onlyDigits(card.number).length < 13 ||
+      !String(card.holderName || '').trim() ||
+      onlyDigits(card.expiryMonth).length !== 2 ||
+      normalizeCardYear(card.expiryYear).length !== 4 ||
+      onlyDigits(card.ccv).length < 3 ||
+      onlyDigits(card.holderPostalCode).length !== 8 ||
+      !onlyDigits(card.holderAddressNumber)
+    ) {
+      return c.json({ error: 'Informe os dados completos do cartão.' }, 400)
+    }
+  }
+
+  const sb = getAdmin(c.env)
+  const { data: site, error: siteErr } = await sb.from('sites')
+    .select('id, slug, nome_prof, allowed_origins, ativo')
+    .eq('slug', c.req.param('slug'))
+    .eq('ativo', true)
+    .maybeSingle()
+  if (siteErr || !site) return c.json({ error: 'Site não encontrado' }, 404)
+  const cms = parseCms(site)
+  const course = (cms.video_courses || [])
+    .filter((item: any) => !['RASCUNHO', 'OCULTO'].includes(String(item.status || 'PUBLICADO').toUpperCase()))
+    .find((item: any) => String(item.id || '') === courseId)
+  if (!course) return c.json({ error: 'Curso não encontrado ou indisponível.' }, 404)
+  const amount = Number(course.price || 0)
+  if (!Number.isFinite(amount) || amount <= 0) return c.json({ error: 'Este curso não possui preço válido para checkout.' }, 400)
+  const paymentSettings = normalizePaymentSettings({
+    payment_methods: { pix: true, boleto: true, credit_card: true },
+    credit_card_installments: 12,
+    payment_fee_payer: 'PROFESSOR'
+  })
+  if (!isPaymentChoiceAllowed(paymentChoice, paymentSettings)) {
+    return c.json({ error: 'Forma de pagamento indisponível para este curso.' }, 400)
+  }
+  const maxCardInstallments = maxCreditCardInstallmentsFor(amount, paymentSettings)
+  const installments = paymentChoice === 'CREDIT_CARD'
+    ? Math.max(1, Math.min(maxCardInstallments, Math.floor(Number(body.installments) || 1)))
+    : 1
+  const chargedAmount = checkoutChargeAmount(amount, paymentChoice, paymentSettings)
+  const key = `${email}:video:${courseId}`
+  const previous = cms.checkout_leads?.[key] || {}
+  const checkoutCode = previous.checkout_code || previous.code || makeCheckoutCode()
+  const now = new Date().toISOString()
+  const gateway = getPaymentGateway(c.env)
+
+  const authUsers = await sb.auth.admin.listUsers()
+  const authUser = authUsers.data.users.find((item) => String(item.email || '').toLowerCase() === email)
+  const cpfOwner = authUsers.data.users.find((item) => onlyDigits((item.user_metadata as any)?.cpf) === cpf)
+  if (cpfOwner?.id && cpfOwner.email && String(cpfOwner.email).toLowerCase() !== email) {
+    return c.json({ error: 'Este CPF já está vinculado a outro e-mail cadastrado.' }, 409)
+  }
+  if (authUser?.id) {
+    await sb.from('profiles').upsert({
+      id: authUser.id,
+      nome,
+      role: 'ALUNO',
+      site_id: site.id,
+      ativo: false
+    }, { onConflict: 'id' })
+  }
+  const externalReference = `ASAAS-VID-${crypto.randomUUID()}`
+  const { data: payment, error: paymentErr } = await sb.from('payments')
+    .insert({
+      site_id: site.id,
+      turma_id: null,
+      course_id: courseId,
+      product_type: 'VIDEO_COURSE',
+      aluno_id: authUser?.id || null,
+      payer_email: email,
+      payer_name: nome,
+      provider: 'ASAAS',
+      external_reference: externalReference,
+      status: 'PENDING',
+      amount_cents: Math.round(chargedAmount * 100),
+      billing_type: billingType,
+      checkout_code: checkoutCode,
+      raw_summary: {
+        public_checkout: true,
+        product_type: 'VIDEO_COURSE',
+        course_id: courseId,
+        cpf,
+        base_amount: amount,
+        charged_amount: chargedAmount
+      }
+    })
+    .select('id')
+    .single()
+  if (paymentErr) return c.json({ error: 'Não foi possível iniciar o pagamento.' }, 500)
+
+  let customer: any
+  let charge: any
+  let payInfo: any
+  try {
+    customer = await gateway.createCustomer({
+      name: nome,
+      email,
+      cpfCnpj: cpf,
+      externalReference: authUser?.id ? `ALUNO:${authUser.id}` : `VIDEO:${checkoutCode}`,
+      notificationDisabled: true
+    })
+    if (billingType === 'PIX') await gateway.ensurePixKey()
+    charge = await gateway.createCharge({
+      customerId: String(customer.id),
+      billingType,
+      value: chargedAmount,
+      dueDate: tomorrowIsoDate(),
+      description: `${course.title || 'Curso em vídeo'} - ${site.nome_prof}`,
+      externalReference,
+      installmentCount: paymentChoice === 'CREDIT_CARD' ? installments : undefined,
+      totalValue: paymentChoice === 'CREDIT_CARD' && installments > 1 ? chargedAmount : undefined,
+      creditCard: paymentChoice === 'CREDIT_CARD' ? {
+        holderName: String(card.holderName || '').trim(),
+        number: onlyDigits(card.number),
+        expiryMonth: onlyDigits(card.expiryMonth).padStart(2, '0'),
+        expiryYear: normalizeCardYear(card.expiryYear),
+        ccv: onlyDigits(card.ccv)
+      } : undefined,
+      creditCardHolderInfo: paymentChoice === 'CREDIT_CARD' ? {
+        name: nome,
+        email,
+        cpfCnpj: cpf,
+        postalCode: onlyDigits(card.holderPostalCode),
+        addressNumber: onlyDigits(card.holderAddressNumber),
+        phone: onlyDigits(card.holderPhone) || undefined,
+        mobilePhone: onlyDigits(card.holderPhone) || undefined
+      } : undefined,
+      remoteIp: paymentChoice === 'CREDIT_CARD'
+        ? (c.req.header('cf-connecting-ip') || c.req.header('x-forwarded-for')?.split(',')[0]?.trim() || '127.0.0.1')
+        : undefined
+    })
+    if (billingType === 'PIX') payInfo = await gateway.getPixQrCode(String(charge.id))
+    if (billingType === 'BOLETO') payInfo = await gateway.getBoletoIdentificationField(String(charge.id))
+  } catch (err: any) {
+    await sb.from('payments').update({
+      status: 'FAILED',
+      raw_summary: { error: err?.message || 'asaas_video_checkout_failed', public_checkout: true, product_type: 'VIDEO_COURSE', course_id: courseId },
+      updated_at: now
+    }).eq('id', payment.id)
+    return c.json({ error: 'Não foi possível criar a cobrança no Asaas.' }, 502)
+  }
+
+  await sb.from('payments').update({
+    provider_payment_id: charge.id,
+    provider_customer_id: customer.id,
+    status: charge.status || 'PENDING',
+    raw_summary: {
+      public_checkout: true,
+      product_type: 'VIDEO_COURSE',
+      course_id: courseId,
+      payment_id: charge.id,
+      customer_id: customer.id,
+      external_reference: externalReference,
+      checkout_code: checkoutCode,
+      cpf,
+      billing_type: billingType,
+      payment_choice: paymentChoice,
+      installments,
+      base_amount: amount,
+      charged_amount: chargedAmount,
+      payment_url: charge.invoiceUrl || charge.bankSlipUrl || null
+    },
+    updated_at: new Date().toISOString()
+  }).eq('id', payment.id)
+
+  const lead = {
+    ...previous,
+    email,
+    nome,
+    cpf,
+    course_id: courseId,
+    product_type: 'VIDEO_COURSE',
+    site_id: site.id,
+    status: 'PENDING',
+    total: chargedAmount,
+    base_total: amount,
+    checkout_code: checkoutCode,
+    code: checkoutCode,
+    transaction_id: charge.id,
+    payment_id: payment.id,
+    provider_payment_id: charge.id,
+    external_reference: externalReference,
+    payment_provider: 'ASAAS',
+    billing_type: billingType,
+    payment_choice: paymentChoice,
+    installments,
+    payment_url: charge.invoiceUrl || charge.bankSlipUrl || null,
+    receipt: {
+      aluno: nome,
+      email,
+      cpf,
+      course: course.title || 'Curso em vídeo',
+      total: chargedAmount,
+      base_total: amount,
+      billing_type: billingLabel,
+      installments,
+      transaction_id: charge.id,
+      checkout_code: checkoutCode
+    },
+    created_at: previous.created_at || now,
+    updated_at: now
+  }
+  const emailResult = await sendVideoCheckoutReceipt(c.env, lead, course, site)
+  cms.checkout_leads = {
+    ...(cms.checkout_leads || {}),
+    [key]: {
+      ...lead,
+      email_status: emailResult.sent ? 'sent' : `not-sent:${emailResult.reason || 'provider'}`,
+      email_checked_at: new Date().toISOString()
+    }
+  }
+  const save = await saveCms(c.env, site.id, cms)
+  if (save.error) return c.json(dbError(), 500)
+
+  return c.json({
+    ok: true,
+    status: charge.status || 'PENDING',
+    email,
+    nome,
+    course_id: courseId,
+    checkout_code: checkoutCode,
+    transaction_id: charge.id,
+    payment_id: payment.id,
+    provider_payment_id: charge.id,
+    external_reference: externalReference,
+    total: chargedAmount,
+    base_total: amount,
+    course_title: course.title || 'Curso em vídeo',
+    billing_type: billingType,
+    payment_choice: paymentChoice,
+    installments,
+    billing_label: billingLabel,
+    payment_url: charge.invoiceUrl || charge.bankSlipUrl || null,
+    pix: {
+      encodedImage: payInfo?.encodedImage || null,
+      payload: payInfo?.payload || null,
+      expirationDate: payInfo?.expirationDate || null
+    },
+    boleto: {
+      identificationField: payInfo?.identificationField || payInfo?.barCode || null
     },
     email_sent: emailResult.sent
   })
@@ -2562,12 +3515,17 @@ app.get('/api/marketplace/professores', async (c) => {
     const cms = parseCms(site)
     const active = sitePackageActive(site, cms)
     if (!active) continue
+    const words = professorWords(cms.owner_gender)
+    const defaultLayout = defaultCms().layout
+    const profileText = cms?.layout?.profile_text === defaultLayout.profile_text
+      ? genderedDefaultProfileText(cms.owner_gender)
+      : cms?.layout?.profile_text
     const specialty = cms?.marketplace?.especialidade || cms?.layout?.eyebrow || 'Redação e correção textual'
     real.push({
       slug: site.slug,
-      nome: site.nome_prof || 'Professor de redação',
+      nome: site.nome_prof || `${words.singular} de redação`,
       especialidade: specialty,
-      bio: site.bio_prof || cms?.layout?.profile_text || 'Site ativo com turmas, conteúdos e correções organizadas.',
+      bio: site.bio_prof || profileText || 'Site ativo com turmas, conteúdos e correções organizadas.',
       foto_url: site.foto_url || cms?.layout?.profile_photo || cms?.layout?.avatar_image || '',
       iniciais: initialsFromName(site.nome_prof),
       url: `/redacao/${encodeURIComponent(site.slug)}`,
@@ -2606,6 +3564,18 @@ app.get('/redacao/:slug/conteudos/:postId', async (c) => {
     .find((item: any) => postPublicId(item) === encodeURIComponent(postId) || String(item.id || '') === postId)
   if (!post) return c.html('<h1>Conteudo nao encontrado</h1>', 404)
   return c.html(renderPostPage(data, post))
+})
+
+app.get('/redacao/:slug/videos/:courseId', async (c) => {
+  const data = await loadSite(c.env, c.req.param('slug'))
+  if (!data) return c.html('<h1>Site nao encontrado</h1>', 404)
+  const cms = parseCms(data.site)
+  const courseId = c.req.param('courseId')
+  const course = (cms.video_courses || [])
+    .filter((item: any) => !['RASCUNHO', 'OCULTO'].includes(String(item.status || 'PUBLICADO').toUpperCase()))
+    .find((item: any) => String(item.id || '') === courseId)
+  if (!course) return c.html('<h1>Curso nao encontrado</h1>', 404)
+  return c.html(renderVideoCoursePage(data, course))
 })
 
 app.get('/redacao/:slug/turmas/:turmaId', async (c) => {
