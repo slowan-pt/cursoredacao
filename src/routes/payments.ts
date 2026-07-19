@@ -425,6 +425,65 @@ app.post('/asaas/webhook', async (c) => {
 app.post('/asaas/sandbox-reconciliation', requireAuth, runSandboxReconciliation)
 app.post('/asaas/reconciliation', requireAuth, runSandboxReconciliation)
 
+app.post('/asaas/sandbox-pay-pix', requireAuth, async (c) => {
+  const user = c.get('user')
+  if (!['ADMIN', 'CORRETOR', 'SUPERADMIN'].includes(user.role)) {
+    return c.json({ error: 'Acesso negado.' }, 403)
+  }
+  if (c.env.ASAAS_ENV !== 'sandbox') {
+    return c.json({ error: 'Simulação de PIX permitida apenas no sandbox.' }, 403)
+  }
+
+  const body = await c.req.json().catch(() => ({}))
+  const providerPaymentId = String(body.provider_payment_id || '').trim()
+  if (!providerPaymentId) return c.json({ error: 'Informe a cobrança do Asaas.' }, 400)
+
+  const sb = getAdmin(c.env)
+  let query = sb.from('payments')
+    .select('id, site_id, turma_id, course_id, product_type, aluno_id, payer_email, payer_name, provider_payment_id, amount_cents, billing_type, checkout_code, paid_at, status, raw_summary')
+    .eq('provider', 'ASAAS')
+    .eq('provider_payment_id', providerPaymentId)
+    .maybeSingle()
+
+  const { data: payment, error } = await query
+  if (error) return c.json({ error: 'Não foi possível localizar o pagamento.' }, 500)
+  if (!payment) return c.json({ error: 'Pagamento não encontrado.' }, 404)
+  if (user.role !== 'SUPERADMIN' && user.site_id !== payment.site_id) {
+    return c.json({ error: 'Acesso negado para este pagamento.' }, 403)
+  }
+  if (String(payment.billing_type || '').toUpperCase() !== 'PIX') {
+    return c.json({ error: 'A simulação automática atual aceita apenas PIX.' }, 400)
+  }
+
+  const gateway = getPaymentGateway(c.env)
+  try {
+    const providerPayment = await gateway.getPayment(providerPaymentId)
+    let simulated = false
+    if (!isPaidStatus(normalizeAsaasPaymentStatus(String(providerPayment?.status || 'PENDING')))) {
+      const qrCode = await gateway.getPixQrCode(providerPaymentId)
+      if (!qrCode?.payload) return c.json({ error: 'QR Code PIX não disponível para esta cobrança.' }, 409)
+      await gateway.payPixQrCode({
+        payload: String(qrCode.payload),
+        value: Number(payment.amount_cents || 0) / 100,
+        description: `Pagamento sandbox ${payment.raw_summary?.external_reference || payment.provider_payment_id}`
+      })
+      simulated = true
+    }
+    const refreshed = await gateway.getPayment(providerPaymentId)
+    const applied = await applyProviderPaymentStatus(sb, payment, refreshed, 'ASAAS_SANDBOX_PIX_SIMULATION')
+    return c.json({
+      ok: true,
+      simulated,
+      provider_status: normalizeAsaasPaymentStatus(String(refreshed?.status || 'PENDING')),
+      internal_status: applied.status,
+      enrollment_granted: applied.granted,
+      reason: applied.reason || null
+    })
+  } catch (err: any) {
+    return c.json({ error: err?.message || 'Não foi possível simular o pagamento PIX.' }, 502)
+  }
+})
+
 app.post('/asaas/sandbox-homologation', requireAuth, async (c) => {
   const user = c.get('user')
   if (!['ADMIN', 'CORRETOR', 'SUPERADMIN'].includes(user.role)) {
