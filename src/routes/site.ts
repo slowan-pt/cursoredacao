@@ -2627,6 +2627,14 @@ async function simulatePayment(event){
     document.getElementById('payment-url').style.pointerEvents=paymentUrl?'auto':'none'
     document.getElementById('payment-url').textContent='Ver cobrança'
     try{localStorage.setItem('checkout:'+siteSlug+':'+turmaId,JSON.stringify({nome,email,cpf,checkout_code:code,transaction_id:transactionId,created_at:new Date().toISOString()}))}catch{}
+    const approvedStatuses=['RECEIVED','CONFIRMED','RECEIVED_IN_CASH']
+    const isApproved=approvedStatuses.includes(String(data.status||'').toUpperCase())
+    if(isApproved){
+      const hasAccount=Boolean(data.has_account||cpfLookupState.exists)
+      show('alert-ok','Pagamento aprovado no sandbox. Direcionando para '+(hasAccount?'login':'cadastro')+'...')
+      setTimeout(()=>{location.href=hasAccount?loginHref:signupHref},900)
+      return
+    }
     document.getElementById('payment-modal').classList.add('open')
   }catch{show('alert-err','Erro de conexão. Tente novamente.')}
   finally{btn.disabled=false;btn.textContent='Finalizar pagamento'}
@@ -2892,6 +2900,11 @@ async function startVideoCheckout(e){
     document.getElementById('video-login-link').textContent=hasAccount?'Fazer login para acessar':'Fazer login'
     document.getElementById('video-signup-link').href=signupHref
     document.getElementById('video-signup-link').style.display=hasAccount?'none':''
+    if(paid){
+      showVideoOk('Pagamento aprovado no sandbox. Direcionando para '+(hasAccount?'login':'cadastro')+'...')
+      setTimeout(()=>{location.href=hasAccount?loginHref:signupHref},900)
+      return
+    }
     const body=document.getElementById('video-payment-body')
     if(paid){
       body.innerHTML='<p style="font-size:13px;color:var(--ink3)">'+(hasAccount?'Identificamos cadastro para este CPF neste site. Clique em Fazer login para acessar o curso.':'Se você ainda não tem cadastro, clique em Criar cadastro; seus dados e código de compra já irão preenchidos.')+'</p>'
