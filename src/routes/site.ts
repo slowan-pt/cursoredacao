@@ -143,6 +143,17 @@ function isValidCpf(value: unknown) {
   return calc(cpf.slice(0, 9), 10) === Number(cpf[9]) && calc(cpf.slice(0, 10), 11) === Number(cpf[10])
 }
 
+function validateCreditCardPayload(card: any) {
+  if (onlyDigits(card?.number).length < 13) return { field: 'card_number', error: 'Informe o número completo do cartão.' }
+  if (!String(card?.holderName || '').trim()) return { field: 'card_holder', error: 'Informe o nome do titular como aparece no cartão.' }
+  if (onlyDigits(card?.expiryMonth).length !== 2) return { field: 'card_month', error: 'Informe o mês de validade com 2 dígitos.' }
+  if (normalizeCardYear(card?.expiryYear).length !== 4) return { field: 'card_year', error: 'Informe o ano de validade com 4 dígitos.' }
+  if (onlyDigits(card?.ccv).length < 3) return { field: 'card_ccv', error: 'Informe o código de segurança do cartão.' }
+  if (onlyDigits(card?.holderPostalCode).length !== 8) return { field: 'card_cep', error: 'Informe o CEP do titular com 8 dígitos.' }
+  if (!onlyDigits(card?.holderAddressNumber)) return { field: 'card_address', error: 'Informe o número do endereço do titular.' }
+  return null
+}
+
 function tomorrowIsoDate() {
   const date = new Date()
   date.setDate(date.getDate() + 1)
@@ -317,7 +328,8 @@ function defaultCms() {
     turma_settings: {} as Record<string, any>,
     student_credits: {} as Record<string, any>,
     enrollments: {} as Record<string, any>,
-    checkout_leads: {} as Record<string, any>
+    checkout_leads: {} as Record<string, any>,
+    notifications: [] as any[]
   }
 }
 
@@ -368,7 +380,8 @@ function parseCms(site: any) {
       turma_settings: cms.turma_settings && typeof cms.turma_settings === 'object' ? cms.turma_settings : {},
       student_credits: cms.student_credits && typeof cms.student_credits === 'object' ? cms.student_credits : {},
       enrollments: cms.enrollments && typeof cms.enrollments === 'object' ? cms.enrollments : {},
-      checkout_leads: cms.checkout_leads && typeof cms.checkout_leads === 'object' ? cms.checkout_leads : {}
+      checkout_leads: cms.checkout_leads && typeof cms.checkout_leads === 'object' ? cms.checkout_leads : {},
+      notifications: Array.isArray(cms.notifications) ? cms.notifications : []
     }
   } catch {
     return defaultCms()
@@ -2637,7 +2650,7 @@ h1{font-size:clamp(36px,6vw,66px);line-height:1.02;font-weight:900;max-width:850
 .cover{aspect-ratio:4/3;border-radius:20px;overflow:hidden;background:#111;box-shadow:0 30px 70px rgba(0,0,0,.28);display:flex;align-items:center;justify-content:center;font-size:54px}.cover img{width:100%;height:100%;object-fit:cover;display:block}
 .details{padding:42px 6% 74px;display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:16px}.info-card{border:1px solid var(--border);border-radius:14px;background:var(--card);padding:20px}.info-card strong{display:block;font-size:15px;margin-bottom:8px}.info-card p{font-size:13px;line-height:1.6;color:var(--ink3)}
 .full{grid-column:1/-1}.price{font-size:28px;font-weight:900;color:var(--brand);margin-top:6px}.lesson-meta{display:flex;gap:8px;flex-wrap:wrap;margin-top:14px}.lesson-meta span{background:var(--surface);border:1px solid var(--border);border-radius:999px;padding:7px 10px;font-size:12px;font-weight:800;color:var(--ink2)}
-.checkout-box{grid-column:1/-1;border:1px solid var(--border);border-radius:18px;background:var(--card);padding:22px;min-width:0}.checkout-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px;margin-top:16px}.field{display:flex;flex-direction:column;gap:6px;min-width:0}.field label{font-size:12px;font-weight:900;color:var(--ink2)}input,select,textarea{font:inherit;border:1px solid var(--border);border-radius:10px;padding:12px;background:#fff;color:var(--ink);width:100%;min-width:0}.pay-methods{display:flex;gap:8px;flex-wrap:wrap;margin:14px 0}.pay-methods label{border:1px solid var(--border);border-radius:999px;padding:9px 12px;font-size:12px;font-weight:900;cursor:pointer}.card-fields{display:none;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px;margin-top:10px}.card-fields.open{display:grid}.checkout-alert{display:none;border-radius:10px;padding:12px;margin-top:12px;font-size:13px;font-weight:700}.checkout-alert.err{display:block;background:#fff0f0;color:#b42318;border:1px solid #ffd2d2}.payment-result{display:none;margin-top:16px;border:1px solid var(--border);border-radius:14px;padding:16px;background:var(--surface);min-width:0}.payment-result.open{display:block}.qr-row{display:grid;grid-template-columns:180px minmax(0,1fr);gap:14px;align-items:start}.qr-row img{width:180px;max-width:100%;border:1px solid var(--border);border-radius:12px;background:#fff;justify-self:center}.payment-code{font-weight:900}.login-actions{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:14px}
+.checkout-box{grid-column:1/-1;border:1px solid var(--border);border-radius:18px;background:var(--card);padding:22px;min-width:0}.checkout-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px;margin-top:16px}.field{display:flex;flex-direction:column;gap:6px;min-width:0}.field label{font-size:12px;font-weight:900;color:var(--ink2)}input,select,textarea{font:inherit;border:1px solid var(--border);border-radius:10px;padding:12px;background:#fff;color:var(--ink);width:100%;min-width:0}.pay-methods{display:flex;gap:8px;flex-wrap:wrap;margin:14px 0}.pay-methods label{border:1px solid var(--border);border-radius:999px;padding:9px 12px;font-size:12px;font-weight:900;cursor:pointer}.card-fields{display:none;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px;margin-top:10px}.card-fields.open{display:grid}.checkout-alert{display:none;border-radius:10px;padding:12px;margin-top:12px;font-size:13px;font-weight:700}.checkout-alert.err{display:block;background:#fff0f0;color:#b42318;border:1px solid #ffd2d2}.checkout-alert.ok{display:block;background:#ecfdf3;color:#067647;border:1px solid #abefc6}.field-focus input{border-color:#f04438;box-shadow:0 0 0 4px rgba(240,68,56,.14)}.payment-result{display:none;margin-top:16px;border:1px solid var(--border);border-radius:14px;padding:16px;background:var(--surface);min-width:0}.payment-result.open{display:block}.qr-row{display:grid;grid-template-columns:180px minmax(0,1fr);gap:14px;align-items:start}.qr-row img{width:180px;max-width:100%;border:1px solid var(--border);border-radius:12px;background:#fff;justify-self:center}.payment-code{font-weight:900}.login-actions{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:14px}
 @media(max-width:780px){.hero{grid-template-columns:1fr;padding:48px 22px}.details{grid-template-columns:1fr;padding:26px 16px 52px}.nav-actions .nav-link{display:none}.btn{width:100%}.hero-actions{flex-direction:column}}
 @media(max-width:780px){.nav{padding:0 16px}.brand span:last-child{max-width:170px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.checkout-grid,.card-fields,.login-actions,.qr-row{grid-template-columns:1fr}.pay-methods{display:grid;grid-template-columns:1fr}.pay-methods label{text-align:center}.cover{max-width:360px;width:100%;justify-self:center}.payment-result{padding:14px}.qr-row textarea{min-height:150px}}
 </style>
@@ -2663,7 +2676,7 @@ h1{font-size:clamp(36px,6vw,66px);line-height:1.02;font-weight:900;max-width:850
       <span>anotações do aluno</span>
     </div>
     <div class="hero-actions">
-      <a class="btn btn-accent" href="${loginUrl}">Entrar para acessar</a>
+      <a class="btn btn-accent" href="#checkout-video">Comprar curso</a>
       <a class="btn btn-light" href="${sitePath}#cursos-video">Ver outros cursos</a>
     </div>
   </div>
@@ -2735,29 +2748,59 @@ function payChoice(){return document.querySelector('input[name="vc-pay"]:checked
 function updateVideoPayFields(){const card=payChoice()==='CREDIT_CARD';document.getElementById('vc-card-fields').classList.toggle('open',card);document.getElementById('vc-installments-wrap').style.display=card?'flex':'none'}
 function showVideoError(msg){const el=document.getElementById('video-checkout-error');el.textContent=msg;el.className='checkout-alert err'}
 function clearVideoError(){const el=document.getElementById('video-checkout-error');el.textContent='';el.className='checkout-alert'}
+function showVideoOk(msg){const el=document.getElementById('video-checkout-error');el.textContent=msg;el.className='checkout-alert ok'}
+const cardFieldMap={card_number:'vc-card-number',card_holder:'vc-card-holder',card_month:'vc-card-month',card_year:'vc-card-year',card_ccv:'vc-card-ccv',card_cep:'vc-card-cep',card_address:'vc-card-address'}
+function focusVideoField(id,msg){
+  document.querySelectorAll('.field-focus').forEach(el=>el.classList.remove('field-focus'))
+  const input=document.getElementById(id)
+  if(!input){showVideoError(msg);return}
+  input.closest('.field')?.classList.add('field-focus')
+  input.scrollIntoView({behavior:'smooth',block:'center'})
+  setTimeout(()=>input.focus({preventScroll:true}),250)
+  showVideoError(msg)
+}
+function validateVideoCardFields(){
+  if(payChoice()!=='CREDIT_CARD')return null
+  const rules=[
+    ['vc-card-number','Informe o número completo do cartão.',()=>onlyDigits(document.getElementById('vc-card-number').value).length>=13],
+    ['vc-card-holder','Informe o nome do titular como aparece no cartão.',()=>document.getElementById('vc-card-holder').value.trim().length>0],
+    ['vc-card-month','Informe o mês de validade com 2 dígitos.',()=>onlyDigits(document.getElementById('vc-card-month').value).length===2],
+    ['vc-card-year','Informe o ano de validade com 4 dígitos.',()=>onlyDigits(document.getElementById('vc-card-year').value).length===4],
+    ['vc-card-ccv','Informe o código de segurança do cartão.',()=>onlyDigits(document.getElementById('vc-card-ccv').value).length>=3],
+    ['vc-card-cep','Informe o CEP do titular com 8 dígitos.',()=>onlyDigits(document.getElementById('vc-card-cep').value).length===8],
+    ['vc-card-address','Informe o número do endereço do titular.',()=>onlyDigits(document.getElementById('vc-card-address').value).length>0]
+  ]
+  return rules.find(rule=>!rule[2]())||null
+}
 async function startVideoCheckout(e){
   e.preventDefault();clearVideoError()
   const nome=document.getElementById('vc-nome').value.trim()
   const email=document.getElementById('vc-email').value.trim()
   const cpf=onlyDigits(document.getElementById('vc-cpf').value)
   const billing_type=payChoice()
+  const cardError=validateVideoCardFields()
+  if(cardError){focusVideoField(cardError[0],cardError[1]);return}
   const payload={course_id:videoCourseId,nome,email,cpf,billing_type,installments:Number(document.getElementById('vc-installments').value||1)}
   if(billing_type==='CREDIT_CARD')payload.card={holderName:document.getElementById('vc-card-holder').value.trim(),number:onlyDigits(document.getElementById('vc-card-number').value),expiryMonth:onlyDigits(document.getElementById('vc-card-month').value),expiryYear:onlyDigits(document.getElementById('vc-card-year').value),ccv:onlyDigits(document.getElementById('vc-card-ccv').value),holderPostalCode:onlyDigits(document.getElementById('vc-card-cep').value),holderAddressNumber:onlyDigits(document.getElementById('vc-card-address').value),holderPhone:onlyDigits(document.getElementById('vc-card-phone').value)}
   const btn=document.getElementById('vc-submit');btn.disabled=true;btn.textContent='Processando...'
   try{
     const res=await fetch('/api/site/${encodeURIComponent(site.slug)}/video-checkout',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(payload)})
     const data=await res.json().catch(()=>({}))
-    if(!res.ok){showVideoError(data.error||'Não foi possível iniciar o pagamento.');return}
+    if(!res.ok){focusVideoField(cardFieldMap[data.field]||'',data.error||'Não foi possível iniciar o pagamento.');return}
     const code=data.checkout_code||''
     document.getElementById('video-payment-result').classList.add('open')
     document.getElementById('video-payment-code').textContent=code||'-'
-    document.getElementById('video-payment-title').textContent=data.billing_type==='PIX'?'Pague com Pix para liberar o curso':data.billing_type==='BOLETO'?'Boleto gerado para liberar o curso':'Pagamento por cartão enviado'
+    const paid=String(data.status||'').toUpperCase()==='RECEIVED'||String(data.status||'').toUpperCase()==='CONFIRMED'
+    document.getElementById('video-payment-title').textContent=paid?'Pagamento aprovado. Acesso liberado em sandbox.':data.billing_type==='PIX'?'Pague com Pix para liberar o curso':data.billing_type==='BOLETO'?'Boleto gerado para liberar o curso':'Pagamento por cartão enviado'
+    if(paid)showVideoOk('Pagamento aprovado no sandbox. Faça login se já tiver cadastro ou crie cadastro com os dados desta compra.')
     const loginHref=videoLoginBase+'?paid=1&product=video&course='+encodeURIComponent(videoCourseId)+'&email='+encodeURIComponent(email)
     const signupHref=videoLoginBase+'?signup=1&paid=1&product=video&course='+encodeURIComponent(videoCourseId)+'&email='+encodeURIComponent(email)+'&nome='+encodeURIComponent(nome)+'&cpf='+encodeURIComponent(cpf)+'&checkout_code='+encodeURIComponent(code)
     document.getElementById('video-login-link').href=loginHref
     document.getElementById('video-signup-link').href=signupHref
     const body=document.getElementById('video-payment-body')
-    if(data.pix?.encodedImage||data.pix?.payload){
+    if(paid){
+      body.innerHTML='<p style="font-size:13px;color:var(--ink3)">Se você já tem cadastro neste site, clique em Fazer login. Se ainda não tem, clique em Criar cadastro; seus dados e código de compra já irão preenchidos.</p>'
+    }else if(data.pix?.encodedImage||data.pix?.payload){
       body.innerHTML='<div class="qr-row">'+(data.pix.encodedImage?'<img src="data:image/png;base64,'+data.pix.encodedImage+'" alt="QR Code Pix">':'')+'<textarea readonly rows="8">'+(data.pix.payload||'')+'</textarea></div>'
     }else if(data.boleto?.identificationField){
       body.innerHTML='<textarea readonly rows="4">'+data.boleto.identificationField+'</textarea>'
@@ -2867,17 +2910,8 @@ app.post('/api/site/:slug/checkout', async (c) => {
   if (!isValidCpf(cpf)) return c.json({ error: 'Informe um CPF válido para vincular a matrícula.' }, 400)
   if (!turmaId) return c.json({ error: 'Turma obrigatória.' }, 400)
   if (paymentChoice === 'CREDIT_CARD') {
-    if (
-      onlyDigits(card.number).length < 13 ||
-      !String(card.holderName || '').trim() ||
-      onlyDigits(card.expiryMonth).length !== 2 ||
-      normalizeCardYear(card.expiryYear).length !== 4 ||
-      onlyDigits(card.ccv).length < 3 ||
-      onlyDigits(card.holderPostalCode).length !== 8 ||
-      !onlyDigits(card.holderAddressNumber)
-    ) {
-      return c.json({ error: 'Informe os dados completos do cartão.' }, 400)
-    }
+    const cardError = validateCreditCardPayload(card)
+    if (cardError) return c.json(cardError, 400)
   }
 
   const sb = getAdmin(c.env)
@@ -3252,17 +3286,8 @@ app.post('/api/site/:slug/video-checkout', async (c) => {
   if (!isValidCpf(cpf)) return c.json({ error: 'Informe um CPF válido para vincular o acesso.' }, 400)
   if (!courseId) return c.json({ error: 'Curso obrigatório.' }, 400)
   if (paymentChoice === 'CREDIT_CARD') {
-    if (
-      onlyDigits(card.number).length < 13 ||
-      !String(card.holderName || '').trim() ||
-      onlyDigits(card.expiryMonth).length !== 2 ||
-      normalizeCardYear(card.expiryYear).length !== 4 ||
-      onlyDigits(card.ccv).length < 3 ||
-      onlyDigits(card.holderPostalCode).length !== 8 ||
-      !onlyDigits(card.holderAddressNumber)
-    ) {
-      return c.json({ error: 'Informe os dados completos do cartão.' }, 400)
-    }
+    const cardError = validateCreditCardPayload(card)
+    if (cardError) return c.json(cardError, 400)
   }
 
   const sb = getAdmin(c.env)
@@ -3394,10 +3419,37 @@ app.post('/api/site/:slug/video-checkout', async (c) => {
     return c.json({ error: 'Não foi possível criar a cobrança no Asaas.' }, 502)
   }
 
+  const sandboxAutoReceived = c.env.ASAAS_ENV === 'sandbox'
+  const finalStatus = sandboxAutoReceived ? 'RECEIVED' : String(charge.status || 'PENDING').toUpperCase()
+  const paidAt = sandboxAutoReceived ? new Date().toISOString() : null
+  let enrollmentGranted = false
+  let enrollmentReason = ''
+
+  if (sandboxAutoReceived && authUser?.id) {
+    const { error: enrollmentErr } = await sb.from('video_course_enrollments')
+      .upsert({
+        site_id: site.id,
+        course_id: courseId,
+        aluno_id: authUser.id,
+        payment_id: payment.id,
+        status: 'ACTIVE',
+        updated_at: new Date().toISOString()
+      }, { onConflict: 'site_id,course_id,aluno_id' })
+    if (enrollmentErr) {
+      enrollmentReason = /video_course_enrollments|relation .* does not exist|schema cache/i.test(String(enrollmentErr.message || ''))
+        ? 'video_tables_missing'
+        : enrollmentErr.message
+    } else {
+      enrollmentGranted = true
+      await sb.from('profiles').update({ ativo: true }).eq('id', authUser.id).eq('role', 'ALUNO')
+    }
+  }
+
   await sb.from('payments').update({
     provider_payment_id: charge.id,
     provider_customer_id: customer.id,
-    status: charge.status || 'PENDING',
+    status: finalStatus,
+    paid_at: paidAt,
     raw_summary: {
       public_checkout: true,
       product_type: 'VIDEO_COURSE',
@@ -3412,7 +3464,11 @@ app.post('/api/site/:slug/video-checkout', async (c) => {
       installments,
       base_amount: amount,
       charged_amount: chargedAmount,
-      payment_url: charge.invoiceUrl || charge.bankSlipUrl || null
+      payment_url: charge.invoiceUrl || charge.bankSlipUrl || null,
+      provider_status: charge.status || 'PENDING',
+      sandbox_auto_received: sandboxAutoReceived,
+      enrollment_granted: enrollmentGranted,
+      enrollment_reason: enrollmentReason || null
     },
     updated_at: new Date().toISOString()
   }).eq('id', payment.id)
@@ -3425,7 +3481,7 @@ app.post('/api/site/:slug/video-checkout', async (c) => {
     course_id: courseId,
     product_type: 'VIDEO_COURSE',
     site_id: site.id,
-    status: 'PENDING',
+    status: sandboxAutoReceived ? 'PAGAMENTO_CONFIRMADO_ASAAS' : 'PENDING',
     total: chargedAmount,
     base_total: amount,
     checkout_code: checkoutCode,
@@ -3439,6 +3495,9 @@ app.post('/api/site/:slug/video-checkout', async (c) => {
     payment_choice: paymentChoice,
     installments,
     payment_url: charge.invoiceUrl || charge.bankSlipUrl || null,
+    paid_at: paidAt,
+    sandbox_auto_received: sandboxAutoReceived,
+    enrollment_granted: enrollmentGranted,
     receipt: {
       aluno: nome,
       email,
@@ -3455,6 +3514,30 @@ app.post('/api/site/:slug/video-checkout', async (c) => {
     updated_at: now
   }
   const emailResult = await sendVideoCheckoutReceipt(c.env, lead, course, site)
+  if (sandboxAutoReceived) {
+    const notificationKey = `payment:${charge.id}`
+    const notifications = Array.isArray(cms.notifications)
+      ? cms.notifications.filter((item: any) => item?.key !== notificationKey)
+      : []
+    notifications.unshift({
+      id: crypto.randomUUID(),
+      key: notificationKey,
+      type: 'PAYMENT_RECEIVED',
+      title: 'Aluno pagou um curso em vídeo',
+      message: `${nome || email} pagou ${course.title || 'um curso em vídeo'}.`,
+      aluno_email: email,
+      aluno_nome: nome,
+      course_id: courseId,
+      course_title: course.title || null,
+      product_type: 'VIDEO_COURSE',
+      amount_cents: Math.round(chargedAmount * 100),
+      provider_payment_id: charge.id,
+      origin: 'ASAAS_SANDBOX_AUTO',
+      read: false,
+      created_at: now
+    })
+    cms.notifications = notifications.slice(0, 100)
+  }
   cms.checkout_leads = {
     ...(cms.checkout_leads || {}),
     [key]: {
@@ -3468,7 +3551,7 @@ app.post('/api/site/:slug/video-checkout', async (c) => {
 
   return c.json({
     ok: true,
-    status: charge.status || 'PENDING',
+    status: finalStatus,
     email,
     nome,
     course_id: courseId,
@@ -3493,7 +3576,10 @@ app.post('/api/site/:slug/video-checkout', async (c) => {
     boleto: {
       identificationField: payInfo?.identificationField || payInfo?.barCode || null
     },
-    email_sent: emailResult.sent
+    email_sent: emailResult.sent,
+    sandbox_auto_received: sandboxAutoReceived,
+    enrollment_granted: enrollmentGranted,
+    enrollment_reason: enrollmentReason || null
   })
 })
 
