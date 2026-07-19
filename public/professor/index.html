@@ -205,6 +205,11 @@
                 </div>
                 <label class="inline-switch"><input type="checkbox" id="hide-posts-section" onchange="updateSitePreview();pulseSitePreview('posts')"> Ocultar esta seção no site público</label>
               </div>
+              <div class="cms-menu-section" data-layout-section="ordenacao">
+                <div class="cms-menu-section-title">Ordem das seções</div>
+                <p style="font-size:12px;color:var(--ink3);margin-bottom:10px">Defina a ordem em que as seções aparecem na sua página pública.</p>
+                <div id="block-order-list" class="block-order-list"></div>
+              </div>
               <div class="site-tools-row site-action-row">
                 <button type="button" class="btn site-default-btn" onclick="setDashboardModelDefault()">Definir como modelo padrão</button>
                 <button type="submit" class="btn btn-accent">Salvar site</button>
@@ -1729,6 +1734,7 @@ function loadCmsForm(cms) {
   renderPreComentarios()
   renderTemas()
   clearPostForm()
+  initBlockOrderUI(data.layout.block_order)
 }
 
 function collectCmsForm() {
@@ -1759,7 +1765,8 @@ function collectCmsForm() {
       aluno_title: document.getElementById('cms-aluno-title').value.trim() || defaultCms().layout.aluno_title,
       aluno_text: document.getElementById('cms-aluno-text').value.trim() || defaultCms().layout.aluno_text,
       aluno_cta: document.getElementById('cms-aluno-cta').value.trim() || defaultCms().layout.aluno_cta,
-      hidden_elements: Array.from(hidden)
+      hidden_elements: Array.from(hidden),
+      block_order: ['hero', ...getBlockOrderFromUI()]
     },
     contact: {
       ...(previous.contact || {}),
@@ -1772,6 +1779,47 @@ function collectCmsForm() {
     themes: cmsTemas,
     evaluation_modes: avaliacaoModos
   }
+}
+
+const BLOCK_LABELS = { video_courses: 'Cursos em vídeo', turmas: 'Turmas', conteudos: 'Conteúdos/Postagens', aluno: 'Área do Aluno' }
+const ORDERABLE_BLOCKS = ['video_courses', 'turmas', 'conteudos', 'aluno']
+
+function initBlockOrderUI(savedOrder) {
+  const container = document.getElementById('block-order-list')
+  if (!container) return
+  const order = Array.isArray(savedOrder) ? savedOrder.filter(b => ORDERABLE_BLOCKS.includes(b)) : []
+  ORDERABLE_BLOCKS.forEach(b => { if (!order.includes(b)) order.push(b) })
+  container.innerHTML = order.map(block => `<div class="block-order-item" data-block="${block}"><span class="block-order-handle">☰</span><span class="block-order-label">${BLOCK_LABELS[block] || block}</span><div class="block-order-btns"><button type="button" class="block-order-btn" onclick="moveBlockOrderItem(this.closest('.block-order-item'),-1)" title="Mover para cima">▲</button><button type="button" class="block-order-btn" onclick="moveBlockOrderItem(this.closest('.block-order-item'),1)" title="Mover para baixo">▼</button></div></div>`).join('')
+  refreshBlockOrderBtns()
+}
+
+function moveBlockOrderItem(item, dir) {
+  const list = item.parentElement
+  const items = [...list.children]
+  const idx = items.indexOf(item)
+  const target = items[idx + dir]
+  if (!target) return
+  if (dir === -1) list.insertBefore(item, target)
+  else list.insertBefore(target, item)
+  refreshBlockOrderBtns()
+  updateSitePreview()
+}
+
+function refreshBlockOrderBtns() {
+  const list = document.getElementById('block-order-list')
+  if (!list) return
+  const items = [...list.children]
+  items.forEach((item, i) => {
+    const btns = item.querySelectorAll('.block-order-btn')
+    if (btns[0]) btns[0].disabled = i === 0
+    if (btns[1]) btns[1].disabled = i === items.length - 1
+  })
+}
+
+function getBlockOrderFromUI() {
+  const list = document.getElementById('block-order-list')
+  if (!list || !list.children.length) return ORDERABLE_BLOCKS.slice()
+  return [...list.children].map(item => item.dataset.block)
 }
 
 function defaultPreComentarios() {

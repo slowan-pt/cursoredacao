@@ -543,6 +543,16 @@ body.correcao-mode .main{height:100vh;overflow:hidden}
 .tema-tags span,.tema-turmas span{font-size:10px;font-weight:700;border-radius:999px;padding:3px 8px;background:var(--surface);border:1px solid var(--border);color:var(--ink3)}
 .tema-turmas span{background:var(--brand-light);color:var(--brand)}
 
+/* ── Block order editor ──────────────────────────────────── */
+.block-order-list{display:flex;flex-direction:column;gap:6px;margin-top:8px}
+.block-order-item{display:flex;align-items:center;gap:10px;border:1px solid var(--border);border-radius:var(--r);padding:10px 12px;background:var(--surface);user-select:none}
+.block-order-handle{color:var(--ink3);font-size:14px;flex-shrink:0;line-height:1}
+.block-order-label{flex:1;font-size:13px;font-weight:700;color:var(--ink)}
+.block-order-btns{display:flex;gap:4px;flex-shrink:0}
+.block-order-btn{border:1px solid var(--border);border-radius:var(--r);background:#fff;color:var(--ink2);font-size:11px;width:28px;height:28px;cursor:pointer;display:flex;align-items:center;justify-content:center;padding:0;transition:all .15s;font-family:inherit}
+.block-order-btn:hover:not(:disabled){background:var(--brand);color:var(--brand-text);border-color:var(--brand)}
+.block-order-btn:disabled{opacity:.35;cursor:default}
+
 /* ── Responsive (sidebar + main) ─────────────────────────── */
 @media(max-width:768px){
   .sidebar{transform:translateX(-100%)}
